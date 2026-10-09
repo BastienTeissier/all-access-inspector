@@ -33,7 +33,7 @@ Vocabulary used in this document is defined in [CONTEXT.md](../../../CONTEXT.md)
 
 ### Visual
 
-Inventory contract (one endpoint object per line, sorted by path then method):
+Inventory contract (one endpoint object per line, sorted by path, then method, then handler):
 
 ```json
 {"schema_version": "1", "stack": "django", "discovery_mode": "runtime", "coverage": "complete",

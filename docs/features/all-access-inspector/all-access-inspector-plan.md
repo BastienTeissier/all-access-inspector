@@ -19,7 +19,7 @@ PRD: [prd.md](./prd.md). Vocabulary: [CONTEXT.md](../../../CONTEXT.md). Decision
 - Path: leading `/`, params as `{name}`, trailing slash as declared.
 - Handler: project code → `relative/path.py:line` (Django, Symfony); framework code → dotted name, no line. Spring: dotted name for all handlers (no line available at runtime).
 - Core Classification closed: authentication `anonymous|optional|required|unknown`, authorization `none|rule|unknown`, layer `global|class|method|framework-default`. Identity check alone = `required` + `none`. Custom construct without rule = `unknown`.
-- Inventory byte-stable: sorted by path then method (alphabetical), fixed key order, no timestamps, no absolute paths.
+- Inventory byte-stable: sorted by path, then method, then handler (code point), fixed key order, no timestamps, no absolute paths.
 - Fitting complete ⇔ every `unknown` has `unknown_reason`; every Recognition Rule cites existing `file:line`.
 - Project Dimension: declared values only; endpoint without value ⇒ script fails naming endpoint.
 - Static discovery only when routing not enumerable; reason written in Adapted Script; coverage `best-effort`. Unsupported stack ⇒ improvise from closest Base Script, coverage `best-effort`.
@@ -114,7 +114,7 @@ Stdlib only + the project's Django/DRF. Python ≥ 3.10. Each file is a template
 **Why**: UF4; missing value = failure.
 
 #### J. `inventory.py` 🟢
-**Changes**: dataclasses mirroring §2; `to_canonical_json()` implementing the serialisation rule (key order from a constant, sort key `(path, method)`); `validate()` runtime checks JSON Schema cannot (dimension keys, `coverage_note`); `check(committed_path)` → structural diff: added/removed by identity triple, changed by field; renders one line per endpoint.
+**Changes**: dataclasses mirroring §2; `to_canonical_json()` implementing the serialisation rule (key order from a constant, sort key `(path, method, handler)`); `validate()` runtime checks JSON Schema cannot (dimension keys, `coverage_note`); `check(committed_path)` → structural diff: added/removed by identity triple, changed by field; renders one line per endpoint.
 **Why**: byte stability and `--check` in one place; same logic mirrored in Java/PHP.
 
 #### K. `table.py` 🟢
@@ -205,8 +205,8 @@ Principle (PRD): golden-file tests are the test of a Base Script; no unit tests 
 
 Django (`base-scripts/django/tests/`, pytest, no Django boot):
 - `test_paths_normalize`: `path("api/<int:pk>/")` → `/api/{pk}/`; `re_path(r"^items/(?P<slug>[\w-]+)$")` → `/items/{slug}`; unnamed group → `{param}`; nested prefixes joined; trailing slash preserved; leading slash added.
-- `test_inventory_canonical_bytes`: a hand-built inventory serialises to the committed `schema/samples/canonical.json` byte for byte (key order, one endpoint per line, sort by path then method, `\n` terminated, unicode unescaped).
-- `test_inventory_sort`: `/a` `POST` before `/a/b` `GET`; `ANY` sorts before `DELETE`.
+- `test_inventory_canonical_bytes`: a hand-built inventory serialises to the committed `schema/samples/canonical.json` byte for byte (key order, one endpoint per line, sort by path then method then handler, `\n` terminated, unicode unescaped).
+- `test_inventory_sort`: `/a` `POST` before `/a/b` `GET`; `ANY` sorts before `DELETE`; same path + method → handler order.
 - `test_inventory_validate_dimension_keys`: endpoint with dimension key not declared → `ValidationError` naming endpoint.
 - `test_inventory_validate_coverage_note`: `best-effort` with `coverage_note: null` → error.
 - `test_check_diff`: committed vs current with one added, one removed, one authn change → diff lines `+ GET /x`, `- POST /y`, `~ GET /z authentication.value required→optional`; exit 1; identical → exit 0; no committed file → exit 2 with hint.
@@ -271,7 +271,7 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 
 - [ ] **Inventory model + canonical writer + validate**
   - File: `base-scripts/django/inventory.py`
-  - Dataclasses per §2; `to_canonical_json`; `validate` (dimension keys, coverage note); sort `(path, method)`.
+  - Dataclasses per §2; `to_canonical_json`; `validate` (dimension keys, coverage note); sort `(path, method, handler)`.
 - [ ] **Path normalisation**
   - File: `base-scripts/django/paths.py`
 - [ ] **Discovery**
