@@ -110,20 +110,35 @@ def test_rules_recognition_rule_resolves_a_construct() -> None:
 
 
 @pytest.mark.parametrize(
-    ("method", "value"),
-    [("GET", "none"), ("OPTIONS", "none"), ("PATCH", "rule")],
+    ("method", "expected"),
+    [
+        ("GET", ("optional", "none")),
+        ("HEAD", ("optional", "none")),
+        ("OPTIONS", ("optional", "none")),
+        ("PATCH", ("required", "rule")),
+    ],
 )
-def test_rules_recognition_rule_is_per_method(method: str, value: str) -> None:
+@pytest.mark.parametrize("target", ["construct", "path_prefix"])
+def test_rules_recognition_rule_is_per_method(
+    method: str, expected: tuple[str, str], target: str
+) -> None:
+    # A path_prefix rule is checked over a no_check view, so it alone decides the endpoint.
+    where, finding = (
+        ({"construct": "shop.permissions.IsOwner"}, IS_OWNER)
+        if target == "construct"
+        else ({"path_prefix": "/orders/", "layer": "global"}, NO_CHECK)
+    )
     edit = Rule(
         "edit",
         "shop/permissions.py:4",
         "required",
         "rule",
-        construct="shop.permissions.IsOwner",
+        safe_authn="optional",
         safe_authz="none",
+        **where,
     )
-    authn, authz, _ = resolve([IS_OWNER], method, "/orders/1/", [edit], [])
-    assert (authn.value, authz.value) == ("required", value)
+    authn, authz, _ = resolve([finding], method, "/orders/1/", [edit], [])
+    assert (authn.value, authz.value) == expected
     assert authz.rule == "recognition:edit"
 
 
