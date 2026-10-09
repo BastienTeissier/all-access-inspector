@@ -2,7 +2,7 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
-from access_inspector.inventory import Axis, Inventory, check, from_dict
+from access_inspector.inventory import Axis, Inventory, Pin, check, from_dict
 
 SAMPLES = Path(__file__).resolve().parents[3] / "schema" / "samples"
 
@@ -49,3 +49,18 @@ def test_check_header_change() -> None:
     assert check(committed, current) == [
         f'~ project_dimensions: {old} -> {{"access_tier": ["public"]}}'
     ]
+
+
+def test_check_compares_values_as_written() -> None:
+    hosts = Pin("ALLOWED_HOSTS", ("shop.example.com",), "production value")
+    current = load("canonical.json")
+    current = replace(
+        current,
+        boot_environment=replace(current.boot_environment, pinned=[hosts]),
+    )
+    as_list = replace(hosts, value=["shop.example.com"])
+    committed = replace(
+        current,
+        boot_environment=replace(current.boot_environment, pinned=[as_list]),
+    )
+    assert check(committed, current) == []

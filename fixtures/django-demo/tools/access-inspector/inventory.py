@@ -141,6 +141,7 @@ def check(committed: Inventory, current: Inventory) -> list[str]:
 
     Structural, so the committed file's ordering and whitespace never count as a difference.
     """
+    current = from_dict(json.loads(to_canonical_json(current)))  # compare as written
     old, new = asdict(committed), asdict(current)
     lines = [
         f"~ {key}: {_compact(old[key])} -> {_compact(new[key])}"
