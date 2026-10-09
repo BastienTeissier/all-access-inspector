@@ -1,6 +1,7 @@
 """Golden-file tests: run the vendored Adapted Script inside a copy of this fixture."""
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -12,7 +13,8 @@ import pytest
 
 FIXTURE = Path(__file__).resolve().parents[1]
 REPO = FIXTURE.parents[1]
-BASE_SCRIPT = REPO / "base-scripts" / "django" / "access_inspector"
+SKILL = REPO / "skills" / "all-access-inspector"
+BASE_SCRIPT = SKILL / "base-scripts" / "django" / "access_inspector"
 EXPECTED = FIXTURE / "expected" / "inventory.json"
 PROJECT_SECTION = re.compile(r"# --- project ---\n.*?# --- end project ---\n", re.S)
 
@@ -29,12 +31,16 @@ def project(tmp_path: Path) -> Path:
 
 
 def run(
-    project: Path, *args: str, cwd: Path | None = None
+    project: Path,
+    *args: str,
+    cwd: Path | None = None,
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     script = project / "tools" / "access-inspector" / "inspect.py"
     return subprocess.run(
         [sys.executable, str(script), *args],
         cwd=cwd or project,
+        env={**os.environ, **(env or {})},
         capture_output=True,
         text=True,
         check=False,
@@ -59,7 +65,7 @@ def test_django_golden(project: Path) -> None:
 
 def test_django_golden_is_schema_valid() -> None:
     schema = json.loads(
-        (REPO / "schema" / "inventory.schema.json").read_text(encoding="utf-8")
+        (SKILL / "schema" / "inventory.schema.json").read_text(encoding="utf-8")
     )
     jsonschema.Draft202012Validator(schema).validate(
         json.loads(EXPECTED.read_text(encoding="utf-8"))
@@ -134,6 +140,26 @@ def test_django_determinism(project: Path, tmp_path: Path) -> None:
     elsewhere.mkdir()
     assert run(project, cwd=elsewhere).returncode == 0
     assert output(project).read_bytes() == first
+
+
+def test_django_environ_overrides_the_shell(project: Path) -> None:
+    result = run(project, env={"SHOP_ENV": "local"})
+    assert result.returncode == 0, result.stderr
+    assert output(project).read_bytes() == EXPECTED.read_bytes()
+
+
+def test_django_environ_shapes_the_route_table(project: Path) -> None:
+    edit(
+        project / "tools" / "access-inspector" / "boot.py",
+        'Env("SHOP_ENV", "production"',
+        'Env("SHOP_ENV", "local"',
+    )
+    result = run(
+        project, "--table"
+    )  # the dev-only route is mounted, and no dimension covers it
+    assert result.returncode == 2
+    assert "ANY /dev/mail-preview/" in result.stderr
+    assert "/dev/mail-preview/" not in EXPECTED.read_text(encoding="utf-8")
 
 
 def test_django_boot_failure(project: Path) -> None:
@@ -223,7 +249,7 @@ def test_django_check_missing_dimension(project: Path) -> None:
     result = run(project)
     assert result.returncode == 2
     assert (
-        "ANY /orphan/ (shop/views.py:12): no rule assigns dimension 'access_tier'"
+        "ANY /orphan/ (shop/views.py:13): no rule assigns dimension 'access_tier'"
         in result.stderr
     )
     assert not output(project).exists()

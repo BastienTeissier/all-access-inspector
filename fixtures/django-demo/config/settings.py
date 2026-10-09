@@ -1,8 +1,11 @@
+import os
+
 from config.secrets import load
 
 SECRETS = load()
 SECRET_KEY = SECRETS["SECRET_KEY"]
 DEBUG = True
+SHOP_ENV = os.environ.get("SHOP_ENV", "local")  # local mounts dev-only routes
 ALLOWED_HOSTS = ["shop.example.com"]
 
 INSTALLED_APPS = [

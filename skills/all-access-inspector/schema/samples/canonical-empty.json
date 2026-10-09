@@ -5,7 +5,7 @@
   "coverage": "complete",
   "coverage_note": null,
   "base_script": {"stack": "django", "version": "0.1.0"},
-  "boot_environment": {"entry": "config.settings.production", "stubs": [], "pinned": []},
+  "boot_environment": {"entry": "config.settings.production", "environ": [], "stubs": [], "pinned": []},
   "project_dimensions": {},
   "endpoints": []
 }

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from access_inspector.inventory import Axis
+from access_inspector.inventory import METHODS, Axis
 
 SAFE_METHODS = ("GET", "HEAD", "OPTIONS")
 AUTHENTICATION_STRICTNESS = ("required", "unknown", "optional", "anonymous")
@@ -45,6 +45,10 @@ class Rule:
         None  # defaults to the finding's layer; required with path_prefix
     )
     raw: str | None = None
+    safe_authn: str | None = (
+        None  # value for GET/HEAD/OPTIONS when it differs, as for a Built-in Rule
+    )
+    safe_authz: str | None = None
 
 
 @dataclass(frozen=True)
@@ -95,6 +99,13 @@ BUILTIN = {
 
 # --- project ---
 RECOGNITION: list[Rule] = [
+    Rule(
+        name="drafts_login_required",
+        evidence="shop/views.py:78",
+        authn="required",
+        authz="none",
+        construct="shop.views.DraftsView.dispatch",
+    ),
     Rule(
         name="tenant_middleware",
         evidence="config/middleware.py:11",
@@ -158,10 +169,7 @@ def resolve(
     acknowledged = ACKNOWLEDGED if acknowledged is None else acknowledged
     own = [_component(f, method, recognition) for f in findings]
     components = [
-        (
-            _axis(r.authn, r.layer, r.raw, f"recognition:{r.name}"),
-            _axis(r.authz, r.layer, r.raw, f"recognition:{r.name}"),
-        )
+        _recognised(r, method, r.layer, r.raw)
         for r in recognition
         if r.path_prefix is not None and path.startswith(r.path_prefix)
     ] + own
@@ -183,6 +191,22 @@ def resolve(
     return authn, authz, reasons[0] if reasons else None
 
 
+def methods(
+    findings: list[Finding],
+    method: str,
+    path: str,
+    recognition: list[Rule] | None = None,
+) -> list[str]:
+    """An ANY endpoint whose checks differ for safe methods is split into one row per method."""
+    if method != "ANY":
+        return [method]
+    if resolve(findings, "GET", path, recognition, []) == resolve(
+        findings, "POST", path, recognition, []
+    ):
+        return [method]
+    return [m for m in METHODS if m != "ANY"]
+
+
 def check_rules(recognition: list[Rule], root: Path) -> None:
     """Every Recognition Rule targets one thing and cites a file and line that exist."""
     for rule in recognition:
@@ -192,6 +216,14 @@ def check_rules(recognition: list[Rule], root: Path) -> None:
             )
         if rule.path_prefix is not None and rule.layer is None:
             raise RuleError(f"rule {rule.name}: a path_prefix rule needs a layer")
+        for value, allowed in (
+            (rule.authn, AUTHENTICATION_STRICTNESS),
+            (rule.safe_authn, AUTHENTICATION_STRICTNESS),
+            (rule.authz, AUTHORIZATION_STRICTNESS),
+            (rule.safe_authz, AUTHORIZATION_STRICTNESS),
+        ):
+            if value is not None and value not in allowed:
+                raise RuleError(f"rule {rule.name}: {value!r} is not one of {allowed}")
         file, _, line = rule.evidence.rpartition(":")
         source = (root / file).resolve()
         inside = source.is_relative_to(root.resolve())
@@ -210,23 +242,35 @@ def _component(
 ) -> tuple[Axis, Axis]:
     for rule in recognition:
         if rule.construct == finding.construct:
-            layer = rule.layer or finding.layer
-            raw = rule.raw or finding.raw
-            tag = f"recognition:{rule.name}"
-            return _axis(rule.authn, layer, raw, tag), _axis(
-                rule.authz, layer, raw, tag
+            return _recognised(
+                rule, method, rule.layer or finding.layer, rule.raw or finding.raw
             )
     builtin = BUILTIN.get(finding.construct) if finding.reason is None else None
     if builtin is None:
         return _axis("unknown", finding.layer, finding.raw, None), _axis(
             "unknown", finding.layer, finding.raw, None
         )
-    safe = method in SAFE_METHODS
-    authn = (builtin.safe_authn if safe else None) or builtin.authn
-    authz = (builtin.safe_authz if safe else None) or builtin.authz
+    authn, authz = _for_method(builtin, method)
     tag = f"builtin:{builtin.name}"
     return _axis(authn, finding.layer, finding.raw, tag), _axis(
         authz, finding.layer, finding.raw, tag
+    )
+
+
+def _recognised(
+    rule: Rule, method: str, layer: str | None, raw: str | None
+) -> tuple[Axis, Axis]:
+    authn, authz = _for_method(rule, method)
+    tag = f"recognition:{rule.name}"
+    return _axis(authn, layer, raw, tag), _axis(authz, layer, raw, tag)
+
+
+def _for_method(check: Builtin | Rule, method: str) -> tuple[str, str]:
+    """GET/HEAD/OPTIONS take the safe value when the check sets one."""
+    safe = method in SAFE_METHODS
+    return (
+        (check.safe_authn if safe else None) or check.authn,
+        (check.safe_authz if safe else None) or check.authz,
     )
 
 
