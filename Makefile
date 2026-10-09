@@ -12,8 +12,8 @@ test-django:
 	$(UV_DJANGO_FIXTURE) pytest
 
 lint:
-	$(UV_DJANGO) ruff check . ../../../../$(DJANGO_FIXTURE)
-	$(UV_DJANGO) ruff format --check . ../../../../$(DJANGO_FIXTURE)
+	$(UV_DJANGO) ruff check . $(CURDIR)/$(DJANGO_FIXTURE)
+	$(UV_DJANGO) ruff format --check . $(CURDIR)/$(DJANGO_FIXTURE)
 
 typecheck:
 	$(UV_DJANGO) mypy .
@@ -24,5 +24,5 @@ deps:
 check-all: lint typecheck deps
 
 format:
-	$(UV_DJANGO) ruff check --select I --fix . ../../../../$(DJANGO_FIXTURE)
-	$(UV_DJANGO) ruff format . ../../../../$(DJANGO_FIXTURE)
+	$(UV_DJANGO) ruff check --select I --fix . $(CURDIR)/$(DJANGO_FIXTURE)
+	$(UV_DJANGO) ruff format . $(CURDIR)/$(DJANGO_FIXTURE)
