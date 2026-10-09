@@ -179,8 +179,9 @@ def check_rules(recognition: list[Rule], root: Path) -> None:
         if rule.path_prefix is not None and rule.layer is None:
             raise RuleError(f"rule {rule.name}: a path_prefix rule needs a layer")
         file, _, line = rule.evidence.rpartition(":")
-        source = root / file
-        if not (file and line.isdigit() and source.is_file()):
+        source = (root / file).resolve()
+        inside = source.is_relative_to(root.resolve())
+        if not (file and line.isdigit() and inside and source.is_file()):
             raise RuleError(
                 f"rule {rule.name}: evidence {rule.evidence} does not exist"
             )

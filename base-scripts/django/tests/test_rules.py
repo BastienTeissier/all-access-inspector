@@ -169,6 +169,14 @@ def test_rules_evidence_must_exist(tmp_path: Path) -> None:
             [Rule("gone", "config/gone.py:1", "required", "none", construct="x")],
             tmp_path,
         )
+    outside = tmp_path.parent / "outside.py"
+    outside.write_text("x = 1\n")
+    for evidence in (f"{outside}:1", "../outside.py:1"):
+        with pytest.raises(RuleError, match="does not exist"):
+            check_rules(
+                [Rule("escape", evidence, "required", "none", construct="x")],
+                tmp_path,
+            )
     with pytest.raises(RuleError, match="exactly one"):
         check_rules(
             [
