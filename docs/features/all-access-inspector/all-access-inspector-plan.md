@@ -316,17 +316,17 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 
 ### Phase 3 — UF3 Fit a Django project with the Agent (+ UF4 dimensions, UF5 update) — first milestone
 
-- [ ] **Skill workflow**
+- [x] **Skill workflow**
   - File: `SKILL.md`
   - Steps 1–8 of §3 AF; hard rules; update-mode branch (UF5): detect existing dir, diff rules' evidence against current tree, remove/relocate, run `--unknowns` only; optional Base Script refresh keeping `boot.py`/`rules.py`/`dimensions.py`.
-- [ ] **Django reference**
+- [x] **Django reference**
   - File: `references/django.md`
   - Production entry heuristics (`config/settings/production.py`, `DJANGO_SETTINGS_MODULE` in Dockerfile/Procfile), boot failure → stub cookbook, built-in rule table, blind spots.
-- [ ] **Dimension proposal (UF4)**
+- [x] **Dimension proposal (UF4)**
   - File: `SKILL.md` step 6 + `references/django.md` section "candidate dimensions" (prefix groups, middleware, admin, roles seen in rules) → AskUserQuestion confirm/rename/reject → write `dimensions.py`.
-- [ ] **Summary template + commit**
+- [x] **Summary template + commit**
   - File: `assets/summary-template.md`; branch name follows the project's convention (inferred from recent branch names, e.g. `feat/...`, `chore/...`; fallback `access-inspector/fit`), commit message lists rules/unknowns/boot decisions.
-- [ ] **Verify (manual, milestone)**: fit `~/Theodo/perenco/action-tracking`; checklist: branch exists, `--unknowns` empty, `--check` green, every evidence `file:line` exists, no pipeline file in the diff, dimensions confirmed by the user. Then re-run in update mode on the same project → no diff.
+- [x] **Verify (manual, milestone)**: fit `~/Theodo/perenco/action-tracking`; checklist: branch exists, `--unknowns` empty, `--check` green, every evidence `file:line` exists, no pipeline file in the diff, dimensions confirmed by the user. Then re-run in update mode on the same project → no diff.
 
 ### Phase 4 — UF6 Audit from the Committed Inventory (sibling repo `../skills/security-audit`)
 
@@ -439,6 +439,7 @@ None.
 ## Resolved during planning
 
 - Environment variables read at settings import (found fitting action-tracking): `boot.py` pins them in `ENVIRON` (`Env(name, value, reason)`), applied before the settings import and overriding the shell; recorded in `boot_environment.environ`.
+- Vendored code vs project linters (found fitting action-tracking: ruff complexity cap, mypy): the fit excludes `tools/access-inspector/` in each linter's config, the one change allowed outside it; the Base Script keeps the toolkit's own style.
 - Distribution: this repository is an APM package; users add it as a dependency pinned by tag. The toolkit (`SKILL.md`, `references/`, `assets/`, `base-scripts/`, `schema/`, `VERSION`) lives under `skills/all-access-inspector/`, so it deploys as one skill; toolkit paths in this plan are relative to that directory. Fixtures stay at the repository root.
 
 - Milestone target: `~/Theodo/perenco/action-tracking`.

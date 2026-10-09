@@ -17,6 +17,7 @@ Paths below are relative to this skill's base directory (`<skill>/`) or to the p
 - Never fall back to static discovery because the boot is hard. Static discovery is admissible only when the routing layer cannot be enumerated at runtime.
 - Never claim `coverage: complete` for a stack that has no Base Script.
 - Never remove or rename a Core Classification field or value. Project-specific code goes only between `# --- project ---` and `# --- end project ---` in `boot.py`, `rules.py` and `dimensions.py`. Everything else stays byte-identical to the Base Script, so a later refresh can replace it.
+- Change nothing outside `tools/access-inspector/` except one entry per linter or type checker the project runs (`ruff`, `mypy`, `flake8`, `pyright`, …), excluding `tools/access-inspector/` from it. The vendored files follow the toolkit's style, not the project's.
 - Never commit on the current branch, and never push.
 
 ## Workflow
@@ -76,12 +77,13 @@ Exit 2 naming an endpoint means a rule misses it. Extend the rules; never add a 
 
 1. Run `inspect.py --table` and show the user the result, or a summary of it when it is long.
 2. Run `inspect.py` to write `tools/access-inspector/inventory.json`, then `inspect.py --check`. It must exit 0.
-3. Pick the template in `<skill>/assets/ci-snippets/` that matches the project's CI: `github-actions.yml` when `.github/workflows/` exists, `gitlab-ci.yml` for `.gitlab-ci.yml`, `generic.sh` otherwise. Fill `{{setup}}`, `{{install}}` and `{{check}}` from the project's own test job, then write it as `tools/access-inspector/ci-snippet.<ext>`. Do not touch the pipeline.
+3. Pick the template in `<skill>/assets/ci-snippets/` that matches the project's CI: `github-actions.yml` when `.github/workflows/` exists, `gitlab-ci.yml` for `.gitlab-ci.yml`, `generic.sh` otherwise. Fill `{{setup}}`, `{{install}}` and `{{check}}` from the project's own test job, then write it as `tools/access-inspector/ci-snippet.<ext>` and check it parses. Do not touch the pipeline.
+4. Find every linter and type checker the project's CI or pre-commit hook runs over the whole tree. Exclude `tools/access-inspector/` in each one's configuration (`[tool.ruff] extend-exclude`, `[tool.mypy] exclude`, `setup.cfg`, …), then run them: they must pass as they did before the fit.
 
 ### 8. Branch, commit, summary
 
 1. Infer the branch convention from recent branches (`git branch -a --sort=-committerdate | head -20`, e.g. `feat/…`, `chore/…`). Fall back to `access-inspector/fit`. Create the branch from the current HEAD.
-2. Stage only `tools/access-inspector/`, excluding caches. Verify with `git status --short` that no other file changed.
+2. Stage `tools/access-inspector/` (excluding caches) and the linter exclusions from step 7. Verify with `git status --short` that no other file changed.
 3. Commit following the project's commit convention. The body lists every boot decision, Recognition Rule and Acknowledged Unknown.
 4. Print the summary from `<skill>/assets/summary-template.md`.
 

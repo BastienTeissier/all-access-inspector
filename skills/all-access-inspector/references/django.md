@@ -27,7 +27,7 @@ Stub the narrowest dotted name the traceback points at. Never stub the settings 
 
 | Symptom in the traceback | Toward-production fix |
 |---|---|
-| `KeyError`/`ImproperlyConfigured` for `SECRET_KEY` or another secret | stub the function outside the settings package that loads it, e.g. `Stub("config.secrets.load", reason=…, replacement=lambda: {"SECRET_KEY": "inventory-stub"})`; when the settings read `os.environ` directly, there is nothing to stub: ask the user |
+| `KeyError`/`ImproperlyConfigured` for `SECRET_KEY` or another secret | stub the function outside the settings package that loads it, e.g. `Stub("config.secrets.load", reason=…, replacement=lambda: {"SECRET_KEY": "inventory-stub"})`; when the settings read `os.environ` directly, there is nothing to stub: `Env("SECRET_NAME", "inventory-placeholder", reason="secret required at import by <file>")`, a placeholder never a real value |
 | A secrets-manager / vault client (`boto3`, `hvac`, `google.cloud.secretmanager`, Azure Key Vault) called at import | stub that client call with a replacement returning a placeholder of the right shape |
 | `ModuleNotFoundError` for a production-only package | stub the importing function, or ask whether the package belongs in the run environment |
 | Database connection at import or in `AppConfig.ready()` | stub the function that queries; `django.setup()` itself opens no connection |
@@ -60,7 +60,7 @@ Several checks on one endpoint all apply: per axis the strictest wins (`required
 ## Writing a Recognition Rule
 
 - `construct` is the dotted name the script saw: `module.QualName` of the permission class, decorator wrapper or `test_func`. The `raw` of a DRF permission is only its class name; import path + name gives the dotted form.
-- `evidence` is the line of the `class`/`def` that implements the check, relative to the project root, never a usage site.
+- `evidence` is the line of the `class`/`def` that implements the check, relative to the project root, never a usage site. A construct from an installed package (`HasAPIKey`, `hijack`, `allauth`) has no project line: cite the project line that applies it (the `permission_classes = […]`, the `path(…)`/`include(…)`, the setting that configures it).
 - `authn`: `required` when the check rejects anonymous users, `optional` when it only reads `request.user`, `anonymous` when it lets everyone in.
 - `authz`: `rule` when it checks anything beyond "is authenticated" (role, group, permission, tenant, ownership enforced in the check), `none` otherwise.
 - A check that differs for reads (`if request.method in SAFE_METHODS: return True`): set `safe_authn`/`safe_authz` for GET/HEAD/OPTIONS, as the Built-in `IsAuthenticatedOrReadOnly` does.
