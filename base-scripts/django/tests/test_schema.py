@@ -168,3 +168,10 @@ def test_schema_rejects(
     assert [(e.validator, list(e.absolute_path)) for e in errors] == [
         (validator, error_path)
     ]
+
+
+def test_canonical_input_describes_the_canonical_inventory() -> None:
+    neutral = load(REPO / "schema" / "samples" / "canonical.input.json")
+    neutral["endpoints"].sort(key=lambda e: (e["path"], e["method"], e["handler"]))
+
+    assert neutral == load(CANONICAL)
