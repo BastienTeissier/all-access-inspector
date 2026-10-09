@@ -45,6 +45,27 @@
         {
             "unknown_reason": null,
             "dimensions": {
+                "access_tier": "public"
+            },
+            "authorization": {
+                "rule": "builtin:AllowAny",
+                "raw": "AllowAny",
+                "layer": "method",
+                "value": "none"
+            },
+            "authentication": {
+                "rule": "builtin:AllowAny",
+                "raw": "AllowAny",
+                "layer": "method",
+                "value": "anonymous"
+            },
+            "handler": "health/views.py:8",
+            "path": "/api/health",
+            "method": "ANY"
+        },
+        {
+            "unknown_reason": null,
+            "dimensions": {
                 "access_tier": "staff"
             },
             "authorization": {
@@ -111,18 +132,18 @@
                 "access_tier": "public"
             },
             "authorization": {
-                "rule": "builtin:AllowAny",
-                "raw": "AllowAny",
-                "layer": "method",
+                "rule": "builtin:no_check",
+                "raw": null,
+                "layer": "framework-default",
                 "value": "none"
             },
             "authentication": {
-                "rule": "builtin:AllowAny",
-                "raw": "AllowAny",
-                "layer": "method",
+                "rule": "builtin:no_check",
+                "raw": null,
+                "layer": "framework-default",
                 "value": "anonymous"
             },
-            "handler": "health/views.py:8",
+            "handler": "health/legacy.py:3",
             "path": "/api/health",
             "method": "ANY"
         }

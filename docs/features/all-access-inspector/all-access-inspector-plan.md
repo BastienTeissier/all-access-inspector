@@ -258,7 +258,7 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
   - Encode §2 exactly: enums, key `required` lists, `additionalProperties: false`, `if/then` for `coverage_note`.
 - [x] **Write the canonical samples**
   - Files: `schema/samples/canonical.input.json`, `schema/samples/canonical.json`
-  - Neutral 6-endpoint input (incl. `ANY`, unicode path, two methods on one path, one unknown, one dimension) and its byte-exact canonical form, hand-verified once.
+  - Neutral 7-endpoint input (incl. `ANY`, unicode path, two methods on one path, two handlers on one path + method, one unknown, one dimension) and its byte-exact canonical form, hand-verified once; `schema/samples/canonical-empty.json` pins the empty form.
 - [x] **Repo tooling**
   - Files: `Makefile`, `.github/workflows/ci.yml`, `base-scripts/django/pyproject.toml` (uv, ruff, mypy strict, pytest, jsonschema dev-only), `VERSION`
   - Copy conventions from `django-access-inspector/pyproject.toml` + `Makefile`.
