@@ -1,5 +1,5 @@
 DJANGO := base-scripts/django
-UV_DJANGO := uv run --directory $(DJANGO)
+UV_DJANGO := uv run --locked --directory $(DJANGO)
 
 .PHONY: test test-django lint typecheck check-all format
 
