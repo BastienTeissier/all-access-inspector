@@ -39,7 +39,7 @@ class BootError(Exception):
 
 
 # --- project ---
-# Settings module; None reads the default from manage.py.
+# Settings module; None reads the DJANGO_SETTINGS_MODULE default from manage.py, usually a dev module.
 ENTRY: str | None = None
 
 # Toward production only: stubs replace secrets, databases and external services, never the settings module, e.g.:
@@ -47,6 +47,8 @@ ENTRY: str | None = None
 STUBS: list[Stub] = []
 
 # Pin("DEBUG", False, reason="production value"),
+# Pins are set after the settings module ran: a value it derived from DEBUG at import time keeps its dev value,
+# so logic like `if DEBUG: INSTALLED_APPS += [...]` needs a production ENTRY, not a pin.
 PINNED: list[Pin] = []
 # --- end project ---
 

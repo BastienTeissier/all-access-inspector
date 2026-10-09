@@ -91,7 +91,7 @@ Stdlib only + the project's Django/DRF. Python ≥ 3.10. Modules live in the pac
 **Why**: UF1/UF2 entrypoint; `--unknowns` is the Agent's interface in UF3/UF5.
 
 #### D. `boot.py` 🟢
-**Changes**: `ENTRY = "config.settings.production"`, `STUBS = [Stub(target="config.secrets.load", replacement=..., reason=...)]`, `PINNED = [Pin("DEBUG", False, reason)]`; `boot()`: insert project root in `sys.path`, set `DJANGO_SETTINGS_MODULE`, apply stubs via `unittest.mock.patch` before `django.setup()`, apply pins via `settings` override, return `BootEnvironment` for the inventory header.
+**Changes**: `ENTRY = "config.settings.production"` (template default `None` falls back to the `DJANGO_SETTINGS_MODULE` default in `manage.py`, usually a dev module, so the Agent always pins it), `STUBS = [Stub(target="config.secrets.load", replacement=..., reason=...)]`, `PINNED = [Pin("DEBUG", False, reason)]`; `boot()`: insert project root in `sys.path`, set `DJANGO_SETTINGS_MODULE`, apply stubs via `unittest.mock.patch` before `django.setup()`, apply pins via `settings` override (after the settings module ran: import-time logic on `DEBUG` keeps its dev value, so it needs a production `ENTRY`), return `BootEnvironment` for the inventory header.
 **Why**: pinned Boot Environment; stub targets are dotted names so a reviewer sees what was replaced.
 
 #### E. `discovery.py` ⚪ from `django-access-inspector/django_access_inspector/services/url_analyzer.py`
