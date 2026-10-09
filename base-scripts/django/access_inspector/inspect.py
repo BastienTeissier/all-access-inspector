@@ -29,19 +29,22 @@ VERSION = Path(HERE) / "VERSION"
 def build(environment: inventory.BootEnvironment) -> inventory.Inventory:
     from access_inspector import classify, discovery
 
-    endpoints: dict[tuple[str, str, str], inventory.Endpoint] = {}
+    found: dict[tuple[str, str, str], list[list[rules.Finding]]] = {}
     for raw in discovery.endpoints():
-        for found in classify.classify(raw, boot.ROOT):
-            authn, authz, reason = rules.resolve(found.findings, found.method, raw.path)
-            endpoint = inventory.Endpoint(
-                found.method, raw.path, found.handler, authn, authz, {}, reason
-            )
-            endpoint = dataclasses.replace(
-                endpoint, dimensions=dimensions.assign(endpoint)
-            )
-            endpoints.setdefault(
-                inventory.sort_key(endpoint), endpoint
-            )  # Django serves the first match
+        for c in classify.classify(raw, boot.ROOT):
+            found.setdefault((raw.path, c.method, c.handler), []).append(c.findings)
+    endpoints = []
+    for (path, method, handler), variants in found.items():
+        findings = variants[0]
+        if any(v != findings for v in variants):
+            # Django serves whichever pattern matches the request first: not readable from the path alone.
+            unreadable = f"{len(variants)} URL patterns resolve to this path with different access checks"
+            findings = [rules.Finding(handler, None, None, unreadable)]
+        authn, authz, reason = rules.resolve(findings, method, path)
+        endpoint = inventory.Endpoint(method, path, handler, authn, authz, {}, reason)
+        endpoints.append(
+            dataclasses.replace(endpoint, dimensions=dimensions.assign(endpoint))
+        )
     return inventory.Inventory(
         schema_version=inventory.SCHEMA_VERSION,
         stack="django",
@@ -53,7 +56,7 @@ def build(environment: inventory.BootEnvironment) -> inventory.Inventory:
         ),
         boot_environment=environment,
         project_dimensions=dimensions.DIMENSIONS,
-        endpoints=sorted(endpoints.values(), key=inventory.sort_key),
+        endpoints=sorted(endpoints, key=inventory.sort_key),
     )
 
 
