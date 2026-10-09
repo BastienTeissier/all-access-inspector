@@ -142,6 +142,11 @@ def validate(inventory: Inventory) -> None:
         raise ValidationError("static discovery must claim coverage best-effort")
     if inventory.coverage == "best-effort" and not inventory.coverage_note:
         raise ValidationError("coverage best-effort requires a coverage_note")
+    for name, values in inventory.project_dimensions.items():
+        if not values or len(set(values)) != len(values) or "" in values:
+            raise ValidationError(
+                f"dimension {name} needs a non-empty list of distinct non-empty values"
+            )
     seen: set[tuple[str, str, str]] = set()
     for endpoint in inventory.endpoints:
         _validate_endpoint(endpoint, inventory.project_dimensions)

@@ -92,6 +92,25 @@ def test_inventory_validate_dimension_value() -> None:
         validate(replace(base, endpoints=[stray]))
 
 
+@pytest.mark.parametrize(
+    "values",
+    [
+        pytest.param([], id="empty"),
+        pytest.param(["public", "public"], id="duplicate"),
+        pytest.param([""], id="empty-value"),
+    ],
+)
+def test_inventory_validate_dimension_values_list(values: list[str]) -> None:
+    with pytest.raises(ValidationError, match="dimension tier needs"):
+        validate(
+            replace(
+                load("canonical.input.json"),
+                project_dimensions={"tier": values},
+                endpoints=[],
+            )
+        )
+
+
 def test_inventory_validate_coverage_note() -> None:
     with pytest.raises(ValidationError, match="requires a coverage_note"):
         validate(
