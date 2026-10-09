@@ -1,0 +1,18 @@
+[project]
+name = "django-demo"
+version = "0.0.0"
+description = "Fixture project for the Django Base Script golden test"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=6.0,<7",
+    "djangorestframework>=3.16,<4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8,<9",
+    "jsonschema>=4.23,<5",
+]
+
+[tool.uv]
+package = false

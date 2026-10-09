@@ -15,7 +15,8 @@ PRD: [prd.md](./prd.md). Vocabulary: [CONTEXT.md](../../../CONTEXT.md). Decision
 - **CANNOT** (Agent) edit CI pipelines, stub a settings module, move a routing-shaping setting away from production, claim `complete` on an unsupported stack.
 
 **Business Rules**:
-- Endpoint identity = (method, path, handler). Method `ANY` when handler declares no restriction; per-method rules (`IsAuthenticatedOrReadOnly`) expand to explicit methods.
+- Endpoint identity = (method, path, handler). Method `ANY` when handler declares no restriction; per-method rules (`IsAuthenticatedOrReadOnly`) expand to explicit methods. Every served method is listed, implicit ones included: `HEAD` wherever `GET` exists, `OPTIONS` from `View.options` / `APIView.options`.
+- Several checks on one endpoint all apply (middleware, Recognition Rules, decorators, mixins, DRF, admin). Per axis the strictest wins (authentication `required > unknown > optional > anonymous`, authorization `unknown > rule > none`); the reported layer/raw/rule are those of the first check holding that value, in request order (path rules, global, decorators, view). Inside DRF, the layer that set the permission list is: `get_permissions()` override or `@action(permission_classes=)` (method) > class attribute (class) > `REST_FRAMEWORK` setting (global) > DRF default (framework-default).
 - Path: leading `/`, params as `{name}`, trailing slash as declared.
 - Handler: project code → `relative/path.py:line` (Django, Symfony); framework code → dotted name, no line. Spring: dotted name for all handlers (no line available at runtime).
 - Core Classification closed: authentication `anonymous|optional|required|unknown`, authorization `none|rule|unknown`, layer `global|class|method|framework-default`. Identity check alone = `required` + `none`. Custom construct without rule = `unknown`.
@@ -83,14 +84,14 @@ Legend: 🟢 new · ⚪ salvaged from a sibling repo (path given) · 🔵 modifi
 
 ### Django Base Script — `base-scripts/django/` (vendored as `tools/access-inspector/` in projects)
 
-Stdlib only + the project's Django/DRF. Python ≥ 3.10. Vendoring copies only the script files C–L; `tests/`, `pyproject.toml` and `uv.lock` are toolkit development files and never leave this repo. Each file is a template the Agent edits only where marked `# --- project ---`.
+Stdlib only + the project's Django/DRF. Python ≥ 3.10. Modules live in the package dir `base-scripts/django/access_inspector/` (a private package, so `inspect.py` does not shadow the stdlib `inspect` and no module collides with a project module such as `rules`; `inspect.py` drops its own directory from `sys.path` and registers the package `access_inspector`). Vendoring copies only the script files C–L; `tests/`, `pyproject.toml` and `uv.lock` are toolkit development files and never leave this repo. Each file is a template the Agent edits only where marked `# --- project ---`.
 
 #### C. `inspect.py` 🟢
 **Changes**: argparse `--check | --table | --unknowns`; flow `boot.boot()` → `discovery.endpoints()` → `classify.classify(ep)` per endpoint → `dimensions.assign(ep)` → `inventory.validate()` → `inventory.write()` / `inventory.check()` / `table.render()`. `--unknowns` prints JSON lines of endpoints with any `unknown` (handler, raw, method, path) for the Agent loop. Exit codes: 0 ok, 1 check diff, 2 boot/validation error (no file written).
 **Why**: UF1/UF2 entrypoint; `--unknowns` is the Agent's interface in UF3/UF5.
 
 #### D. `boot.py` 🟢
-**Changes**: `ENTRY = "config.settings.production"`, `STUBS = [Stub(target="config.secrets.load", replacement=..., reason=...)]`, `PINNED = [Pin("DEBUG", False, reason)]`; `boot()`: insert project root in `sys.path`, set `DJANGO_SETTINGS_MODULE`, apply stubs via `unittest.mock.patch` before `django.setup()`, apply pins via `settings` override, return `BootEnvironment` for the inventory header.
+**Changes**: `ENTRY = "config.settings.production"` (template default `None` falls back to the `DJANGO_SETTINGS_MODULE` default in `manage.py`, usually a dev module, so the Agent always pins it), `STUBS = [Stub(target="config.secrets.load", replacement=..., reason=...)]`, `PINNED = [Pin("DEBUG", False, reason)]`; `boot()`: insert project root in `sys.path`, set `DJANGO_SETTINGS_MODULE`, apply stubs via `unittest.mock.patch` before `django.setup()`, apply pins via `settings` override (after the settings module ran: import-time logic on `DEBUG` keeps its dev value, so it needs a production `ENTRY`), return `BootEnvironment` for the inventory header.
 **Why**: pinned Boot Environment; stub targets are dotted names so a reviewer sees what was replaced.
 
 #### E. `discovery.py` ⚪ from `django-access-inspector/django_access_inspector/services/url_analyzer.py`
@@ -102,11 +103,11 @@ Stdlib only + the project's Django/DRF. Python ≥ 3.10. Vendoring copies only t
 **Why**: path format decision.
 
 #### G. `classify.py` 🟢
-**Changes**: resolve the callable: `model_admin` → admin; `.cls` (ViewSet/APIView via `as_view`) → read `actions` map for method→action, per-action `permission_classes`/`authentication_classes` from `@action` kwargs or `get_permissions()` when overridden (call with a stub request, catch → unknown); `.view_class` (CBV) → MRO mixins + `http_method_names`; plain function → `__wrapped__` chain for `login_required`/`permission_required`/`user_passes_test` (identity by function object, not name substring); explicit-vs-default detection via `cls.__dict__` vs DRF `api_settings` → layer `class` vs `framework-default`. Methods: DRF `allowed_methods`/actions, CBV `http_method_names` ∩ defined handlers, function view → `ANY` unless `@require_http_methods`. Handler: `inspect.getsourcefile` relative to project root + `getsourcelines` line; outside project root → dotted `module.qualname`. Output `Classified(endpoint, authn, authz)` using `rules.apply`.
+**Changes**: resolve the callable: `model_admin` → admin; `.cls` (ViewSet/APIView via `as_view`) → read `actions` map for method→action, per-action `permission_classes` from `@action` kwargs (`authentication_classes` are not read: they say how a user authenticates, not whether authentication is required) or `get_permissions()` when overridden (call with a stub request, catch → unknown); `.view_class` (CBV) → MRO mixins + `http_method_names`; plain function → `__wrapped__` chain for `login_required`/`permission_required`/`user_passes_test` (identity by function object, not name substring); explicit-vs-default detection via `cls.__dict__` vs DRF `api_settings` → layer `class` vs `framework-default`. Methods: DRF `allowed_methods`/actions, CBV `http_method_names` ∩ defined handlers, function view → `ANY` unless `@require_http_methods`. Handler: `inspect.getsourcefile` relative to project root + `getsourcelines` line; outside project root → dotted `module.qualname`. Output `Classified(endpoint, authn, authz)` using `rules.apply`.
 **Why**: fixes the four classification defects found in the old tool (name-keyed, class-level-only, `AllowAny` = authenticated, substring greps).
 
 #### H. `rules.py` 🟢
-**Changes**: `BUILTIN: dict[object, Outcome]` keyed by DRF/Django classes and decorators (table from UF1 / PRD mapping; `IsAuthenticatedOrReadOnly` = per-method); `RECOGNITION: list[Rule]` template with `Rule(match=<class or callable or path-prefix predicate>, authn=..., authz=..., layer=..., evidence="orders/permissions.py:12", name="IsOrderOwner")`; `ACKNOWLEDGED: list[Ack(handler_or_path, reason)]`; `apply(classified_inputs) -> Outcome` precedence: method > class > global > framework-default; unmatched custom permission ⇒ `unknown`.
+**Changes**: `BUILTIN: dict[object, Outcome]` keyed by DRF/Django classes and decorators (table from UF1 / PRD mapping; `IsAuthenticatedOrReadOnly` = per-method); `RECOGNITION: list[Rule]` template with `Rule(match=<class or callable or path-prefix predicate>, authn=..., authz=..., layer=..., evidence="orders/permissions.py:12", name="IsOrderOwner")`; `ACKNOWLEDGED: list[Ack(handler_or_path, reason)]`; `apply(classified_inputs) -> Outcome` precedence: method > class > global > framework-default; unmatched custom permission ⇒ `unknown`. Built-ins also include `django.contrib.auth.middleware.LoginRequiredMiddleware` (`required` at `global` when in `MIDDLEWARE`, except views marked `@login_not_required`) and `no_check` (`anonymous`/`none` at `framework-default` for a view with no check).
 **Why**: built-in vs recognition distinction; evidence lives next to the claim.
 
 #### I. `dimensions.py` 🟢
@@ -229,12 +230,12 @@ Cross-language:
 ### Integration Tests
 
 Golden files (one per fixture; run the vendored `tools/access-inspector/` inside the fixture, compare bytes with `expected/inventory.json`):
-- `test_django_golden` (`fixtures/django-demo`): asserts, through the golden file, the UF1 acceptance list: unnamed view present; duplicate-name views both present; `IsAuthenticatedOrReadOnly` split per method; `@action(permission_classes=)` and `get_permissions()` override reflected at layer `method`; admin endpoints `required`/`global`/`is_staff`; `i18n_patterns` → one endpoint per language; `@require_http_methods(["POST"])` → single `POST`; function view without restriction → `ANY`; custom `IsOwner` → `unknown` + `unknown_reason` from the fixture's Acknowledged Unknown; `TenantMiddleware` Recognition Rule → `/api/*` authentication `required` layer `global`, `rule: recognition:tenant_middleware`; `/graphql/` authorization `unknown` with reason; dimension `access_tier` on every endpoint; explicit `permission_classes` → layer `class`, inherited DRF default → `framework-default`.
+- `test_django_golden` (`fixtures/django-demo`): asserts, through the golden file, the UF1 acceptance list: unnamed view present; duplicate-name views both present; `IsAuthenticatedOrReadOnly` split per method; `@action(permission_classes=)` and `get_permissions()` override reflected at layer `method`; admin endpoints `required`/`global`/`is_staff`; `i18n_patterns` → one endpoint per language; `@require_http_methods(["POST"])` → single `POST`; function view without restriction → `ANY`; custom `IsOwner` → `unknown` + `unknown_reason` from the fixture's Acknowledged Unknown; `TenantMiddleware` Recognition Rule → `/api/*` authentication `required` layer `global`, `rule: recognition:tenant_middleware`; `/graphql/` authorization `unknown` with reason; dimension `access_tier` on every endpoint; explicit `permission_classes` → layer `class`, inherited `REST_FRAMEWORK` default → `global`; view with no check → `builtin:no_check` at `framework-default`; non-Django callable → `unknown` on both axes with a reason naming it.
 - `test_django_check_clean`: `--check` on the fixture → exit 0, no write.
 - `test_django_check_drift`: copy fixture, change `IsAdminUser` → `AllowAny` on one view → exit 1, diff shows `~ ... authorization.value rule→none` and `authentication.value required→optional`; `inventory.json` untouched.
 - `test_django_check_missing_dimension`: add a view under a prefix no dimension rule covers → exit 2 naming the endpoint.
 - `test_django_boot_failure`: fixture settings pointing to a missing secrets module without stub → exit 2, stderr contains import error and `ENTRY`; no `inventory.json` written.
-- `test_django_unknowns_output`: `--unknowns` → JSON lines containing exactly the `/graphql/` and `IsOwner` endpoints.
+- `test_django_unknowns_output`: `--unknowns` → JSON lines containing exactly the `/graphql/`, `IsOwner` (one per served method) and non-Django callable endpoints, each with its `unknown_reason`.
 - `test_django_table_no_write`: `--table` prints ≥ 1 row per endpoint, mtime of `inventory.json` unchanged.
 - `test_django_determinism`: run twice, byte-equal; run from another cwd, byte-equal.
 - `test_spring_golden` (`fixtures/spring-demo`, `./mvnw test` in fixture): `permitAll` matcher → `anonymous`/`global`; `anyRequest().authenticated()` → `required`; second chain via `securityMatcher` → raw names that chain; `@PreAuthorize("hasRole('ADMIN')")` → `rule`/`method`; interface mapping → implementing class handler; `/actuator/health`, `/error` present; `@RolesAllowed` raw lists both; `@permissionEvaluator` → `unknown`; `@RequestMapping` without method → `ANY`.
@@ -269,41 +270,41 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 
 ### Phase 1 — UF1 Inventory a Django project
 
-- [ ] **Inventory model + canonical writer + validate**
-  - File: `base-scripts/django/inventory.py`
+- [x] **Inventory model + canonical writer + validate**
+  - File: `base-scripts/django/access_inspector/inventory.py`
   - Dataclasses per §2; `to_canonical_json`; `validate` (dimension keys, coverage note); sort `(path, method, handler)`.
-- [ ] **Path normalisation**
-  - File: `base-scripts/django/paths.py`
-- [ ] **Discovery**
-  - File: `base-scripts/django/discovery.py` (⚪ from `url_analyzer.py`)
+- [x] **Path normalisation**
+  - File: `base-scripts/django/access_inspector/paths.py`
+- [x] **Discovery**
+  - File: `base-scripts/django/access_inspector/discovery.py` (⚪ from `url_analyzer.py`)
   - Yield `RawEndpoint`; exotic pattern → unknown reason, never raise.
-- [ ] **Built-in rules + rule engine**
-  - File: `base-scripts/django/rules.py`
+- [x] **Built-in rules + rule engine**
+  - File: `base-scripts/django/access_inspector/rules.py`
   - `BUILTIN` table (PRD mapping), precedence, `RECOGNITION=[]`, `ACKNOWLEDGED=[]` templates with commented example.
-- [ ] **Classifier**
-  - File: `base-scripts/django/classify.py`
+- [x] **Classifier**
+  - File: `base-scripts/django/access_inspector/classify.py`
   - Admin / ViewSet+actions / APIView / CBV / function; explicit-vs-default layer; handler location; HTTP methods incl. `ANY`.
-- [ ] **Boot template**
-  - File: `base-scripts/django/boot.py`
+- [x] **Boot template**
+  - File: `base-scripts/django/access_inspector/boot.py`
   - `ENTRY`, `STUBS`, `PINNED`, guard rules (no settings-module stub, pins toward production only).
-- [ ] **Dimensions template**
-  - File: `base-scripts/django/dimensions.py`
-  - `DIMENSIONS={}` default → no `dimensions` field; `assign` raises on miss.
-- [ ] **Entrypoint + table**
-  - Files: `base-scripts/django/inspect.py`, `base-scripts/django/table.py`
+- [x] **Dimensions template**
+  - File: `base-scripts/django/access_inspector/dimensions.py`
+  - `DIMENSIONS={}` default → `dimensions: {}` on every endpoint; `assign` raises on miss.
+- [x] **Entrypoint + table**
+  - Files: `base-scripts/django/access_inspector/inspect.py`, `base-scripts/django/access_inspector/table.py`
   - `--table`, `--unknowns`; exit codes 0/2.
-- [ ] **Django fixture**
+- [x] **Django fixture**
   - Dir: `fixtures/django-demo/` (⚪ seed `demo_views/`, `settings.py`)
   - Add every construct listed in §3 AB; vendored `tools/access-inspector/` with one Recognition Rule (`TenantMiddleware`), one Acknowledged Unknown (`IsOwner`), `/graphql/` ack, dimension `access_tier`; produce `expected/inventory.json`, review it by hand once.
-- [ ] **Write tests**
+- [x] **Write tests**
   - Files: `base-scripts/django/tests/test_paths.py`, `test_inventory.py`, `test_rules.py`, `test_dimensions.py`, `test_boot.py`, `fixtures/django-demo/tests/test_golden.py`
   - Tests: `test_paths_normalize`, `test_inventory_canonical_bytes`, `test_inventory_sort`, `test_inventory_validate_*`, `test_rules_precedence`, `test_dimensions_assign_missing`, `test_boot_stub_rules`, `test_django_golden`, `test_django_unknowns_output`, `test_django_table_no_write`, `test_django_determinism`, `test_django_boot_failure`, `test_django_check_missing_dimension`.
-- [ ] **Verify**: `make test-django` green; `expected/inventory.json` reviewed line by line against UF1 acceptance list.
+- [x] **Verify**: `make test-django` green; `expected/inventory.json` reviewed line by line against UF1 acceptance list.
 
 ### Phase 2 — UF2 Enforce the inventory in CI
 
 - [ ] **Check diff**
-  - File: `base-scripts/django/inventory.py` (`check`), `inspect.py` (`--check`, exit 1, never writes)
+  - File: `base-scripts/django/access_inspector/inventory.py` (`check`), `inspect.py` (`--check`, exit 1, never writes)
 - [ ] **CI snippets**
   - Files: `assets/ci-snippets/github-actions.yml`, `gitlab-ci.yml`, `generic.sh`
   - Install project deps only, run `python tools/access-inspector/inspect.py --check`.
