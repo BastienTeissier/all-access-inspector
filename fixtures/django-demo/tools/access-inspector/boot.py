@@ -69,7 +69,12 @@ PINNED: list[Pin] = [
 def check_config(
     entry: str, stubs: list[Stub], pinned: list[Pin], environ: list[Env]
 ) -> None:
+    names = [env.name for env in environ]
     for env in environ:
+        if not env.name or "=" in env.name:
+            raise BootError(f"environment variable name {env.name!r} is not valid")
+        if names.count(env.name) > 1:
+            raise BootError(f"environment variable {env.name} is set twice")
         if env.name == "DJANGO_SETTINGS_MODULE":
             raise BootError("set the settings module with ENTRY, not ENVIRON")
         if not isinstance(env.value, str):

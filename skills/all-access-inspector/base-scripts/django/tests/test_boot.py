@@ -65,11 +65,19 @@ def test_boot_stub_rules_reasons() -> None:
             Env("DJANGO_ENV", "production", reason=""),
             "environment variable DJANGO_ENV needs a reason",
         ),
+        (Env("", "x", reason="r"), "environment variable name '' is not valid"),
+        (Env("A=B", "x", reason="r"), "environment variable name 'A=B' is not valid"),
     ],
 )
 def test_boot_environ_rules(env: Env, message: str) -> None:
     with pytest.raises(BootError, match=message):
         check_config(ENTRY, [], [], [env])
+
+
+def test_boot_environ_rejects_a_name_set_twice() -> None:
+    twice = [Env("DJANGO_ENV", "production", reason="r")] * 2
+    with pytest.raises(BootError, match="environment variable DJANGO_ENV is set twice"):
+        check_config(ENTRY, [], [], twice)
 
 
 def test_boot_default_entry(tmp_path: Path) -> None:
