@@ -1,0 +1,15 @@
+name: all-access-inspector
+version: 1.0.0
+description: APM project for all-access-inspector
+author: BastienTeissier
+# Which agent platforms to deploy to.
+# Resolution order: --target flag > this field > auto-detect from filesystem.
+# Accepted values: agent-skills, antigravity, claude, codex, copilot, cursor, gemini, grok-build, hermes, kiro, opencode, vscode, windsurf
+targets:
+  - claude
+dependencies:
+  apm:
+    - theodo-group/perenco-skills#v0.1.0
+  mcp: []
+includes: auto
+scripts: {}
