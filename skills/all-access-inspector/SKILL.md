@@ -12,7 +12,7 @@ Paths below are relative to this skill's base directory (`<skill>/`) or to the p
 ## Hard rules
 
 - Never edit a CI pipeline file. Propose `tools/access-inspector/ci-snippet.*` and let the team wire it in.
-- Never stub a settings module. Stub only secrets, databases and external services. A pin may move a setting only toward production. `boot.py` enforces the first and last of these; do not work around it.
+- Never stub a settings module. Stub only secrets, databases and external services. A pin or an `ENVIRON` value may move a setting only toward production. `boot.py` enforces the settings-module rule and the `DEBUG` pin, not `ENVIRON` values: those are on you. Do not work around either check.
 - Never write a Recognition Rule without evidence: a `file:line` in the project that shows the construct the rule interprets. Never map a construct whose meaning the source does not settle. Ask instead, or acknowledge it as unknown.
 - Never fall back to static discovery because the boot is hard. Static discovery is admissible only when the routing layer cannot be enumerated at runtime.
 - Never claim `coverage: complete` for a stack that has no Base Script.
