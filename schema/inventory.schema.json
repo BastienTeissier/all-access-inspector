@@ -80,16 +80,22 @@
   },
   "allOf": [
     {
-      "if": { "properties": { "coverage": { "const": "best-effort" } } },
+      "if": { "required": ["coverage"], "properties": { "coverage": { "const": "best-effort" } } },
       "then": { "properties": { "coverage_note": { "type": "string", "minLength": 1 } } }
     },
     {
-      "if": { "properties": { "discovery_mode": { "const": "static" } } },
+      "if": { "required": ["discovery_mode"], "properties": { "discovery_mode": { "const": "static" } } },
       "then": { "properties": { "coverage": { "const": "best-effort" } } }
     }
   ],
   "$defs": {
     "layer": { "enum": ["global", "class", "method", "framework-default", null] },
+    "ruleMatchesValue": {
+      "description": "An unknown value has no producing rule; any other value names the rule that produced it.",
+      "if": { "required": ["value"], "properties": { "value": { "const": "unknown" } } },
+      "then": { "properties": { "rule": { "type": "null" } } },
+      "else": { "properties": { "rule": { "type": "string" } } }
+    },
     "rule": {
       "description": "Built-in or Recognition Rule that produced the value.",
       "anyOf": [
@@ -98,8 +104,16 @@
       ]
     },
     "endpoint": {
+      "description": "Dimension keys must equal project_dimensions keys and values must be declared: enforced by each Base Script, not expressible here.",
       "type": "object",
       "additionalProperties": false,
+      "if": { "required": ["unknown_reason"], "properties": { "unknown_reason": { "type": "string" } } },
+      "then": {
+        "anyOf": [
+          { "properties": { "authentication": { "properties": { "value": { "const": "unknown" } } } } },
+          { "properties": { "authorization": { "properties": { "value": { "const": "unknown" } } } } }
+        ]
+      },
       "required": ["method", "path", "handler", "authentication", "authorization", "dimensions", "unknown_reason"],
       "properties": {
         "method": { "enum": ["ANY", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"] },
@@ -108,6 +122,7 @@
         "authentication": {
           "type": "object",
           "additionalProperties": false,
+          "$ref": "#/$defs/ruleMatchesValue",
           "required": ["value", "layer", "raw", "rule"],
           "properties": {
             "value": { "enum": ["anonymous", "optional", "required", "unknown"] },
@@ -119,6 +134,7 @@
         "authorization": {
           "type": "object",
           "additionalProperties": false,
+          "$ref": "#/$defs/ruleMatchesValue",
           "required": ["value", "layer", "raw", "rule"],
           "properties": {
             "value": { "enum": ["none", "rule", "unknown"] },

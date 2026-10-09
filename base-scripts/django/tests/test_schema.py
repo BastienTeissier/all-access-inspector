@@ -124,6 +124,24 @@ def test_schema_samples_valid(path: Path) -> None:
             ["endpoints", 0, "authentication"],
             id="authentication-without-rule",
         ),
+        pytest.param(
+            set_at(["endpoints", 4, "authorization", "rule"], "builtin:IsAdminUser"),
+            "type",
+            ["endpoints", 4, "authorization", "rule"],
+            id="unknown-value-with-rule",
+        ),
+        pytest.param(
+            set_at(["endpoints", 0, "authentication", "rule"], None),
+            "type",
+            ["endpoints", 0, "authentication", "rule"],
+            id="known-value-without-rule",
+        ),
+        pytest.param(
+            set_at(["endpoints", 0, "unknown_reason"], "not modelled"),
+            "anyOf",
+            ["endpoints", 0],
+            id="reason-on-endpoint-without-unknown",
+        ),
     ],
 )
 def test_schema_rejects(

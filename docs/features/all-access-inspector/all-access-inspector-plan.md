@@ -74,7 +74,7 @@ Legend: 🟢 new · ⚪ salvaged from a sibling repo (path given) · 🔵 modifi
 
 #### A. `schema/inventory.schema.json` 🟢
 **Purpose**: the single shared contract (§2).
-**Changes**: JSON Schema 2020-12; enums for method/values/layers; `required` lists; `additionalProperties: false` everywhere; `if coverage == best-effort then coverage_note: string`.
+**Changes**: JSON Schema 2020-12; enums for method/values/layers; `required` lists; `additionalProperties: false` everywhere; `if coverage == best-effort then coverage_note: string`; `if discovery_mode == static then coverage == best-effort`; per axis `value == unknown ⇔ rule == null`; `unknown_reason` non-null ⇒ one axis `unknown`. Dimension keys/values are checked by each Base Script (not expressible in JSON Schema).
 **Why**: every Base Script, fixture test and the parse script depend on it; written first.
 
 #### B. `Makefile` 🟢, `.github/workflows/ci.yml` 🟢
