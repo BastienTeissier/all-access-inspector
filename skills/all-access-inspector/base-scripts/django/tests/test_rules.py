@@ -11,6 +11,7 @@ from access_inspector.rules import (
     check_rules,
     drf_layer,
     global_findings,
+    methods,
     resolve,
 )
 
@@ -124,6 +125,21 @@ def test_rules_recognition_rule_is_per_method(method: str, value: str) -> None:
     authn, authz, _ = resolve([IS_OWNER], method, "/orders/1/", [edit], [])
     assert (authn.value, authz.value) == ("required", value)
     assert authz.rule == "recognition:edit"
+
+
+def test_rules_any_endpoint_splits_when_a_rule_differs_per_method() -> None:
+    edit = Rule(
+        "edit",
+        "shop/permissions.py:4",
+        "required",
+        "rule",
+        construct="shop.permissions.IsOwner",
+        safe_authz="none",
+    )
+    split = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    assert methods([IS_OWNER], "ANY", "/orders/1/", [edit]) == split
+    assert methods([IS_AUTHENTICATED], "ANY", "/orders/1/", [edit]) == ["ANY"]
+    assert methods([IS_OWNER], "GET", "/orders/1/", [edit]) == ["GET"]
 
 
 @pytest.mark.parametrize(

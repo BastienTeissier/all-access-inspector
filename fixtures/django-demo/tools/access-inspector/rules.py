@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from access_inspector.inventory import Axis
+from access_inspector.inventory import METHODS, Axis
 
 SAFE_METHODS = ("GET", "HEAD", "OPTIONS")
 AUTHENTICATION_STRICTNESS = ("required", "unknown", "optional", "anonymous")
@@ -189,6 +189,22 @@ def resolve(
             return authn, authz, ack.reason
     reasons = [f.reason for f in findings if f.reason and f.construct in unknown]
     return authn, authz, reasons[0] if reasons else None
+
+
+def methods(
+    findings: list[Finding],
+    method: str,
+    path: str,
+    recognition: list[Rule] | None = None,
+) -> list[str]:
+    """An ANY endpoint whose checks differ for safe methods is split into one row per method."""
+    if method != "ANY":
+        return [method]
+    if resolve(findings, "GET", path, recognition, []) == resolve(
+        findings, "POST", path, recognition, []
+    ):
+        return [method]
+    return [m for m in METHODS if m != "ANY"]
 
 
 def check_rules(recognition: list[Rule], root: Path) -> None:
