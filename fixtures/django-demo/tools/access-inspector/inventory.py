@@ -148,7 +148,11 @@ def check(committed: Inventory, current: Inventory) -> list[str]:
         for key in new
         if key != "endpoints" and old[key] != new[key]
     ]
-    before = {sort_key(e): e for e in committed.endpoints}
+    before: dict[tuple[str, str, str], Endpoint] = {}
+    for e in committed.endpoints:
+        if sort_key(e) in before:
+            lines.append(f"- {e.label()} (duplicate entry)")
+        before[sort_key(e)] = e
     after = {sort_key(e): e for e in current.endpoints}
     for key in sorted(before.keys() | after.keys()):
         if key not in after:

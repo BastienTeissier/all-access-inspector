@@ -64,3 +64,10 @@ def test_check_compares_values_as_written() -> None:
         boot_environment=replace(current.boot_environment, pinned=[as_list]),
     )
     assert check(committed, current) == []
+
+
+def test_check_flags_a_duplicated_committed_entry() -> None:
+    current = load("canonical.json")
+    first = current.endpoints[0]
+    committed = replace(current, endpoints=[first, *current.endpoints])
+    assert check(committed, current) == [f"- {first.label()} (duplicate entry)"]
