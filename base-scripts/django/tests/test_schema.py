@@ -118,6 +118,12 @@ def test_schema_samples_valid(path: Path) -> None:
             ["endpoints", 4, "unknown_reason"],
             id="acknowledged-unknown-without-reason",
         ),
+        pytest.param(
+            delete_at(["endpoints", 0, "authentication", "rule"]),
+            "required",
+            ["endpoints", 0, "authentication"],
+            id="authentication-without-rule",
+        ),
     ],
 )
 def test_schema_rejects(

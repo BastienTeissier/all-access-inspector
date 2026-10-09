@@ -90,6 +90,13 @@
   ],
   "$defs": {
     "layer": { "enum": ["global", "class", "method", "framework-default", null] },
+    "rule": {
+      "description": "Built-in or Recognition Rule that produced the value.",
+      "anyOf": [
+        { "type": "string", "pattern": "^(builtin|recognition):.+$" },
+        { "type": "null" }
+      ]
+    },
     "endpoint": {
       "type": "object",
       "additionalProperties": false,
@@ -101,11 +108,12 @@
         "authentication": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["value", "layer", "raw"],
+          "required": ["value", "layer", "raw", "rule"],
           "properties": {
             "value": { "enum": ["anonymous", "optional", "required", "unknown"] },
             "layer": { "$ref": "#/$defs/layer" },
-            "raw": { "type": ["string", "null"] }
+            "raw": { "type": ["string", "null"] },
+            "rule": { "$ref": "#/$defs/rule" }
           }
         },
         "authorization": {
@@ -116,12 +124,7 @@
             "value": { "enum": ["none", "rule", "unknown"] },
             "layer": { "$ref": "#/$defs/layer" },
             "raw": { "type": ["string", "null"] },
-            "rule": {
-              "anyOf": [
-                { "type": "string", "pattern": "^(builtin|recognition):.+$" },
-                { "type": "null" }
-              ]
-            }
+            "rule": { "$ref": "#/$defs/rule" }
           }
         },
         "dimensions": {

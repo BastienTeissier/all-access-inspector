@@ -41,11 +41,11 @@ Inventory contract (one endpoint object per line, sorted by path then method):
  "project_dimensions": {"access_tier": ["public", "customer", "back-office"]},
  "endpoints": [
   {"method": "GET", "path": "/api/orders/{id}/", "handler": "orders/views.py:42",
-   "authentication": {"value": "required", "layer": "class", "raw": "IsAuthenticated"},
+   "authentication": {"value": "required", "layer": "class", "raw": "IsAuthenticated", "rule": "builtin:IsAuthenticated"},
    "authorization": {"value": "rule", "layer": "method", "raw": "IsOrderOwner", "rule": "recognition:IsOrderOwner"},
    "dimensions": {"access_tier": "customer"}, "unknown_reason": null},
   {"method": "POST", "path": "/graphql/", "handler": "config/urls.py:18",
-   "authentication": {"value": "optional", "layer": "global", "raw": "SessionAuthentication"},
+   "authentication": {"value": "optional", "layer": "global", "raw": "SessionAuthentication", "rule": "builtin:SessionAuthentication"},
    "authorization": {"value": "unknown", "layer": null, "raw": null, "rule": null},
    "dimensions": {"access_tier": "customer"}, "unknown_reason": "GraphQL operations are out of scope; authorization is enforced per resolver"}
  ]}

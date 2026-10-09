@@ -12,6 +12,7 @@
                 "value": "none"
             },
             "authentication": {
+                "rule": "builtin:AllowAny",
                 "raw": "AllowAny",
                 "layer": "framework-default",
                 "value": "anonymous"
@@ -32,6 +33,7 @@
                 "value": "none"
             },
             "authentication": {
+                "rule": "builtin:IsAuthenticatedOrReadOnly",
                 "raw": "IsAuthenticatedOrReadOnly",
                 "layer": "class",
                 "value": "required"
@@ -52,6 +54,7 @@
                 "value": "rule"
             },
             "authentication": {
+                "rule": "builtin:django_admin",
                 "raw": "is_staff",
                 "layer": "global",
                 "value": "required"
@@ -72,6 +75,7 @@
                 "value": "unknown"
             },
             "authentication": {
+                "rule": "recognition:tenant_middleware",
                 "raw": "TenantMiddleware",
                 "layer": "global",
                 "value": "required"
@@ -92,6 +96,7 @@
                 "value": "none"
             },
             "authentication": {
+                "rule": "builtin:IsAuthenticatedOrReadOnly",
                 "raw": "IsAuthenticatedOrReadOnly",
                 "layer": "class",
                 "value": "optional"
@@ -112,6 +117,7 @@
                 "value": "none"
             },
             "authentication": {
+                "rule": "builtin:AllowAny",
                 "raw": "AllowAny",
                 "layer": "method",
                 "value": "anonymous"

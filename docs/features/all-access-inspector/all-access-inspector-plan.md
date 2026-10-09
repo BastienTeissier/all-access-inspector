@@ -50,8 +50,8 @@ No database. The "data model" is the inventory JSON contract, `schema/inventory.
   - `method`: `ANY|DELETE|GET|HEAD|OPTIONS|PATCH|POST|PUT`
   - `path`: string, `^/`, params `{name}`
   - `handler`: string (`path:line` or dotted name)
-  - `authentication`: `{value: anonymous|optional|required|unknown, layer: global|class|method|framework-default|null, raw: string|null}`
-  - `authorization`: `{value: none|rule|unknown, layer: same enum|null, raw: string|null, rule: string|null}` — `rule` = `builtin:<name>` or `recognition:<name>` that produced the value
+  - `authentication`: `{value: anonymous|optional|required|unknown, layer: global|class|method|framework-default|null, raw: string|null, rule: string|null}`
+  - `authorization`: `{value: none|rule|unknown, layer: same enum|null, raw: string|null, rule: string|null}` — on both axes, `rule` = `builtin:<name>` or `recognition:<name>` that produced the value
   - `dimensions`: object `{<dimension>: value}`; keys must equal `project_dimensions` keys, values ∈ declared list
   - `unknown_reason`: string|null; non-null ⇒ Acknowledged Unknown
 - **Serialisation rule** (identical in Python/Java/PHP; reference bytes: `schema/samples/canonical.json`): UTF-8, `\n`, 2-space indent; each root key on its own line with its value compact; `endpoints` one compact object per line at 4-space indent, `"endpoints": []` when empty; compact = separators `", "` and `": "`, non-ASCII unescaped, `/` unescaped; keys in schema order (`project_dimensions` keys and value lists in declared order); endpoints sorted by (`path`, `method`, `handler`) by code point; no trailing whitespace; file ends with `\n`.
