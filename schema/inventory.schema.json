@@ -128,7 +128,7 @@
           "type": "object",
           "additionalProperties": { "type": "string", "minLength": 1 }
         },
-        "unknown_reason": { "type": ["string", "null"] }
+        "unknown_reason": { "anyOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }] }
       }
     }
   }

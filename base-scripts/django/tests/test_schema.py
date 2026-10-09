@@ -112,6 +112,12 @@ def test_schema_samples_valid(path: Path) -> None:
             ["endpoints", 0, "authorization", "rule"],
             id="rule-without-builtin-or-recognition-prefix",
         ),
+        pytest.param(
+            set_at(["endpoints", 4, "unknown_reason"], ""),
+            "anyOf",
+            ["endpoints", 4, "unknown_reason"],
+            id="acknowledged-unknown-without-reason",
+        ),
     ],
 )
 def test_schema_rejects(
