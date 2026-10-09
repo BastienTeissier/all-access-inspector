@@ -41,6 +41,14 @@ class InvoiceViewSet(
         return [DjangoModelPermissions()]
 
 
+class ReceiptViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    queryset = Order.objects.all()
+
+    def get_permissions(self):  # needs the URL kwargs of a real request
+        self.get_object()
+        return [IsAuthenticated()]
+
+
 class ReportView(APIView):
     def get(self, request, slug):
         return Response({"slug": slug})

@@ -202,7 +202,9 @@ def _drf_permissions(
         permissions = view.get_permissions()
     except Exception as exc:
         name = _dotted(cls.get_permissions)
-        return [Finding(name, layer, f"get_permissions() raised {type(exc).__name__}")]
+        raised = f"get_permissions() raised {type(exc).__name__}"
+        reason = f"{raised} without a real request; its permissions are not readable"
+        return [Finding(name, layer, raised, reason)]
     if not permissions:
         return [Finding(NO_CHECK, layer, None)]
     return [Finding(_dotted(type(p)), layer, type(p).__name__) for p in permissions]
