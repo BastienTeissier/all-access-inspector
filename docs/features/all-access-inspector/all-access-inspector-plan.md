@@ -45,7 +45,7 @@ No database. The "data model" is the inventory JSON contract, `schema/inventory.
   - `base_script`: `{stack: string, version: string}` (toolkit version vendored)
   - `boot_environment`: `{entry: string, stubs: [{target, reason}], pinned: [{setting, value, reason}]}` — `entry` = settings module / Spring profile / Symfony env
   - `project_dimensions`: object `{<dimension>: [values...]}`, may be `{}`
-  - `endpoints`: array of **Endpoint**, sorted by (`path`, `method`)
+  - `endpoints`: array of **Endpoint**, sorted by (`path`, `method`, `handler`)
 - **Endpoint** (keys in this order):
   - `method`: `ANY|DELETE|GET|HEAD|OPTIONS|PATCH|POST|PUT`
   - `path`: string, `^/`, params `{name}`
@@ -54,7 +54,7 @@ No database. The "data model" is the inventory JSON contract, `schema/inventory.
   - `authorization`: `{value: none|rule|unknown, layer: same enum|null, raw: string|null, rule: string|null}` — `rule` = `builtin:<name>` or `recognition:<name>` that produced the value
   - `dimensions`: object `{<dimension>: value}`; keys must equal `project_dimensions` keys, values ∈ declared list
   - `unknown_reason`: string|null; non-null ⇒ Acknowledged Unknown
-- **Serialisation rule** (identical in Python/Java/PHP): UTF-8, `\n`, root keys one per line pretty-printed, `endpoints` array one compact object per line, no trailing whitespace, keys in schema order, strings escaped per JSON, file ends with `\n`.
+- **Serialisation rule** (identical in Python/Java/PHP; reference bytes: `schema/samples/canonical.json`): UTF-8, `\n`, 2-space indent; each root key on its own line with its value compact; `endpoints` one compact object per line at 4-space indent, `"endpoints": []` when empty; compact = separators `", "` and `": "`, non-ASCII unescaped, `/` unescaped; keys in schema order (`project_dimensions` keys and value lists in declared order); endpoints sorted by (`path`, `method`, `handler`) by code point; no trailing whitespace; file ends with `\n`.
 
 ### Modification of Existing Entities
 
@@ -253,19 +253,19 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 
 ### Phase 0 — Contract (prerequisite for all UFs)
 
-- [ ] **Write the schema**
+- [x] **Write the schema**
   - File: `schema/inventory.schema.json`
   - Encode §2 exactly: enums, key `required` lists, `additionalProperties: false`, `if/then` for `coverage_note`.
-- [ ] **Write the canonical samples**
+- [x] **Write the canonical samples**
   - Files: `schema/samples/canonical.input.json`, `schema/samples/canonical.json`
   - Neutral 6-endpoint input (incl. `ANY`, unicode path, two methods on one path, one unknown, one dimension) and its byte-exact canonical form, hand-verified once.
-- [ ] **Repo tooling**
+- [x] **Repo tooling**
   - Files: `Makefile`, `.github/workflows/ci.yml`, `base-scripts/django/pyproject.toml` (uv, ruff, mypy strict, pytest, jsonschema dev-only), `VERSION`
   - Copy conventions from `django-access-inspector/pyproject.toml` + `Makefile`.
-- [ ] **Write tests**
+- [x] **Write tests**
   - File: `base-scripts/django/tests/test_schema.py`
   - Test: `test_schema_samples_valid` — samples validate; mutated `authentication.value: "sso"` fails.
-- [ ] **Verify**: `make test-django` green with only schema tests.
+- [x] **Verify**: `make test-django` green with only schema tests.
 
 ### Phase 1 — UF1 Inventory a Django project
 
