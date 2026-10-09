@@ -1,4 +1,4 @@
-"""Adapted Script entrypoint: python tools/access-inspector/inspect.py [--table | --unknowns]."""
+"""Adapted Script entrypoint: python tools/access-inspector/inspect.py [--check | --table | --unknowns]."""
 
 import os
 import sys
@@ -23,6 +23,7 @@ from pathlib import Path  # noqa: E402
 from access_inspector import boot, dimensions, inventory, rules, table  # noqa: E402
 
 OUTPUT = Path(HERE) / "inventory.json"
+HERE_REL = Path(HERE).resolve().relative_to(boot.ROOT).as_posix()
 VERSION = Path(HERE) / "VERSION"
 
 
@@ -66,6 +67,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument(
+        "--check",
+        action="store_true",
+        help="exit 1 with a per-endpoint diff when inventory.json is out of date; write nothing",
+    )
+    mode.add_argument(
         "--table", action="store_true", help="print a table; write nothing"
     )
     mode.add_argument(
@@ -74,6 +80,14 @@ def main(argv: list[str] | None = None) -> int:
         help="print unknown endpoints as JSON lines; write nothing",
     )
     args = parser.parse_args(argv)
+    committed = f"{HERE_REL}/{OUTPUT.name}"
+    if args.check and not OUTPUT.is_file():
+        print(
+            f"access-inspector: {committed} not found;"
+            f" generate it first with `python {HERE_REL}/inspect.py` and commit it",
+            file=sys.stderr,
+        )
+        return 2
     try:
         rules.check_rules(rules.RECOGNITION, boot.ROOT)
         result = build(boot.boot())
@@ -89,6 +103,24 @@ def main(argv: list[str] | None = None) -> int:
     ) as exc:
         print(f"access-inspector: {exc}", file=sys.stderr)
         return 2
+    if args.check:
+        try:
+            before = inventory.from_dict(json.loads(OUTPUT.read_text(encoding="utf-8")))
+        except (ValueError, KeyError, TypeError) as exc:
+            print(
+                f"access-inspector: cannot read {committed}: {exc!r}", file=sys.stderr
+            )
+            return 2
+        diff = inventory.check(before, result)
+        if not diff:
+            print("inventory up to date")
+            return 0
+        print("\n".join(diff))
+        print(
+            f"\n{committed} differs from the endpoints this code serves."
+            f"\nIf the change is intended, run `python {HERE_REL}/inspect.py` and commit {committed}."
+        )
+        return 1
     if args.table:
         print(table.render(result))
     elif args.unknowns:

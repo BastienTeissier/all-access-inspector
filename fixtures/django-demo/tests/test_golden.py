@@ -167,6 +167,45 @@ def test_django_urlconf_failure(project: Path) -> None:
     assert not output(project).exists()
 
 
+def test_django_check_clean(project: Path) -> None:
+    committed = json.loads(EXPECTED.read_text(encoding="utf-8"))
+    committed["endpoints"].reverse()
+    output(project).write_text(json.dumps(committed, indent=4), encoding="utf-8")
+    before = output(project).read_bytes()
+    result = run(project, "--check")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout == "inventory up to date\n"
+    assert output(project).read_bytes() == before
+
+
+def test_django_check_drift(project: Path) -> None:
+    shutil.copyfile(EXPECTED, output(project))
+    edit(
+        project / "shop" / "api.py",
+        'methods=["post"], permission_classes=[IsAdminUser]',
+        'methods=["post"], permission_classes=[AllowAny]',
+    )
+    result = run(project, "--check")
+    assert result.returncode == 1, result.stderr
+    refund = "POST /api/orders/{pk}/refund/ (shop/api.py:24)"
+    assert f"~ {refund} authorization.value: rule -> none" in result.stdout
+    assert (
+        f"~ {refund} authorization.rule: builtin:IsAdminUser -> recognition:tenant_middleware"
+        in result.stdout
+    )  # on a tie the check a request meets first is reported
+    assert f"~ {refund} authentication.value" not in result.stdout  # tenant rule
+    assert "run `python tools/access-inspector/inspect.py`" in result.stdout
+    assert output(project).read_bytes() == EXPECTED.read_bytes()
+
+
+def test_django_check_missing_inventory(project: Path) -> None:
+    result = run(project, "--check")
+    assert result.returncode == 2
+    assert "tools/access-inspector/inventory.json not found" in result.stderr
+    assert "generate it first" in result.stderr
+    assert not output(project).exists()
+
+
 def test_django_check_missing_dimension(project: Path) -> None:
     edit(
         project / "config" / "urls.py",
