@@ -299,7 +299,8 @@ def _decorated_method(view_class: type, name: str) -> Finding | None:
         or not _project_defines(view_class, name)
     ):
         return None
-    return Finding(_dotted(method), "method", f"decorated {name}")
+    # Named by the view serving it: the wrapper carries the wrapped method's name, often a shared base's.
+    return Finding(f"{_dotted(view_class)}.{name}", "method", f"decorated {name}")
 
 
 def _project_defines(cls: type, attribute: str) -> bool:

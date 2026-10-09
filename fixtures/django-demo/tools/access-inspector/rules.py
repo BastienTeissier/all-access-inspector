@@ -100,6 +100,13 @@ BUILTIN = {
 # --- project ---
 RECOGNITION: list[Rule] = [
     Rule(
+        name="drafts_login_required",
+        evidence="shop/views.py:78",
+        authn="required",
+        authz="none",
+        construct="shop.views.DraftsView.dispatch",
+    ),
+    Rule(
         name="tenant_middleware",
         evidence="config/middleware.py:11",
         authn="required",

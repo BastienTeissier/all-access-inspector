@@ -1,6 +1,7 @@
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.http import HttpResponse
+from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -72,3 +73,9 @@ class PingHook:
 
 def mail_preview(request):  # dev-only, see config/urls.py
     return HttpResponse("preview")
+
+
+@method_decorator(login_required, name="dispatch")  # hidden until call time
+class DraftsView(View):
+    def get(self, request):
+        return HttpResponse("drafts")

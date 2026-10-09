@@ -80,7 +80,7 @@ Use them when the decision is data-dependent or out of scope, with a reason the 
 
 - Custom middleware is not read. An endpoint behind an authenticating middleware still reads `no_check`/`anonymous` until a `path_prefix` rule covers it. Always review `MIDDLEWARE`.
 - `authentication_classes` are not read: they say how a user is identified, not whether one is required.
-- `method_decorator` on `dispatch` or a handler is unknown (decorators are hidden until call time); write a rule for the dotted method name the script reports.
+- `method_decorator` on `dispatch` or a handler is unknown (decorators are hidden until call time); write a rule for `<module>.<ViewClass>.<method>`, the view that serves it, even when the method is inherited.
 - Checks inside the view body (`if not request.user.is_staff: raise PermissionDenied`) are invisible: the endpoint reads `no_check`. Grep handlers flagged `anonymous` for `PermissionDenied`, `raise Http404`, `request.user` before accepting them.
 - Settings derived from `DEBUG` at import time keep their dev value under a `DEBUG` pin.
 - Mounted non-Django apps (ASGI sub-apps, `django-ninja` routers outside the resolver) appear as one unknown endpoint naming the callable.

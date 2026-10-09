@@ -249,7 +249,7 @@ def test_django_check_missing_dimension(project: Path) -> None:
     result = run(project)
     assert result.returncode == 2
     assert (
-        "ANY /orphan/ (shop/views.py:12): no rule assigns dimension 'access_tier'"
+        "ANY /orphan/ (shop/views.py:13): no rule assigns dimension 'access_tier'"
         in result.stderr
     )
     assert not output(project).exists()
