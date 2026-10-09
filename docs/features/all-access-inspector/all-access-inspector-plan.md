@@ -83,7 +83,7 @@ Legend: 🟢 new · ⚪ salvaged from a sibling repo (path given) · 🔵 modifi
 
 ### Django Base Script — `base-scripts/django/` (vendored as `tools/access-inspector/` in projects)
 
-Stdlib only + the project's Django/DRF. Python ≥ 3.10. Each file is a template the Agent edits only where marked `# --- project ---`.
+Stdlib only + the project's Django/DRF. Python ≥ 3.10. Vendoring copies only the script files C–L; `tests/`, `pyproject.toml` and `uv.lock` are toolkit development files and never leave this repo. Each file is a template the Agent edits only where marked `# --- project ---`.
 
 #### C. `inspect.py` 🟢
 **Changes**: argparse `--check | --table | --unknowns`; flow `boot.boot()` → `discovery.endpoints()` → `classify.classify(ep)` per endpoint → `dimensions.assign(ep)` → `inventory.validate()` → `inventory.write()` / `inventory.check()` / `table.render()`. `--unknowns` prints JSON lines of endpoints with any `unknown` (handler, raw, method, path) for the Agent loop. Exit codes: 0 ok, 1 check diff, 2 boot/validation error (no file written).

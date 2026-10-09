@@ -46,6 +46,10 @@ def delete_at(keys: list[Any]) -> Callable[[Inventory], None]:
     return mutate
 
 
+def test_samples_are_found() -> None:
+    assert SAMPLES, f"no inventory samples under {REPO}"
+
+
 def test_schema_is_valid_draft_2020_12() -> None:
     Draft202012Validator.check_schema(SCHEMA)
 
