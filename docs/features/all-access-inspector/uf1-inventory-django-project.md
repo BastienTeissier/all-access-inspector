@@ -10,7 +10,7 @@ A developer or auditor wants to see every endpoint a conventional Django or DRF 
 
 AAU (developer, with the project's Python environment installed), running `python tools/access-inspector/inspect.py` from the project root, I see:
 - an `inventory.json` written next to the script, valid against the shared schema, with `stack: django`, `discovery_mode: runtime`, `coverage: complete`
-- one endpoint object per line, sorted by method then path, each with method, path pattern, handler as `file:line`, authentication, authorization and layer
+- one endpoint object per line, sorted by path then method, each with method, path pattern, handler as `file:line`, authentication, authorization and layer
 - built-in rules applied per HTTP method for framework constructs: `AllowAny`, `IsAuthenticated`, `IsAuthenticatedOrReadOnly`, `IsAdminUser`, `DjangoModelPermissions`, `login_required`, `permission_required`, `LoginRequiredMixin`, `PermissionRequiredMixin`, DRF default classes from `REST_FRAMEWORK`, Django admin
 - any construct not covered by a built-in rule reported as `unknown`
 - with `--table`, a sortable table on the terminal rendered from the inventory, not committed
