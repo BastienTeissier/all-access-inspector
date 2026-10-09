@@ -206,6 +206,14 @@ def test_django_check_missing_inventory(project: Path) -> None:
     assert not output(project).exists()
 
 
+def test_django_check_unreadable_inventory(project: Path) -> None:
+    output(project).write_text("<<<<<<< HEAD\n", encoding="utf-8")
+    result = run(project, "--check")
+    assert result.returncode == 2
+    assert "cannot read tools/access-inspector/inventory.json" in result.stderr
+    assert output(project).read_text(encoding="utf-8") == "<<<<<<< HEAD\n"
+
+
 def test_django_check_missing_dimension(project: Path) -> None:
     edit(
         project / "config" / "urls.py",

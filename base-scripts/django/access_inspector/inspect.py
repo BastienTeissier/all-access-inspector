@@ -81,13 +81,21 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     committed = f"{HERE_REL}/{OUTPUT.name}"
-    if args.check and not OUTPUT.is_file():
-        print(
-            f"access-inspector: {committed} not found;"
-            f" generate it first with `python {HERE_REL}/inspect.py` and commit it",
-            file=sys.stderr,
-        )
-        return 2
+    if args.check:  # an unusable Committed Inventory fails before paying for the boot
+        if not OUTPUT.is_file():
+            print(
+                f"access-inspector: {committed} not found;"
+                f" generate it first with `python {HERE_REL}/inspect.py` and commit it",
+                file=sys.stderr,
+            )
+            return 2
+        try:
+            before = inventory.from_dict(json.loads(OUTPUT.read_text(encoding="utf-8")))
+        except (ValueError, KeyError, TypeError) as exc:
+            print(
+                f"access-inspector: cannot read {committed}: {exc!r}", file=sys.stderr
+            )
+            return 2
     try:
         rules.check_rules(rules.RECOGNITION, boot.ROOT)
         result = build(boot.boot())
@@ -104,13 +112,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"access-inspector: {exc}", file=sys.stderr)
         return 2
     if args.check:
-        try:
-            before = inventory.from_dict(json.loads(OUTPUT.read_text(encoding="utf-8")))
-        except (ValueError, KeyError, TypeError) as exc:
-            print(
-                f"access-inspector: cannot read {committed}: {exc!r}", file=sys.stderr
-            )
-            return 2
         diff = inventory.check(before, result)
         if not diff:
             print("inventory up to date")
