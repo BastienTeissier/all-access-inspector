@@ -1,0 +1,19 @@
+{
+  "schema_version": "1",
+  "stack": "django",
+  "discovery_mode": "runtime",
+  "coverage": "complete",
+  "coverage_note": null,
+  "base_script": {"stack": "django", "version": "0.1.0"},
+  "boot_environment": {"entry": "config.settings.production", "stubs": [{"target": "config.secrets.load", "reason": "secrets vault unreachable outside production"}], "pinned": [{"setting": "DEBUG", "value": false, "reason": "production value"}]},
+  "project_dimensions": {"access_tier": ["public", "customer", "staff"]},
+  "endpoints": [
+    {"method": "GET", "path": "/admin/", "handler": "django.contrib.admin.sites.AdminSite.index", "authentication": {"value": "required", "layer": "global", "raw": "is_staff", "rule": "builtin:django_admin"}, "authorization": {"value": "rule", "layer": "global", "raw": "is_staff", "rule": "builtin:django_admin"}, "dimensions": {"access_tier": "staff"}, "unknown_reason": null},
+    {"method": "ANY", "path": "/api/health", "handler": "health/legacy.py:3", "authentication": {"value": "anonymous", "layer": "framework-default", "raw": null, "rule": "builtin:no_check"}, "authorization": {"value": "none", "layer": "framework-default", "raw": null, "rule": "builtin:no_check"}, "dimensions": {"access_tier": "public"}, "unknown_reason": null},
+    {"method": "ANY", "path": "/api/health", "handler": "health/views.py:8", "authentication": {"value": "anonymous", "layer": "method", "raw": "AllowAny", "rule": "builtin:AllowAny"}, "authorization": {"value": "none", "layer": "method", "raw": "AllowAny", "rule": "builtin:AllowAny"}, "dimensions": {"access_tier": "public"}, "unknown_reason": null},
+    {"method": "GET", "path": "/api/orders/{pk}/", "handler": "orders/views.py:21", "authentication": {"value": "optional", "layer": "class", "raw": "IsAuthenticatedOrReadOnly", "rule": "builtin:IsAuthenticatedOrReadOnly"}, "authorization": {"value": "none", "layer": "class", "raw": "IsAuthenticatedOrReadOnly", "rule": "builtin:IsAuthenticatedOrReadOnly"}, "dimensions": {"access_tier": "customer"}, "unknown_reason": null},
+    {"method": "POST", "path": "/api/orders/{pk}/", "handler": "orders/views.py:21", "authentication": {"value": "required", "layer": "class", "raw": "IsAuthenticatedOrReadOnly", "rule": "builtin:IsAuthenticatedOrReadOnly"}, "authorization": {"value": "none", "layer": "class", "raw": "IsAuthenticatedOrReadOnly", "rule": "builtin:IsAuthenticatedOrReadOnly"}, "dimensions": {"access_tier": "customer"}, "unknown_reason": null},
+    {"method": "GET", "path": "/api/reports/{slug}", "handler": "reports/views.py:40", "authentication": {"value": "required", "layer": "global", "raw": "TenantMiddleware", "rule": "recognition:tenant_middleware"}, "authorization": {"value": "unknown", "layer": "method", "raw": "IsOwner", "rule": null}, "dimensions": {"access_tier": "customer"}, "unknown_reason": "IsOwner checks ownership in has_object_permission; not modelled"},
+    {"method": "GET", "path": "/café/menu", "handler": "menu/views.py:5", "authentication": {"value": "anonymous", "layer": "framework-default", "raw": "AllowAny", "rule": "builtin:AllowAny"}, "authorization": {"value": "none", "layer": "framework-default", "raw": "AllowAny", "rule": "builtin:AllowAny"}, "dimensions": {"access_tier": "public"}, "unknown_reason": null}
+  ]
+}

@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/BastienTeissier/all-access-inspector/schema/inventory.schema.json",
+  "title": "Endpoint Inventory",
+  "description": "Every endpoint one bootable app exposes, with its Core Classification. Facts only, no verdicts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "stack",
+    "discovery_mode",
+    "coverage",
+    "coverage_note",
+    "base_script",
+    "boot_environment",
+    "project_dimensions",
+    "endpoints"
+  ],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "stack": { "type": "string", "minLength": 1 },
+    "discovery_mode": { "enum": ["runtime", "static"] },
+    "coverage": { "enum": ["complete", "best-effort"] },
+    "coverage_note": { "type": ["string", "null"] },
+    "base_script": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stack", "version"],
+      "properties": {
+        "stack": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "boot_environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry", "stubs", "pinned"],
+      "properties": {
+        "entry": { "type": "string", "minLength": 1 },
+        "stubs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["target", "reason"],
+            "properties": {
+              "target": { "type": "string", "minLength": 1 },
+              "reason": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "pinned": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["setting", "value", "reason"],
+            "properties": {
+              "setting": { "type": "string", "minLength": 1 },
+              "value": {},
+              "reason": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "project_dimensions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "uniqueItems": true,
+        "items": { "type": "string", "minLength": 1 }
+      }
+    },
+    "endpoints": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/endpoint" }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "required": ["coverage"], "properties": { "coverage": { "const": "best-effort" } } },
+      "then": { "properties": { "coverage_note": { "type": "string", "minLength": 1 } } }
+    },
+    {
+      "if": { "required": ["discovery_mode"], "properties": { "discovery_mode": { "const": "static" } } },
+      "then": { "properties": { "coverage": { "const": "best-effort" } } }
+    }
+  ],
+  "$defs": {
+    "layer": { "enum": ["global", "class", "method", "framework-default", null] },
+    "ruleMatchesValue": {
+      "description": "An unknown value has no producing rule; any other value names the rule that produced it.",
+      "if": { "required": ["value"], "properties": { "value": { "const": "unknown" } } },
+      "then": { "properties": { "rule": { "type": "null" } } },
+      "else": { "properties": { "rule": { "type": "string" } } }
+    },
+    "rule": {
+      "description": "Built-in or Recognition Rule that produced the value.",
+      "anyOf": [
+        { "type": "string", "pattern": "^(builtin|recognition):.+$" },
+        { "type": "null" }
+      ]
+    },
+    "endpoint": {
+      "description": "Dimension keys must equal project_dimensions keys and values must be declared: enforced by each Base Script, not expressible here.",
+      "type": "object",
+      "additionalProperties": false,
+      "if": { "required": ["unknown_reason"], "properties": { "unknown_reason": { "type": "string" } } },
+      "then": {
+        "anyOf": [
+          { "properties": { "authentication": { "properties": { "value": { "const": "unknown" } } } } },
+          { "properties": { "authorization": { "properties": { "value": { "const": "unknown" } } } } }
+        ]
+      },
+      "required": ["method", "path", "handler", "authentication", "authorization", "dimensions", "unknown_reason"],
+      "properties": {
+        "method": { "enum": ["ANY", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"] },
+        "path": { "type": "string", "pattern": "^/" },
+        "handler": { "type": "string", "minLength": 1 },
+        "authentication": {
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "#/$defs/ruleMatchesValue",
+          "required": ["value", "layer", "raw", "rule"],
+          "properties": {
+            "value": { "enum": ["anonymous", "optional", "required", "unknown"] },
+            "layer": { "$ref": "#/$defs/layer" },
+            "raw": { "type": ["string", "null"] },
+            "rule": { "$ref": "#/$defs/rule" }
+          }
+        },
+        "authorization": {
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "#/$defs/ruleMatchesValue",
+          "required": ["value", "layer", "raw", "rule"],
+          "properties": {
+            "value": { "enum": ["none", "rule", "unknown"] },
+            "layer": { "$ref": "#/$defs/layer" },
+            "raw": { "type": ["string", "null"] },
+            "rule": { "$ref": "#/$defs/rule" }
+          }
+        },
+        "dimensions": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        },
+        "unknown_reason": { "anyOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }] }
+      }
+    }
+  }
+}

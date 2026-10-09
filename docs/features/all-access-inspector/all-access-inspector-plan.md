@@ -19,7 +19,7 @@ PRD: [prd.md](./prd.md). Vocabulary: [CONTEXT.md](../../../CONTEXT.md). Decision
 - Path: leading `/`, params as `{name}`, trailing slash as declared.
 - Handler: project code → `relative/path.py:line` (Django, Symfony); framework code → dotted name, no line. Spring: dotted name for all handlers (no line available at runtime).
 - Core Classification closed: authentication `anonymous|optional|required|unknown`, authorization `none|rule|unknown`, layer `global|class|method|framework-default`. Identity check alone = `required` + `none`. Custom construct without rule = `unknown`.
-- Inventory byte-stable: sorted by path then method (alphabetical), fixed key order, no timestamps, no absolute paths.
+- Inventory byte-stable: sorted by path, then method, then handler (code point), fixed key order, no timestamps, no absolute paths.
 - Fitting complete ⇔ every `unknown` has `unknown_reason`; every Recognition Rule cites existing `file:line`.
 - Project Dimension: declared values only; endpoint without value ⇒ script fails naming endpoint.
 - Static discovery only when routing not enumerable; reason written in Adapted Script; coverage `best-effort`. Unsupported stack ⇒ improvise from closest Base Script, coverage `best-effort`.
@@ -44,17 +44,17 @@ No database. The "data model" is the inventory JSON contract, `schema/inventory.
   - `coverage_note`: string|null (required non-null when `best-effort`: static reason or "improvised from <stack> Base Script")
   - `base_script`: `{stack: string, version: string}` (toolkit version vendored)
   - `boot_environment`: `{entry: string, stubs: [{target, reason}], pinned: [{setting, value, reason}]}` — `entry` = settings module / Spring profile / Symfony env
-  - `project_dimensions`: object `{<dimension>: [values...]}`, may be `{}`
-  - `endpoints`: array of **Endpoint**, sorted by (`path`, `method`)
+  - `project_dimensions`: object `{<dimension>: [values...]}`, may be `{}`; each value list non-empty, no duplicates
+  - `endpoints`: array of **Endpoint**, sorted by (`path`, `method`, `handler`)
 - **Endpoint** (keys in this order):
   - `method`: `ANY|DELETE|GET|HEAD|OPTIONS|PATCH|POST|PUT`
   - `path`: string, `^/`, params `{name}`
   - `handler`: string (`path:line` or dotted name)
-  - `authentication`: `{value: anonymous|optional|required|unknown, layer: global|class|method|framework-default|null, raw: string|null}`
-  - `authorization`: `{value: none|rule|unknown, layer: same enum|null, raw: string|null, rule: string|null}` — `rule` = `builtin:<name>` or `recognition:<name>` that produced the value
+  - `authentication`: `{value: anonymous|optional|required|unknown, layer: global|class|method|framework-default|null, raw: string|null, rule: string|null}`
+  - `authorization`: `{value: none|rule|unknown, layer: same enum|null, raw: string|null, rule: string|null}` — on both axes, `rule` = `builtin:<name>` or `recognition:<name>` that produced the value
   - `dimensions`: object `{<dimension>: value}`; keys must equal `project_dimensions` keys, values ∈ declared list
   - `unknown_reason`: string|null; non-null ⇒ Acknowledged Unknown
-- **Serialisation rule** (identical in Python/Java/PHP): UTF-8, `\n`, root keys one per line pretty-printed, `endpoints` array one compact object per line, no trailing whitespace, keys in schema order, strings escaped per JSON, file ends with `\n`.
+- **Serialisation rule** (identical in Python/Java/PHP; reference bytes: `schema/samples/canonical.json`): UTF-8, `\n`, 2-space indent; each root key on its own line with its value compact; `endpoints` one compact object per line at 4-space indent, `"endpoints": []` when empty; compact = separators `", "` and `": "`, non-ASCII unescaped, `/` unescaped; keys in schema order (`project_dimensions` keys and value lists in declared order); endpoints sorted by (`path`, `method`, `handler`) by code point; no trailing whitespace; file ends with `\n`.
 
 ### Modification of Existing Entities
 
@@ -74,7 +74,7 @@ Legend: 🟢 new · ⚪ salvaged from a sibling repo (path given) · 🔵 modifi
 
 #### A. `schema/inventory.schema.json` 🟢
 **Purpose**: the single shared contract (§2).
-**Changes**: JSON Schema 2020-12; enums for method/values/layers; `required` lists; `additionalProperties: false` everywhere; `if coverage == best-effort then coverage_note: string`.
+**Changes**: JSON Schema 2020-12; enums for method/values/layers; `required` lists; `additionalProperties: false` everywhere; `if coverage == best-effort then coverage_note: string`; `if discovery_mode == static then coverage == best-effort`; per axis `value == unknown ⇔ rule == null`; `unknown_reason` non-null ⇒ one axis `unknown`. Dimension keys/values are checked by each Base Script (not expressible in JSON Schema).
 **Why**: every Base Script, fixture test and the parse script depend on it; written first.
 
 #### B. `Makefile` 🟢, `.github/workflows/ci.yml` 🟢
@@ -83,7 +83,7 @@ Legend: 🟢 new · ⚪ salvaged from a sibling repo (path given) · 🔵 modifi
 
 ### Django Base Script — `base-scripts/django/` (vendored as `tools/access-inspector/` in projects)
 
-Stdlib only + the project's Django/DRF. Python ≥ 3.10. Each file is a template the Agent edits only where marked `# --- project ---`.
+Stdlib only + the project's Django/DRF. Python ≥ 3.10. Vendoring copies only the script files C–L; `tests/`, `pyproject.toml` and `uv.lock` are toolkit development files and never leave this repo. Each file is a template the Agent edits only where marked `# --- project ---`.
 
 #### C. `inspect.py` 🟢
 **Changes**: argparse `--check | --table | --unknowns`; flow `boot.boot()` → `discovery.endpoints()` → `classify.classify(ep)` per endpoint → `dimensions.assign(ep)` → `inventory.validate()` → `inventory.write()` / `inventory.check()` / `table.render()`. `--unknowns` prints JSON lines of endpoints with any `unknown` (handler, raw, method, path) for the Agent loop. Exit codes: 0 ok, 1 check diff, 2 boot/validation error (no file written).
@@ -114,7 +114,7 @@ Stdlib only + the project's Django/DRF. Python ≥ 3.10. Each file is a template
 **Why**: UF4; missing value = failure.
 
 #### J. `inventory.py` 🟢
-**Changes**: dataclasses mirroring §2; `to_canonical_json()` implementing the serialisation rule (key order from a constant, sort key `(path, method)`); `validate()` runtime checks JSON Schema cannot (dimension keys, `coverage_note`); `check(committed_path)` → structural diff: added/removed by identity triple, changed by field; renders one line per endpoint.
+**Changes**: dataclasses mirroring §2; `to_canonical_json()` implementing the serialisation rule (key order from a constant, sort key `(path, method, handler)`); `validate()` runtime checks JSON Schema cannot (dimension keys, `coverage_note`); `check(committed_path)` → structural diff: added/removed by identity triple, changed by field; renders one line per endpoint.
 **Why**: byte stability and `--check` in one place; same logic mirrored in Java/PHP.
 
 #### K. `table.py` 🟢
@@ -205,8 +205,8 @@ Principle (PRD): golden-file tests are the test of a Base Script; no unit tests 
 
 Django (`base-scripts/django/tests/`, pytest, no Django boot):
 - `test_paths_normalize`: `path("api/<int:pk>/")` → `/api/{pk}/`; `re_path(r"^items/(?P<slug>[\w-]+)$")` → `/items/{slug}`; unnamed group → `{param}`; nested prefixes joined; trailing slash preserved; leading slash added.
-- `test_inventory_canonical_bytes`: a hand-built inventory serialises to the committed `schema/samples/canonical.json` byte for byte (key order, one endpoint per line, sort by path then method, `\n` terminated, unicode unescaped).
-- `test_inventory_sort`: `/a` `POST` before `/a/b` `GET`; `ANY` sorts before `DELETE`.
+- `test_inventory_canonical_bytes`: a hand-built inventory serialises to the committed `schema/samples/canonical.json` byte for byte (key order, one endpoint per line, sort by path then method then handler, `\n` terminated, unicode unescaped).
+- `test_inventory_sort`: `/a` `POST` before `/a/b` `GET`; `ANY` sorts before `DELETE`; same path + method → handler order.
 - `test_inventory_validate_dimension_keys`: endpoint with dimension key not declared → `ValidationError` naming endpoint.
 - `test_inventory_validate_coverage_note`: `best-effort` with `coverage_note: null` → error.
 - `test_check_diff`: committed vs current with one added, one removed, one authn change → diff lines `+ GET /x`, `- POST /y`, `~ GET /z authentication.value required→optional`; exit 1; identical → exit 0; no committed file → exit 2 with hint.
@@ -253,25 +253,25 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 
 ### Phase 0 — Contract (prerequisite for all UFs)
 
-- [ ] **Write the schema**
+- [x] **Write the schema**
   - File: `schema/inventory.schema.json`
   - Encode §2 exactly: enums, key `required` lists, `additionalProperties: false`, `if/then` for `coverage_note`.
-- [ ] **Write the canonical samples**
+- [x] **Write the canonical samples**
   - Files: `schema/samples/canonical.input.json`, `schema/samples/canonical.json`
-  - Neutral 6-endpoint input (incl. `ANY`, unicode path, two methods on one path, one unknown, one dimension) and its byte-exact canonical form, hand-verified once.
-- [ ] **Repo tooling**
+  - Neutral 7-endpoint input (incl. `ANY`, unicode path, two methods on one path, two handlers on one path + method, one unknown, one dimension) and its byte-exact canonical form, hand-verified once; `schema/samples/canonical-empty.json` pins the empty form.
+- [x] **Repo tooling**
   - Files: `Makefile`, `.github/workflows/ci.yml`, `base-scripts/django/pyproject.toml` (uv, ruff, mypy strict, pytest, jsonschema dev-only), `VERSION`
   - Copy conventions from `django-access-inspector/pyproject.toml` + `Makefile`.
-- [ ] **Write tests**
+- [x] **Write tests**
   - File: `base-scripts/django/tests/test_schema.py`
   - Test: `test_schema_samples_valid` — samples validate; mutated `authentication.value: "sso"` fails.
-- [ ] **Verify**: `make test-django` green with only schema tests.
+- [x] **Verify**: `make test-django` green with only schema tests.
 
 ### Phase 1 — UF1 Inventory a Django project
 
 - [ ] **Inventory model + canonical writer + validate**
   - File: `base-scripts/django/inventory.py`
-  - Dataclasses per §2; `to_canonical_json`; `validate` (dimension keys, coverage note); sort `(path, method)`.
+  - Dataclasses per §2; `to_canonical_json`; `validate` (dimension keys, coverage note); sort `(path, method, handler)`.
 - [ ] **Path normalisation**
   - File: `base-scripts/django/paths.py`
 - [ ] **Discovery**
