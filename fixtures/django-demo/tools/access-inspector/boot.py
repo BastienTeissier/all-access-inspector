@@ -55,8 +55,12 @@ PINNED: list[Pin] = [
 
 
 def check_config(entry: str, stubs: list[Stub], pinned: list[Pin]) -> None:
+    guarded = ["django.conf.settings", entry]
+    package = entry.rpartition(".")[0]
+    if package.rpartition(".")[2] == "settings":  # config/settings/{base,production}.py
+        guarded.append(package)
     for stub in stubs:
-        if stub.target == entry or stub.target.startswith(entry + "."):
+        if any(stub.target == g or stub.target.startswith(g + ".") for g in guarded):
             raise BootError("settings module may not be stubbed")
         if not stub.reason:
             raise BootError(f"stub {stub.target} needs a reason")

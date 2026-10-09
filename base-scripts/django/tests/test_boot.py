@@ -7,7 +7,15 @@ from access_inspector.boot import BootError, Pin, Stub, check_config, default_en
 ENTRY = "config.settings.production"
 
 
-@pytest.mark.parametrize("target", [ENTRY, f"{ENTRY}.SECRET_KEY"])
+@pytest.mark.parametrize(
+    "target",
+    [
+        ENTRY,
+        f"{ENTRY}.SECRET_KEY",
+        "django.conf.settings",
+        "config.settings.base.ALLOWED_HOSTS",
+    ],
+)
 def test_boot_stub_rules_settings_module(target: str) -> None:
     with pytest.raises(BootError, match="settings module may not be stubbed"):
         check_config(ENTRY, [Stub(target, reason="vault")], [])
