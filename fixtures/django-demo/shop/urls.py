@@ -10,5 +10,6 @@ urlpatterns = [
     path("legacy-landing/", views.legacy_landing, name="legacy"),  # same name as above
     path("account/", views.AccountView.as_view(), name="account"),
     path("stock/", views.StockView.as_view(), name="stock"),
+    path("archive/", views.ArchiveView.as_view(), name="archive"),
     re_path(r"^(?:v1/)?old/$", views.legacy_home),  # non-capturing group
 ]

@@ -60,6 +60,11 @@ class StockView(PermissionRequiredMixin, View):
         return HttpResponse(status=204)
 
 
+class ArchiveView(PermissionRequiredMixin, View):  # permission_required left unset
+    def get(self, request):
+        return HttpResponse("archive")
+
+
 class PingHook:
     def __call__(self, request):
         return HttpResponse("pong")

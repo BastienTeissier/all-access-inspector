@@ -101,6 +101,9 @@ def test_django_unknowns_output(project: Path) -> None:
         ("OPTIONS", "/api/orders/{pk}/"),
         ("ANY", "/graphql/"),
         ("ANY", "/hooks/ping"),
+        ("GET", "/pages/archive/"),
+        ("HEAD", "/pages/archive/"),
+        ("OPTIONS", "/pages/archive/"),
     ]
     assert all(e["unknown_reason"] for e in unknowns)
     assert not output(project).exists()

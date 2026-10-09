@@ -251,6 +251,15 @@ def _mixins(view_class: Any) -> list[Finding]:
                     _dotted(view_class), "class", "PermissionRequiredMixin (overridden)"
                 )
             )
+        elif view_class.permission_required is None:
+            findings.append(
+                Finding(
+                    _dotted(view_class),
+                    "class",
+                    "PermissionRequiredMixin",
+                    "permission_required is not set; Django raises ImproperlyConfigured",
+                )
+            )
         else:
             required = view_class.permission_required
             raw = required if isinstance(required, str) else ", ".join(required)
