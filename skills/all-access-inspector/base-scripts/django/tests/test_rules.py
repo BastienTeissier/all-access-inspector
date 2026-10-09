@@ -127,6 +127,25 @@ def test_rules_recognition_rule_is_per_method(method: str, value: str) -> None:
     assert authz.rule == "recognition:edit"
 
 
+@pytest.mark.parametrize(
+    "values",
+    [
+        {"authn": "requird"},
+        {"safe_authn": "optinal"},
+        {"authz": "roles"},
+        {"safe_authz": "public"},
+    ],
+)
+def test_rules_check_rejects_a_value_outside_the_core_classification(
+    tmp_path: Path, values: dict[str, str]
+) -> None:
+    (tmp_path / "perms.py").write_text("class IsOwner: ...\n")
+    fields = {"authn": "required", "authz": "rule", **values}
+    rule = Rule("owner", "perms.py:1", construct="shop.IsOwner", **fields)
+    with pytest.raises(RuleError, match="is not one of"):
+        check_rules([rule], tmp_path)
+
+
 def test_rules_any_endpoint_splits_when_a_rule_differs_per_method() -> None:
     edit = Rule(
         "edit",

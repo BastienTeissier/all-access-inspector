@@ -195,6 +195,14 @@ def check_rules(recognition: list[Rule], root: Path) -> None:
             )
         if rule.path_prefix is not None and rule.layer is None:
             raise RuleError(f"rule {rule.name}: a path_prefix rule needs a layer")
+        for value, allowed in (
+            (rule.authn, AUTHENTICATION_STRICTNESS),
+            (rule.safe_authn, AUTHENTICATION_STRICTNESS),
+            (rule.authz, AUTHORIZATION_STRICTNESS),
+            (rule.safe_authz, AUTHORIZATION_STRICTNESS),
+        ):
+            if value is not None and value not in allowed:
+                raise RuleError(f"rule {rule.name}: {value!r} is not one of {allowed}")
         file, _, line = rule.evidence.rpartition(":")
         source = (root / file).resolve()
         inside = source.is_relative_to(root.resolve())
@@ -221,9 +229,7 @@ def _component(
         return _axis("unknown", finding.layer, finding.raw, None), _axis(
             "unknown", finding.layer, finding.raw, None
         )
-    safe = method in SAFE_METHODS
-    authn = (builtin.safe_authn if safe else None) or builtin.authn
-    authz = (builtin.safe_authz if safe else None) or builtin.authz
+    authn, authz = _for_method(builtin, method)
     tag = f"builtin:{builtin.name}"
     return _axis(authn, finding.layer, finding.raw, tag), _axis(
         authz, finding.layer, finding.raw, tag
@@ -233,11 +239,18 @@ def _component(
 def _recognised(
     rule: Rule, method: str, layer: str | None, raw: str | None
 ) -> tuple[Axis, Axis]:
-    safe = method in SAFE_METHODS
-    authn = (rule.safe_authn if safe else None) or rule.authn
-    authz = (rule.safe_authz if safe else None) or rule.authz
+    authn, authz = _for_method(rule, method)
     tag = f"recognition:{rule.name}"
     return _axis(authn, layer, raw, tag), _axis(authz, layer, raw, tag)
+
+
+def _for_method(check: Builtin | Rule, method: str) -> tuple[str, str]:
+    """GET/HEAD/OPTIONS take the safe value when the check sets one."""
+    safe = method in SAFE_METHODS
+    return (
+        (check.safe_authn if safe else None) or check.authn,
+        (check.safe_authz if safe else None) or check.authz,
+    )
 
 
 def _axis(value: str, layer: str | None, raw: str | None, rule: str | None) -> Axis:
