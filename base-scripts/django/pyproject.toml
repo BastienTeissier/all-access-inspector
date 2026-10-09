@@ -1,6 +1,6 @@
 [project]
 name = "access-inspector-django"
-version = "0.1.0"
+version = "0.0.0"  # unused (package = false); the toolkit version lives in ../../VERSION
 description = "Django Base Script of all-access-inspector (vendored into projects, never installed)"
 requires-python = ">=3.10"
 dependencies = []
@@ -11,7 +11,7 @@ dev = [
     "pytest>=8,<9",
     "mypy>=1.8.0,<2.0",
     "jsonschema>=4.23,<5",
-    "types-jsonschema",
+    "types-jsonschema>=4.23,<5",
 ]
 
 [tool.uv]
