@@ -434,9 +434,11 @@ Docs only (`CONTEXT.md`, `docs/adr/`, `docs/features/`), APM config (`apm.yml`, 
 
 ## Unresolved questions
 
-1. Toolkit distribution of the skill to users: APM dependency on this repo, or copy into `../skills`? (Affects where `references/` paths resolve in `SKILL.md`; needed before Phase 3.)
+None.
 
 ## Resolved during planning
+
+- Distribution: this repository is an APM package; users add it as a dependency pinned by tag. The toolkit (`SKILL.md`, `references/`, `assets/`, `base-scripts/`, `schema/`, `VERSION`) lives under `skills/all-access-inspector/`, so it deploys as one skill; toolkit paths in this plan are relative to that directory. Fixtures stay at the repository root.
 
 - Milestone target: `~/Theodo/perenco/action-tracking`.
 - Spring handlers: dotted names without lines, for all handlers.

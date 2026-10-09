@@ -12,7 +12,8 @@ import pytest
 
 FIXTURE = Path(__file__).resolve().parents[1]
 REPO = FIXTURE.parents[1]
-BASE_SCRIPT = REPO / "base-scripts" / "django" / "access_inspector"
+SKILL = REPO / "skills" / "all-access-inspector"
+BASE_SCRIPT = SKILL / "base-scripts" / "django" / "access_inspector"
 EXPECTED = FIXTURE / "expected" / "inventory.json"
 PROJECT_SECTION = re.compile(r"# --- project ---\n.*?# --- end project ---\n", re.S)
 
@@ -59,7 +60,7 @@ def test_django_golden(project: Path) -> None:
 
 def test_django_golden_is_schema_valid() -> None:
     schema = json.loads(
-        (REPO / "schema" / "inventory.schema.json").read_text(encoding="utf-8")
+        (SKILL / "schema" / "inventory.schema.json").read_text(encoding="utf-8")
     )
     jsonschema.Draft202012Validator(schema).validate(
         json.loads(EXPECTED.read_text(encoding="utf-8"))
