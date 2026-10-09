@@ -17,6 +17,7 @@ Branch `{{branch}}`, commit `{{sha}}`. Base Script django {{version}}. Discovery
 - Entry `{{settings module}}`: {{why this module is the production one}}
 - Stub `{{target}}`: {{reason}}
 - Pin `{{setting}} = {{value}}`: {{reason}}
+- Env `{{name}} = {{value}}`: {{reason}}
 
 ## Recognition Rules
 
