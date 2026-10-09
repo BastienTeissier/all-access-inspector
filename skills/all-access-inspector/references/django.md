@@ -63,6 +63,7 @@ Several checks on one endpoint all apply: per axis the strictest wins (`required
 - `evidence` is the line of the `class`/`def` that implements the check, relative to the project root, never a usage site.
 - `authn`: `required` when the check rejects anonymous users, `optional` when it only reads `request.user`, `anonymous` when it lets everyone in.
 - `authz`: `rule` when it checks anything beyond "is authenticated" (role, group, permission, tenant, ownership enforced in the check), `none` otherwise.
+- A check that differs for reads (`if request.method in SAFE_METHODS: return True`): set `safe_authn`/`safe_authz` for GET/HEAD/OPTIONS, as the Built-in `IsAuthenticatedOrReadOnly` does.
 - A check combining others (`IsAuthenticated & IsOwner`, a subclass of `IsAuthenticated`): classify what the whole class enforces.
 - Middleware enforcing a prefix: `path_prefix="/api/"`, `layer="global"`, `raw="<MiddlewareClass>"`, evidence on the line that rejects the request.
 

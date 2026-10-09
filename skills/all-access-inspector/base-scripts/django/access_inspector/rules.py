@@ -45,6 +45,10 @@ class Rule:
         None  # defaults to the finding's layer; required with path_prefix
     )
     raw: str | None = None
+    safe_authn: str | None = (
+        None  # value for GET/HEAD/OPTIONS when it differs, as for a Built-in Rule
+    )
+    safe_authz: str | None = None
 
 
 @dataclass(frozen=True)
@@ -144,10 +148,7 @@ def resolve(
     acknowledged = ACKNOWLEDGED if acknowledged is None else acknowledged
     own = [_component(f, method, recognition) for f in findings]
     components = [
-        (
-            _axis(r.authn, r.layer, r.raw, f"recognition:{r.name}"),
-            _axis(r.authz, r.layer, r.raw, f"recognition:{r.name}"),
-        )
+        _recognised(r, method, r.layer, r.raw)
         for r in recognition
         if r.path_prefix is not None and path.startswith(r.path_prefix)
     ] + own
@@ -196,11 +197,8 @@ def _component(
 ) -> tuple[Axis, Axis]:
     for rule in recognition:
         if rule.construct == finding.construct:
-            layer = rule.layer or finding.layer
-            raw = rule.raw or finding.raw
-            tag = f"recognition:{rule.name}"
-            return _axis(rule.authn, layer, raw, tag), _axis(
-                rule.authz, layer, raw, tag
+            return _recognised(
+                rule, method, rule.layer or finding.layer, rule.raw or finding.raw
             )
     builtin = BUILTIN.get(finding.construct) if finding.reason is None else None
     if builtin is None:
@@ -214,6 +212,16 @@ def _component(
     return _axis(authn, finding.layer, finding.raw, tag), _axis(
         authz, finding.layer, finding.raw, tag
     )
+
+
+def _recognised(
+    rule: Rule, method: str, layer: str | None, raw: str | None
+) -> tuple[Axis, Axis]:
+    safe = method in SAFE_METHODS
+    authn = (rule.safe_authn if safe else None) or rule.authn
+    authz = (rule.safe_authz if safe else None) or rule.authz
+    tag = f"recognition:{rule.name}"
+    return _axis(authn, layer, raw, tag), _axis(authz, layer, raw, tag)
 
 
 def _axis(value: str, layer: str | None, raw: str | None, rule: str | None) -> Axis:

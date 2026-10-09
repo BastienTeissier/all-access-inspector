@@ -109,6 +109,24 @@ def test_rules_recognition_rule_resolves_a_construct() -> None:
 
 
 @pytest.mark.parametrize(
+    ("method", "value"),
+    [("GET", "none"), ("OPTIONS", "none"), ("PATCH", "rule")],
+)
+def test_rules_recognition_rule_is_per_method(method: str, value: str) -> None:
+    edit = Rule(
+        "edit",
+        "shop/permissions.py:4",
+        "required",
+        "rule",
+        construct="shop.permissions.IsOwner",
+        safe_authz="none",
+    )
+    authn, authz, _ = resolve([IS_OWNER], method, "/orders/1/", [edit], [])
+    assert (authn.value, authz.value) == ("required", value)
+    assert authz.rule == "recognition:edit"
+
+
+@pytest.mark.parametrize(
     "ack",
     [
         Ack("ownership is data", construct="shop.permissions.IsOwner"),
