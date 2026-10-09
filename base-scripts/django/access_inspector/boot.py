@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import sys
@@ -65,6 +66,12 @@ def check_config(entry: str, stubs: list[Stub], pinned: list[Pin]) -> None:
             raise BootError("pin must move toward production")
         if not pin.reason:
             raise BootError(f"pin {pin.setting} needs a reason")
+        try:
+            json.dumps(pin.value)
+        except TypeError:
+            raise BootError(
+                f"pin {pin.setting} value is not JSON-serialisable"
+            ) from None
 
 
 def default_entry(root: Path) -> str:
@@ -97,6 +104,9 @@ def boot() -> inventory.BootEnvironment:
         for pin in PINNED:
             setattr(settings, pin.setting, pin.value)
         django.setup()
+        from django.urls import get_resolver
+
+        get_resolver().url_patterns  # imports the URLconf: a broken one is a boot error
     except Exception as exc:
         raise BootError(
             f"cannot boot settings module {entry}: {type(exc).__name__}: {exc}"

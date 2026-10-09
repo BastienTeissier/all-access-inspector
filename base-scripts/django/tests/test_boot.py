@@ -31,6 +31,8 @@ def test_boot_stub_rules_reasons() -> None:
         check_config(ENTRY, [Stub("config.secrets.load", reason="")], [])
     with pytest.raises(BootError, match="pin ALLOWED_HOSTS needs a reason"):
         check_config(ENTRY, [], [Pin("ALLOWED_HOSTS", ["shop.example.com"], reason="")])
+    with pytest.raises(BootError, match="pin START value is not JSON-serialisable"):
+        check_config(ENTRY, [], [Pin("START", object(), reason="frozen clock")])
     check_config(
         ENTRY,
         [Stub("config.secrets.load", reason="vault")],

@@ -145,6 +145,19 @@ def test_django_boot_failure(project: Path) -> None:
     assert not output(project).exists()
 
 
+def test_django_urlconf_failure(project: Path) -> None:
+    edit(
+        project / "config" / "urls.py",
+        'include("shop.urls")',
+        'include("shop.missing_urls")',
+    )
+    result = run(project)
+    assert result.returncode == 2
+    assert "No module named 'shop.missing_urls'" in result.stderr
+    assert "config.settings" in result.stderr
+    assert not output(project).exists()
+
+
 def test_django_check_missing_dimension(project: Path) -> None:
     edit(
         project / "config" / "urls.py",
