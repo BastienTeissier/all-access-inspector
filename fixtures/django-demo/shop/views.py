@@ -79,3 +79,7 @@ def mail_preview(request):  # dev-only, see config/urls.py
 class DraftsView(View):
     def get(self, request):
         return HttpResponse("drafts")
+
+
+class SharedDraftsView(DraftsView):  # inherits the decorated dispatch
+    pass
