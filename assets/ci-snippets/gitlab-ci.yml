@@ -10,5 +10,7 @@ access-inspector:
   stage: test
   {{setup}}
   script:
-    - {{install}}
-    - {{check}}
+    - |
+      {{install}}
+    - |
+      {{check}}
