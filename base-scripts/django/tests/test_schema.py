@@ -142,6 +142,18 @@ def test_schema_samples_valid(path: Path) -> None:
             ["endpoints", 0],
             id="reason-on-endpoint-without-unknown",
         ),
+        pytest.param(
+            set_at(["project_dimensions", "access_tier"], []),
+            "minItems",
+            ["project_dimensions", "access_tier"],
+            id="dimension-without-values",
+        ),
+        pytest.param(
+            set_at(["project_dimensions", "access_tier"], ["public", "public"]),
+            "uniqueItems",
+            ["project_dimensions", "access_tier"],
+            id="dimension-with-duplicate-values",
+        ),
     ],
 )
 def test_schema_rejects(

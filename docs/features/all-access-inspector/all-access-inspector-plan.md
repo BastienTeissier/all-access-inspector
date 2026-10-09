@@ -44,7 +44,7 @@ No database. The "data model" is the inventory JSON contract, `schema/inventory.
   - `coverage_note`: string|null (required non-null when `best-effort`: static reason or "improvised from <stack> Base Script")
   - `base_script`: `{stack: string, version: string}` (toolkit version vendored)
   - `boot_environment`: `{entry: string, stubs: [{target, reason}], pinned: [{setting, value, reason}]}` — `entry` = settings module / Spring profile / Symfony env
-  - `project_dimensions`: object `{<dimension>: [values...]}`, may be `{}`
+  - `project_dimensions`: object `{<dimension>: [values...]}`, may be `{}`; each value list non-empty, no duplicates
   - `endpoints`: array of **Endpoint**, sorted by (`path`, `method`, `handler`)
 - **Endpoint** (keys in this order):
   - `method`: `ANY|DELETE|GET|HEAD|OPTIONS|PATCH|POST|PUT`
