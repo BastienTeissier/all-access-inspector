@@ -41,9 +41,15 @@ def _regex(text: str) -> str:
             out.append(following if following in LITERAL_ESCAPES else char + following)
             i += 2
         elif char == "(":
-            name = re.match(r"\(\?P<(\w+)>", text[i:])
-            out.append("{" + (name.group(1) if name else "param") + "}")
-            i = _skip_quantifier(text, _group_end(text, i))
+            end = _group_end(text, i)
+            group = text[i:end]
+            name = re.match(r"\(\?P<(\w+)>", group)
+            if name or not group.startswith("(?"):  # capturing group
+                out.append("{" + (name.group(1) if name else "param") + "}")
+            elif group.startswith("(?:"):  # non-capturing: its content is literal path
+                out.append(_regex(group[3:-1]))
+            # lookarounds and inline flags match no characters
+            i = _skip_quantifier(text, end)
         else:
             out.append(char)
             i += 1

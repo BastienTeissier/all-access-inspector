@@ -38,6 +38,16 @@ from access_inspector.paths import Part, normalize
             id="nested-prefixes",
         ),
         pytest.param([Part("route", "ping")], "/ping", id="no-trailing-slash-kept"),
+        pytest.param(
+            [Part("regex", r"^pages/(?:v1/)?old/$")],
+            "/pages/v1/old/",
+            id="non-capturing-group",
+        ),
+        pytest.param(
+            [Part("regex", r"^(?i)docs/(?!draft)(?P<slug>\w+)/$")],
+            "/docs/{slug}/",
+            id="lookahead-and-flags",
+        ),
         pytest.param([Part("route", "")], "/", id="root"),
         pytest.param(
             [Part("route", "/already")], "/already", id="leading-slash-not-doubled"
