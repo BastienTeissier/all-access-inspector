@@ -438,6 +438,7 @@ None.
 
 ## Resolved during planning
 
+- Environment variables read at settings import (found fitting action-tracking): `boot.py` pins them in `ENVIRON` (`Env(name, value, reason)`), applied before the settings import and overriding the shell; recorded in `boot_environment.environ`.
 - Distribution: this repository is an APM package; users add it as a dependency pinned by tag. The toolkit (`SKILL.md`, `references/`, `assets/`, `base-scripts/`, `schema/`, `VERSION`) lives under `skills/all-access-inspector/`, so it deploys as one skill; toolkit paths in this plan are relative to that directory. Fixtures stay at the repository root.
 
 - Milestone target: `~/Theodo/perenco/action-tracking`.

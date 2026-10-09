@@ -68,3 +68,7 @@ class ArchiveView(PermissionRequiredMixin, View):  # permission_required left un
 class PingHook:
     def __call__(self, request):
         return HttpResponse("pong")
+
+
+def mail_preview(request):  # dev-only, see config/urls.py
+    return HttpResponse("preview")

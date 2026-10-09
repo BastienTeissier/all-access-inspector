@@ -46,7 +46,8 @@ Find how the project runs its Python, from its README, Makefile, `pyproject.toml
 ### 4. Pin the Boot Environment
 
 1. Find the production settings module (see "Production entry" in the reference) and set `ENTRY` in `boot.py`.
-2. Run `inspect.py --table`. Exit 2 with a traceback means the boot failed. Read the traceback and apply the reference's stub cookbook. Add a `Stub` or `Pin` with its reason, then run again.
+   Grep the settings for environment reads (`os.environ`, `os.getenv`, `env(`) that shape `INSTALLED_APPS`, `MIDDLEWARE`, `ROOT_URLCONF` or the URLconf. Pin each one in `ENVIRON` to its production value, asking the user when the source does not say what production sets.
+2. Run `inspect.py --table`. Exit 2 with a traceback means the boot failed. Read the traceback and apply the reference's stub cookbook. Add an `Env`, `Stub` or `Pin` with its reason, then run again.
 3. When a failure needs a value only the team knows (a feature flag's production value, a required service), ask one question with the traceback excerpt. Do not guess.
 
 Exit 0 means the boot is done. Every stub and pin carries a reason in `boot.py`.

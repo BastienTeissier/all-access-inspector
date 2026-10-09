@@ -32,12 +32,14 @@ Stub the narrowest dotted name the traceback points at. Never stub the settings 
 | `ModuleNotFoundError` for a production-only package | stub the importing function, or ask whether the package belongs in the run environment |
 | Database connection at import or in `AppConfig.ready()` | stub the function that queries; `django.setup()` itself opens no connection |
 | Cache, broker, search, storage client connecting at import (`redis`, `celery`, `elasticsearch`, `storages`) | stub the client factory |
-| A required non-secret environment variable (`env("X")` with no default) | ask the user for the production value and how they want it provided; never invent one |
+| A required non-secret environment variable (`env("X")` with no default) | `Env("X", "<production value>", reason=…)`; ask the user for the value, never invent one |
+| An environment variable that shapes routes or middleware (`if ENV == "local": INSTALLED_APPS += ["debug_toolbar"]`, a feature flag inserting middleware) | `Env("ENV", "production", reason=…)`: `ENVIRON` is applied before the settings import and overrides the shell, so the inventory does not depend on who runs it |
+| Settings loading a dotenv file (`load_dotenv`, `environ.Env.read_env`) | stub the loader (`Stub("dotenv.load_dotenv", reason="a developer's .env must not shape the inventory")`) and pin what production sets with `ENVIRON` |
 | `DEBUG` derived from the environment, default `True` | `Pin("DEBUG", False, reason="production value; …")`; if `DEBUG` shapes `INSTALLED_APPS` or the URLconf at import, pick a production `ENTRY` instead |
 | `ALLOWED_HOSTS` empty with `DEBUG=False` | does not affect the route table; leave it |
 | URLconf import fails | real code error: report it to the user, do not stub it |
 
-A `Stub` is patched before the settings import and stays active during `django.setup()` and the URLconf import. `replacement=None` gives a `MagicMock`.
+`ENVIRON` is applied first. A `Stub` is patched before the settings import and stays active during `django.setup()` and the URLconf import. `replacement=None` gives a `MagicMock`.
 
 ## Built-in rules
 

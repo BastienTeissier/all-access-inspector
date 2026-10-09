@@ -19,6 +19,13 @@ ROOT = (
 
 
 @dataclass(frozen=True)
+class Env:
+    name: str  # environment variable, set before the settings load and overriding the shell
+    value: str
+    reason: str
+
+
+@dataclass(frozen=True)
 class Stub:
     target: (
         str  # dotted name patched before the settings load, e.g. "config.secrets.load"
@@ -42,6 +49,10 @@ class BootError(Exception):
 # Settings module; None reads the DJANGO_SETTINGS_MODULE default from manage.py, usually a dev module.
 ENTRY: str | None = None
 
+# Environment variables the settings read at import, set to their production value whatever the shell holds, e.g.:
+# Env("DJANGO_ENV", "production", reason="production value; mounts no debug routes"),
+ENVIRON: list[Env] = []
+
 # Toward production only: stubs replace secrets, databases and external services, never the settings module, e.g.:
 # Stub("config.secrets.load", reason="secrets vault unreachable outside production", replacement=lambda: {...}),
 STUBS: list[Stub] = []
@@ -53,7 +64,16 @@ PINNED: list[Pin] = []
 # --- end project ---
 
 
-def check_config(entry: str, stubs: list[Stub], pinned: list[Pin]) -> None:
+def check_config(
+    entry: str, stubs: list[Stub], pinned: list[Pin], environ: list[Env]
+) -> None:
+    for env in environ:
+        if env.name == "DJANGO_SETTINGS_MODULE":
+            raise BootError("set the settings module with ENTRY, not ENVIRON")
+        if not isinstance(env.value, str):
+            raise BootError(f"environment variable {env.name} value must be a string")
+        if not env.reason:
+            raise BootError(f"environment variable {env.name} needs a reason")
     guarded = ["django.conf.settings", entry]
     package = entry.rpartition(".")[0]
     if package.rpartition(".")[2] == "settings":  # config/settings/{base,production}.py
@@ -91,9 +111,10 @@ def default_entry(root: Path) -> str:
 
 def boot() -> inventory.BootEnvironment:
     entry = ENTRY or default_entry(ROOT)
-    check_config(entry, STUBS, PINNED)
+    check_config(entry, STUBS, PINNED, ENVIRON)
     sys.path.insert(0, str(ROOT))
     os.environ["DJANGO_SETTINGS_MODULE"] = entry
+    os.environ.update({env.name: env.value for env in ENVIRON})
     try:
         for stub in STUBS:
             replacement = (
@@ -115,6 +136,7 @@ def boot() -> inventory.BootEnvironment:
         ) from exc
     return inventory.BootEnvironment(
         entry=entry,
+        environ=[inventory.Env(e.name, e.value, e.reason) for e in ENVIRON],
         stubs=[inventory.Stub(s.target, s.reason) for s in STUBS],
         pinned=[inventory.Pin(p.setting, p.value, p.reason) for p in PINNED],
     )

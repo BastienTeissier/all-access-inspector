@@ -44,6 +44,13 @@ class Endpoint:
 
 
 @dataclass(frozen=True)
+class Env:
+    name: str
+    value: str
+    reason: str
+
+
+@dataclass(frozen=True)
 class Stub:
     target: str
     reason: str
@@ -59,6 +66,7 @@ class Pin:
 @dataclass(frozen=True)
 class BootEnvironment:
     entry: str
+    environ: list[Env]
     stubs: list[Stub]
     pinned: list[Pin]
 
@@ -117,6 +125,7 @@ def from_dict(data: dict[str, Any]) -> Inventory:
         base_script=BaseScript(**data["base_script"]),
         boot_environment=BootEnvironment(
             entry=boot["entry"],
+            environ=[Env(**e) for e in boot["environ"]],
             stubs=[Stub(**s) for s in boot["stubs"]],
             pinned=[Pin(**p) for p in boot["pinned"]],
         ),
