@@ -53,7 +53,7 @@ def classify(raw: RawEndpoint, root: Path) -> list[Classified]:
     # as_view() attributes (cls, view_class, actions, initkwargs) are copied onto every wrapper by functools.wraps.
     view_class = getattr(callback, "view_class", None)
     if hasattr(callback, "admin_site") or hasattr(callback, "model_admin"):
-        admin = Finding("django.contrib.admin", "global", "is_staff")
+        admin = _admin(callback)
         return [
             Classified(
                 "ANY",
@@ -85,6 +85,22 @@ def classify(raw: RawEndpoint, root: Path) -> list[Classified]:
         Classified(m, _handler(inner, root), [*middleware, *own])
         for m in methods or ["ANY"]
     ]
+
+
+def _admin(callback: Any) -> Finding:
+    """admin_view() gates on AdminSite.has_permission (is_staff) unless the project overrides it."""
+    site = getattr(callback, "admin_site", None) or callback.model_admin.admin_site
+    site_class = type(site)
+    if _project_defines(site_class, "has_permission") or _project_defines(
+        site_class, "admin_view"
+    ):
+        return Finding(
+            _dotted(site_class),
+            "global",
+            f"{site_class.__name__} (overridden)",
+            f"{_dotted(site_class)} overrides has_permission or admin_view",
+        )
+    return Finding("django.contrib.admin", "global", "is_staff")
 
 
 def _unreadable(callback: Any, reason: str) -> Classified:

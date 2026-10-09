@@ -95,7 +95,9 @@ def test_django_unknowns_output(project: Path) -> None:
     result = run(project, "--unknowns")
     assert result.returncode == 0, result.stderr
     unknowns = [json.loads(line) for line in result.stdout.splitlines()]
-    assert [(e["method"], e["path"]) for e in unknowns] == [
+    support = [e for e in unknowns if e["path"].startswith("/admin/support/")]
+    assert len(support) == 8  # every admin_view() route; login stays unchecked
+    assert [(e["method"], e["path"]) for e in unknowns[len(support) :]] == [
         ("GET", "/api/orders/{pk}/"),
         ("HEAD", "/api/orders/{pk}/"),
         ("OPTIONS", "/api/orders/{pk}/"),

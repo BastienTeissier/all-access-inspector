@@ -1,9 +1,10 @@
 from django.conf.urls.i18n import i18n_patterns
 from django.urls import include, path
 from shop import api, views
-from shop.admin import shop_admin
+from shop.admin import shop_admin, support_admin
 
 urlpatterns = [
+    path("admin/support/", support_admin.urls),  # overrides has_permission
     path("admin/", shop_admin.urls),
     path("api/", include("shop.api_urls")),
     path("catalog/", include("shop.catalog_urls")),
