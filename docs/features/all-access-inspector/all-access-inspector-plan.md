@@ -328,16 +328,16 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
   - File: `assets/summary-template.md`; branch name follows the project's convention (inferred from recent branch names, e.g. `feat/...`, `chore/...`; fallback `access-inspector/fit`), commit message lists rules/unknowns/boot decisions.
 - [x] **Verify (manual, milestone)**: fit `~/Theodo/perenco/action-tracking`; checklist: branch exists, `--unknowns` empty, `--check` green, every evidence `file:line` exists, no pipeline file in the diff, dimensions confirmed by the user. Then re-run in update mode on the same project → no diff.
 
-### Phase 4 — UF6 Audit from the Committed Inventory (sibling repo `../skills/security-audit`)
+### Phase 4 — UF6 Audit from the Committed Inventory (sibling repo `../skills/security-audit`) — https://github.com/BastienTeissier/skills/pull/2
 
-- [ ] **Reference + parse script**
+- [x] **Reference + parse script**
   - Files: `references/access-inspector.md`, `scripts/parse_access_inspector.sh`
-- [ ] **Retire Django-specific scanner**
+- [x] **Retire Django-specific scanner**
   - Files: delete `references/django-access-inspector.md`, `scripts/parse_django_access_inspector.sh`; update `references/scan.md`, `SKILL.md` step 4.
   - Staleness: run `--check` if the Adapted Script is runnable, else skip; on exit 1 → "stale" banner in report; never regenerate.
-- [ ] **Write tests**
+- [x] **Write tests**
   - File: `../skills/security-audit/scripts/tests/test_parse_access_inspector.sh` (bats or plain bash) on `fixtures/django-demo/expected/inventory.json`.
-- [ ] **Verify**: run the security-audit skill on `fixtures/django-demo` → report has mode/coverage header, anonymous list, acknowledged vs unexplained sections.
+- [x] **Verify**: run the security-audit skill on `fixtures/django-demo` → report has mode/coverage header, anonymous list, acknowledged vs unexplained sections.
 
 ### Phase 5 — UF7 Inventory a Spring project
 
