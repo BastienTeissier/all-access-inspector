@@ -7,17 +7,19 @@ description: Fit the All Access Inspector to a project, so it can regenerate and
 
 You are the Agent. You fit a Base Script to one project once. You leave behind an Adapted Script in `tools/access-inspector/`, and from then on the project regenerates and checks its Endpoint Inventory with no LLM involved.
 
-Paths below are relative to this skill's base directory (`<skill>/`) or to the project root, the directory that holds `manage.py` and `tools/`.
+Paths below are relative to this skill's base directory (`<skill>/`) or to the project root, the directory that holds `manage.py` (Django) or the app's `package.json` (NestJS), and `tools/`.
+
+The steps name the Django files. For NestJS, read `inspect.py …` as `inspect.sh …`, `boot.py`, `rules.py` and `dimensions.py` as their `.ts` files, and `# --- project ---` as `// --- project ---`.
 
 ## Hard rules
 
 - Never edit a CI pipeline file. Propose `tools/access-inspector/ci-snippet.*` and let the team wire it in.
-- Never stub a settings module. Stub only secrets, databases and external services. A pin or an `ENVIRON` value may move a setting only toward production. `boot.py` enforces the settings-module rule and the `DEBUG` pin, not `ENVIRON` values: those are on you. Do not work around either check.
+- Never stub a settings module (Django), nor a guard, controller, `APP_GUARD` or the root module (NestJS). Stub only secrets, databases and external services. A pin or an `ENVIRON` value may move a setting only toward production. `boot.py` enforces the settings-module rule and the `DEBUG` pin, and `boot.ts` the stub targets and `NODE_ENV=production`, not other `ENVIRON` values: those are on you. Do not work around either check.
 - Never write a Recognition Rule without evidence: a `file:line` in the project that shows the construct the rule interprets. Never map a construct whose meaning the source does not settle. Ask instead, or acknowledge it as unknown.
 - Never fall back to static discovery because the boot is hard. Static discovery is admissible only when the routing layer cannot be enumerated at runtime.
 - Never claim `coverage: complete` for a stack that has no Base Script.
 - Never remove or rename a Core Classification field or value. Project-specific code goes only between `# --- project ---` and `# --- end project ---` in `boot.py`, `rules.py` and `dimensions.py`. Everything else stays byte-identical to the Base Script, so a later refresh can replace it.
-- Change nothing outside `tools/access-inspector/` except one entry per linter or type checker the project runs (`ruff`, `mypy`, `flake8`, `pyright`, …), excluding `tools/access-inspector/` from it. The vendored files follow the toolkit's style, not the project's.
+- Change nothing outside `tools/access-inspector/` except one entry per linter or type checker the project runs (`ruff`, `mypy`, `flake8`, `pyright`, `eslint`, `prettier`, `tsc`, `dependency-cruiser`, …), excluding `tools/access-inspector/` from it. The vendored files follow the toolkit's style, not the project's.
 - Never commit on the current branch, and never push.
 
 ## Workflow
@@ -27,12 +29,13 @@ Paths below are relative to this skill's base directory (`<skill>/`) or to the p
 | Signal | Stack | Base Script |
 |---|---|---|
 | `manage.py`, or `django` in `pyproject.toml` / `requirements*.txt` / `setup.cfg` | Django | `<skill>/base-scripts/django/`, reference `<skill>/references/django.md` |
+| `@nestjs/core` in `package.json` | NestJS | `<skill>/base-scripts/nestjs/`, reference `<skill>/references/nestjs.md` |
 | `pom.xml` / `build.gradle*` with spring-boot | Spring | not shipped in this version |
 | `composer.json` with `symfony/framework-bundle` | Symfony | not shipped in this version |
 
 Tell the user which Base Script you use. If none is shipped for the stack, say so and stop. Read the stack's reference before going further.
 
-If the repository holds several bootable applications (several `manage.py` or settings packages), ask which ones to fit. Each one gets its own `tools/access-inspector/`, placed next to its own `manage.py`.
+If the repository holds several bootable applications (several `manage.py` or settings packages, several Nest apps in a monorepo), ask which ones to fit. Each one gets its own `tools/access-inspector/`, placed next to its own `manage.py` or `package.json`.
 
 ### 2. Existing fitting?
 
@@ -43,6 +46,8 @@ If `tools/access-inspector/` already exists, switch to **Update mode** (below) a
 Copy every `*.py` of `<skill>/base-scripts/django/access_inspector/` except `__init__.py` into `tools/access-inspector/`. Also copy `VERSION`, dereferencing the symlink: `cp -L`. These copies are the Adapted Script.
 
 Find how the project runs its Python, from its README, Makefile, `pyproject.toml`, Dockerfile or docker-compose (for example `uv run`, `poetry run`, an activated venv, `docker compose run web`). Call this `<run>`. Every command below is `<run> python tools/access-inspector/inspect.py …` from the directory that holds `manage.py`.
+
+NestJS: copy every file of `<skill>/base-scripts/nestjs/access_inspector/` into `tools/access-inspector/`, with `cp -L` for `VERSION`. Never copy the toolkit's `package.json`, lockfile, `tests/` or `tsconfig.json`. Every command is `tools/access-inspector/inspect.sh …` from the directory that holds the app's `package.json`; it runs through the project's own vitest or jest, so the project's dependencies must be installed.
 
 ### 4. Pin the Boot Environment
 
