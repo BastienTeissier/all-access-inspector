@@ -46,6 +46,15 @@ describe('resolveAccess', () => {
     expect(resolveAccess([guard], 'GET', '/', {}, recognition, [])[0].value).toBe('required');
   });
 
+  test('null matches an absent metadata key', () => {
+    const recognition = [
+      rule({ name: 'no_roles', construct: 'RolesGuard', whenMetadata: { roles: null } }),
+      rule({ name: 'roles', construct: 'RolesGuard', authz: 'rule' }),
+    ];
+    expect(resolveAccess([roles], 'GET', '/', {}, recognition, [])[1].rule).toBe('recognition:no_roles');
+    expect(resolveAccess([roles], 'GET', '/', { roles: ['admin'] }, recognition, [])[1].rule).toBe('recognition:roles');
+  });
+
   test('safe methods', () => {
     const recognition = [rule({ name: 'ro', construct: 'RolesGuard', authz: 'rule', safeAuthn: 'optional', safeAuthz: 'none' })];
     const get = resolveAccess([roles], 'GET', '/a', {}, recognition, []);

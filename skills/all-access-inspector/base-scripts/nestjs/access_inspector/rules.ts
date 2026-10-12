@@ -41,7 +41,7 @@ export interface Rule {
   raw?: string;
   safeAuthn?: Authn; // value for GET/HEAD/OPTIONS when it differs, as for a Built-in Rule
   safeAuthz?: Authz;
-  whenMetadata?: Metadata; // matches only when every key equals the endpoint's handler-then-class metadata
+  whenMetadata?: Metadata; // matches only when every key equals the endpoint's handler-then-class metadata; null matches an absent key
   rawMetadata?: string; // metadata key whose value is appended to raw, e.g. 'roles'
 }
 
@@ -177,7 +177,7 @@ const checkEvidence = (owner: string, evidence: string, root: string): void => {
 };
 
 const matches = (rule: Rule, metadata: Metadata): boolean =>
-  Object.entries(rule.whenMetadata ?? {}).every(([key, value]) => JSON.stringify(metadata[key]) === JSON.stringify(value));
+  Object.entries(rule.whenMetadata ?? {}).every(([key, value]) => JSON.stringify(metadata[key] ?? null) === JSON.stringify(value));
 
 const component = (finding: Finding, method: string, metadata: Metadata, recognition: Rule[]): [Axis, Axis] => {
   const rule = recognition.find(r => r.construct === finding.construct && matches(r, metadata));
