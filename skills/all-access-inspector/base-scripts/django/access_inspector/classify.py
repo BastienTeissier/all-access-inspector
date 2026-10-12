@@ -299,7 +299,10 @@ def _decorated_method(view_class: type, name: str) -> Finding | None:
         or not _project_defines(view_class, name)
     ):
         return None
-    return Finding(_dotted(method), "method", f"decorated {name}")
+    # Named by the project class that decorates it: the wrapper carries the wrapped method's name, often
+    # a framework base's; one rule then covers every view inheriting the decoration.
+    owner = next(c for c in view_class.__mro__ if name in vars(c))
+    return Finding(f"{_dotted(owner)}.{name}", "method", f"decorated {name}")
 
 
 def _project_defines(cls: type, attribute: str) -> bool:

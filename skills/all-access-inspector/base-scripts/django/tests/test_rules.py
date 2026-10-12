@@ -11,6 +11,7 @@ from access_inspector.rules import (
     check_rules,
     drf_layer,
     global_findings,
+    methods,
     resolve,
 )
 
@@ -106,6 +107,73 @@ def test_rules_recognition_rule_resolves_a_construct() -> None:
     assert authn == Axis("required", "class", "IsOwner", "recognition:owner")
     assert authz == Axis("rule", "class", "IsOwner", "recognition:owner")
     assert reason is None
+
+
+@pytest.mark.parametrize(
+    ("method", "expected"),
+    [
+        ("GET", ("optional", "none")),
+        ("HEAD", ("optional", "none")),
+        ("OPTIONS", ("optional", "none")),
+        ("PATCH", ("required", "rule")),
+    ],
+)
+@pytest.mark.parametrize("target", ["construct", "path_prefix"])
+def test_rules_recognition_rule_is_per_method(
+    method: str, expected: tuple[str, str], target: str
+) -> None:
+    # A path_prefix rule is checked over a no_check view, so it alone decides the endpoint.
+    where, finding = (
+        ({"construct": "shop.permissions.IsOwner"}, IS_OWNER)
+        if target == "construct"
+        else ({"path_prefix": "/orders/", "layer": "global"}, NO_CHECK)
+    )
+    edit = Rule(
+        "edit",
+        "shop/permissions.py:4",
+        "required",
+        "rule",
+        safe_authn="optional",
+        safe_authz="none",
+        **where,
+    )
+    authn, authz, _ = resolve([finding], method, "/orders/1/", [edit], [])
+    assert (authn.value, authz.value) == expected
+    assert authz.rule == "recognition:edit"
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        {"authn": "requird"},
+        {"safe_authn": "optinal"},
+        {"authz": "roles"},
+        {"safe_authz": "public"},
+    ],
+)
+def test_rules_check_rejects_a_value_outside_the_core_classification(
+    tmp_path: Path, values: dict[str, str]
+) -> None:
+    (tmp_path / "perms.py").write_text("class IsOwner: ...\n")
+    fields = {"authn": "required", "authz": "rule", **values}
+    rule = Rule("owner", "perms.py:1", construct="shop.IsOwner", **fields)
+    with pytest.raises(RuleError, match="is not one of"):
+        check_rules([rule], tmp_path)
+
+
+def test_rules_any_endpoint_splits_when_a_rule_differs_per_method() -> None:
+    edit = Rule(
+        "edit",
+        "shop/permissions.py:4",
+        "required",
+        "rule",
+        construct="shop.permissions.IsOwner",
+        safe_authz="none",
+    )
+    split = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    assert methods([IS_OWNER], "ANY", "/orders/1/", [edit]) == split
+    assert methods([IS_AUTHENTICATED], "ANY", "/orders/1/", [edit]) == ["ANY"]
+    assert methods([IS_OWNER], "GET", "/orders/1/", [edit]) == ["GET"]
 
 
 @pytest.mark.parametrize(

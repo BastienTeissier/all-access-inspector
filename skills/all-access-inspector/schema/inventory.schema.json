@@ -34,9 +34,22 @@
     "boot_environment": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["entry", "stubs", "pinned"],
+      "required": ["entry", "environ", "stubs", "pinned"],
       "properties": {
         "entry": { "type": "string", "minLength": 1 },
+        "environ": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "value", "reason"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "value": { "type": "string" },
+              "reason": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
         "stubs": {
           "type": "array",
           "items": {

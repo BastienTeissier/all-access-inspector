@@ -67,10 +67,13 @@ Toolkit layout:
 
 ```
 all-access-inspector/
-  SKILL.md              # the Agent workflow
-  references/{django,spring,symfony}.md
-  base-scripts/{django,spring,symfony}/
-  schema/inventory.schema.json
+  apm.yml               # APM package: users depend on it, pinned by tag
+  skills/all-access-inspector/
+    SKILL.md            # the Agent workflow
+    references/{django,spring,symfony}.md
+    assets/             # CI snippets, summary template
+    base-scripts/{django,spring,symfony}/
+    schema/inventory.schema.json
   fixtures/{django,spring,symfony}-demo/ + expected inventory.json
 ```
 

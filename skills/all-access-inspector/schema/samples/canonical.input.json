@@ -169,7 +169,14 @@
                 "target": "config.secrets.load"
             }
         ],
-        "entry": "config.settings.production"
+        "entry": "config.settings.production",
+        "environ": [
+            {
+                "reason": "production value; mounts no debug routes",
+                "value": "production",
+                "name": "DJANGO_ENV"
+            }
+        ]
     },
     "base_script": {
         "version": "0.1.0",

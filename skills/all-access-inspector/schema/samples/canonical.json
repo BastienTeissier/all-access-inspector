@@ -5,7 +5,7 @@
   "coverage": "complete",
   "coverage_note": null,
   "base_script": {"stack": "django", "version": "0.1.0"},
-  "boot_environment": {"entry": "config.settings.production", "stubs": [{"target": "config.secrets.load", "reason": "secrets vault unreachable outside production"}], "pinned": [{"setting": "DEBUG", "value": false, "reason": "production value"}]},
+  "boot_environment": {"entry": "config.settings.production", "environ": [{"name": "DJANGO_ENV", "value": "production", "reason": "production value; mounts no debug routes"}], "stubs": [{"target": "config.secrets.load", "reason": "secrets vault unreachable outside production"}], "pinned": [{"setting": "DEBUG", "value": false, "reason": "production value"}]},
   "project_dimensions": {"access_tier": ["public", "customer", "staff"]},
   "endpoints": [
     {"method": "GET", "path": "/admin/", "handler": "django.contrib.admin.sites.AdminSite.index", "authentication": {"value": "required", "layer": "global", "raw": "is_staff", "rule": "builtin:django_admin"}, "authorization": {"value": "rule", "layer": "global", "raw": "is_staff", "rule": "builtin:django_admin"}, "dimensions": {"access_tier": "staff"}, "unknown_reason": null},

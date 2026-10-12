@@ -6,15 +6,16 @@ from typing import Any
 import pytest
 from jsonschema import Draft202012Validator
 
-REPO = Path(__file__).resolve().parents[3]
+SKILL = Path(__file__).resolve().parents[3]
+REPO = SKILL.parents[1]
 SCHEMA = json.loads(
-    (REPO / "schema" / "inventory.schema.json").read_text(encoding="utf-8")
+    (SKILL / "schema" / "inventory.schema.json").read_text(encoding="utf-8")
 )
 VALIDATOR = Draft202012Validator(SCHEMA)
-CANONICAL = REPO / "schema" / "samples" / "canonical.json"
+CANONICAL = SKILL / "schema" / "samples" / "canonical.json"
 SAMPLES = sorted(
     [
-        *(REPO / "schema" / "samples").glob("*.json"),
+        *(SKILL / "schema" / "samples").glob("*.json"),
         *(REPO / "fixtures").glob("*/expected/inventory.json"),
     ]
 )
@@ -175,7 +176,7 @@ def test_schema_rejects(
 
 
 def test_canonical_input_describes_the_canonical_inventory() -> None:
-    neutral = load(REPO / "schema" / "samples" / "canonical.input.json")
+    neutral = load(SKILL / "schema" / "samples" / "canonical.input.json")
     neutral["endpoints"].sort(key=lambda e: (e["path"], e["method"], e["handler"]))
 
     assert neutral == load(CANONICAL)
