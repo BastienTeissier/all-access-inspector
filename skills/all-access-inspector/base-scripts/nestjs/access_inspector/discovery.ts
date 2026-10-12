@@ -14,10 +14,10 @@ export interface RawEndpoint {
   reason?: string; // set when the script cannot read the route's access checks
 }
 
-/** What the boot saw on Express: router mount paths and the route layers Nest middleware registered. */
+/** What the boot saw on Express: router mount paths, and the layers Nest adds that serve no endpoint. */
 export interface Watched {
   mounts: Map<unknown, string>;
-  middleware: Set<unknown>;
+  internal: Set<unknown>; // middleware routes and the not-found handler
 }
 
 interface Layer {
@@ -35,6 +35,7 @@ interface Adapter {
   getType(): string;
   getInstance(): ExpressApp;
   createMiddlewareFactory(method: unknown): (path: string, callback: Function) => unknown;
+  setNotFoundHandler(...args: unknown[]): unknown;
 }
 
 interface Entrypoint {
@@ -54,9 +55,9 @@ const OUTSIDE = 'mounted on Express outside Nest; its access checks are not read
 
 const stack = (app: ExpressApp): Layer[] => (app.router ?? app._router)?.stack ?? [];
 
-/** Called before the project's setup runs, so every app.use(path, router) and Nest middleware route is seen. */
+/** Called before the project's setup runs, so every app.use(path, router) and Nest internal layer is seen. */
 export const watch = (app: INestApplication): Watched => {
-  const watched: Watched = { mounts: new Map(), middleware: new Set() };
+  const watched: Watched = { mounts: new Map(), internal: new Set() };
   const adapter = app.getHttpAdapter() as unknown as Adapter;
   if (adapter.getType() !== 'express') return watched;
   const instance = adapter.getInstance();
@@ -65,16 +66,15 @@ export const watch = (app: INestApplication): Watched => {
     if (typeof args[0] === 'string') for (const handler of args.slice(1)) watched.mounts.set(handler, args[0]);
     return use.apply(this, args);
   };
-  const factory = adapter.createMiddlewareFactory.bind(adapter);
-  adapter.createMiddlewareFactory = method => {
-    const register = factory(method);
-    return (path, callback) => {
-      const before = new Set(stack(instance));
-      const result = register(path, callback);
-      for (const layer of stack(instance)) if (!before.has(layer)) watched.middleware.add(layer);
-      return result;
-    };
+  const internal = <A extends unknown[]>(register: (...args: A) => unknown) => (...args: A) => {
+    const before = new Set(stack(instance));
+    const result = register(...args);
+    for (const layer of stack(instance)) if (!before.has(layer)) watched.internal.add(layer);
+    return result;
   };
+  const factory = adapter.createMiddlewareFactory.bind(adapter);
+  adapter.createMiddlewareFactory = method => internal(factory(method));
+  adapter.setNotFoundHandler = internal(adapter.setNotFoundHandler.bind(adapter));
   return watched;
 };
 
@@ -103,13 +103,13 @@ export const discover = (app: INestApplication, watched: Watched): RawEndpoint[]
 
 const express = (layers: Layer[], prefix: string, nest: RawEndpoint[], watched: Watched): RawEndpoint[] =>
   layers.flatMap(layer => {
+    if (watched.internal.has(layer)) return [];
     if (layer.route !== undefined) {
-      if (watched.middleware.has(layer)) return [];
       const path = join(prefix, layer.route.path);
       const handler = layer.route.stack.at(-1)?.handle.name || '<anonymous>';
       return Object.keys(layer.route.methods)
         .map(m => (m === '_all' ? 'ANY' : m.toUpperCase()))
-        .filter(method => !nest.some(e => e.method === method && e.path === path))
+        .filter(method => !nest.some(e => (e.method === method || e.method === 'ANY') && e.path === path))
         .map(method => ({ method, path, handler, reason: OUTSIDE }));
     }
     const router = layer.handle;
