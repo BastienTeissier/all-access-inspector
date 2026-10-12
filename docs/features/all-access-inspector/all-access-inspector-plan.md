@@ -383,17 +383,17 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 
 ### Phase 5 — UF10 Inventory a NestJS project
 
-- [ ] **Runner + boot + discovery**
+- [x] **Runner + boot + discovery**
   - Files: `base-scripts/nestjs/{inspect.sh,vitest.config.ts,jest.config.cjs,run.spec.ts,boot.ts,discovery.ts,paths.ts}`
-- [ ] **Guards + rules**
-  - Files: `classify.ts`, `rules.ts` (builtins, `NEUTRAL`, `when_metadata`, `raw_metadata`)
-- [ ] **Inventory + check + table + dimensions**
+- [x] **Guards + rules**
+  - Files: `classify.ts`, `rules.ts` (builtins, `NEUTRAL`, `whenMetadata`, `rawMetadata`: camelCase in TypeScript; a `null` value matches an absent key)
+- [x] **Inventory + check + table + dimensions**
   - Files: `inventory.ts`, `dimensions.ts`, `table.ts`
-- [ ] **Toolkit tooling**: `base-scripts/nestjs/package.json` (dev only: typescript, vitest, `@nestjs/*`), `Makefile` `test-nestjs`, CI job with Node only.
-- [ ] **Fixtures**: `fixtures/nestjs-demo/` per §3 AS, `fixtures/nestjs-jest-smoke/` per §3 AT.
-- [ ] **Reference**: `references/nestjs.md` (production entry = the module and setup function `main.ts` uses; `.env` files read by `ConfigModule` vs `ENVIRON`; stub cookbook for providers connecting at init; built-in table; metadata rules; blind spots: middleware, checks inside handlers or services, Fastify routes outside Nest, guards reading metadata with `get`/`getAllAndMerge`; Nest version tested). `SKILL.md` step 1 adds the NestJS row; vendoring copies `base-scripts/nestjs/` minus toolkit files; linter exclusions cover eslint, prettier, tsc and dependency-cruiser.
-- [ ] **Write tests**: §4 NestJS unit tests, `test_nestjs_golden`, `test_nestjs_check_drift`, `test_nestjs_boot_failure`, `test_nestjs_jest_smoke`, canonical bytes shared with Python.
-- [ ] **Verify**: `make test-nestjs` green; fit `~/Theodo/bootstrap-test` (`apps/backend`, `ENTRY` `AppModule`, `CONFIGURE` `configureApp`, `ENVIRON` `NODE_ENV=production` + placeholders for `DATABASE_URL`, `JWT_SECRET`, `ALLOWED_ORIGIN`): `AuthGuard` rules on `isPublic` (anonymous) and default (required), `RolesGuard` rule with `raw_metadata: roles`; expected 14 endpoints, `/auth/login`, `/auth/logout`, `/auth/refresh`, `POST /users`, `/health/*` anonymous, `/users/me` required/none, `GET /users` and `PATCH /users/{id}` required/rule; no Swagger route (`NODE_ENV=production`); `--unknowns` empty, `--check` green.
+- [x] **Toolkit tooling**: `base-scripts/nestjs/package.json` (dev only: typescript, vitest, `@nestjs/*`), `Makefile` `test-nestjs`, CI job with Node only. `make check-all` adds `typecheck-nestjs`; CI's Django job runs `lint typecheck deps`.
+- [x] **Fixtures**: `fixtures/nestjs-demo/` per §3 AS, `fixtures/nestjs-jest-smoke/` per §3 AT. The demo's global `APP_GUARD` covers every Nest route, so `builtin:no_check` is exercised by the jest smoke fixture.
+- [x] **Reference**: `references/nestjs.md` (production entry = the module and setup function `main.ts` uses; `.env` files read by `ConfigModule` vs `ENVIRON`; stub cookbook for providers connecting at init; built-in table; metadata rules; blind spots: middleware, checks inside handlers or services, Fastify routes outside Nest, guards reading metadata with `get`/`getAllAndMerge`; Nest version tested). `SKILL.md` step 1 adds the NestJS row; vendoring copies `base-scripts/nestjs/` minus toolkit files; linter exclusions cover eslint, prettier, tsc and dependency-cruiser.
+- [x] **Write tests**: §4 NestJS unit tests, `test_nestjs_golden`, `test_nestjs_check_drift`, `test_nestjs_boot_failure`, `test_nestjs_jest_smoke`, canonical bytes shared with Python.
+- [x] **Verify**: `make test-nestjs` green; fit `~/Theodo/bootstrap-test` (`apps/backend`, `ENTRY` `AppModule`, `CONFIGURE` `configureApp`, `ENVIRON` `NODE_ENV=production` + placeholders for `DATABASE_URL`, `JWT_SECRET`, `ALLOWED_ORIGIN`): `AuthGuard` rules on `isPublic` (anonymous) and default (required), `RolesGuard` rule with `raw_metadata: roles`; expected 14 endpoints, `/auth/login`, `/auth/logout`, `/auth/refresh`, `POST /users`, `/health/*` anonymous, `/users/me` required/none, `GET /users` and `PATCH /users/{id}` required/rule; no Swagger route (`NODE_ENV=production`); `--unknowns` empty, `--check` green.
 
 ### Phase 6 — UF7 Inventory a Spring project
 
