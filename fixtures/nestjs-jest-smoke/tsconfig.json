@@ -8,5 +8,6 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "types": ["node", "jest"]
-  }
+  },
+  "exclude": ["tools", "node_modules"]
 }

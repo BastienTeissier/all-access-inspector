@@ -34,6 +34,7 @@ typecheck:
 typecheck-nestjs:
 	pnpm --dir $(NESTJS) exec tsc --noEmit -p tsconfig.json
 	pnpm --dir $(NESTJS_FIXTURE) exec tsc --noEmit -p tsconfig.json
+	pnpm --dir $(NESTJS_JEST_FIXTURE) exec tsc --noEmit -p tsconfig.json
 
 deps:
 	$(UV_DJANGO) deptry .
