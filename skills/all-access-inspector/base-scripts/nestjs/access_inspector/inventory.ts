@@ -182,7 +182,7 @@ export const check = (committedInventory: Inventory, currentInventory: Inventory
   const old = committed as unknown as Record<string, unknown>;
   const now = current as unknown as Record<string, unknown>;
   const lines = Object.keys(now)
-    .filter(key => key !== 'endpoints' && compact(old[key]) !== compact(now[key]))
+    .filter(key => key !== 'endpoints' && compact(sortKeys(old[key])) !== compact(sortKeys(now[key])))
     .map(key => `~ ${key}: ${compact(old[key])} -> ${compact(now[key])}`);
   const before = new Map<string, Endpoint>();
   for (const e of committed.endpoints) {
@@ -212,6 +212,14 @@ export const check = (committedInventory: Inventory, currentInventory: Inventory
   }
   return lines;
 };
+
+/** Objects with their keys sorted, so key order never counts as a difference (lists keep theirs). */
+const sortKeys = (value: unknown): unknown =>
+  Array.isArray(value)
+    ? value.map(sortKeys)
+    : value !== null && typeof value === 'object'
+      ? Object.fromEntries(Object.keys(value).sort().map(key => [key, sortKeys((value as Record<string, unknown>)[key])]))
+      : value;
 
 const flatten = (data: object, prefix = ''): Record<string, unknown> =>
   Object.fromEntries(

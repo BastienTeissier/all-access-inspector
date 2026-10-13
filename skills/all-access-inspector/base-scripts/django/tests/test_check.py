@@ -71,3 +71,32 @@ def test_check_flags_a_duplicated_committed_entry() -> None:
     first = current.endpoints[0]
     committed = replace(current, endpoints=[first, *current.endpoints])
     assert check(committed, current) == [f"- {first.label()} (duplicate entry)"]
+
+
+def test_check_ignores_expected_access_key_order() -> None:
+    current = load("canonical.json")
+    reordered = {
+        d: {v: dict(reversed(x.items())) for v, x in reversed(by_value.items())}
+        for d, by_value in current.expected_access.items()
+    }
+    assert check(replace(current, expected_access=reordered), current) == []
+
+
+def test_check_new_fields() -> None:
+    committed = load("canonical.json")
+    first = committed.endpoints[0]
+    changed = replace(
+        first,
+        authentication=replace(first.authentication, evidence="a.py:1"),
+        acknowledged=not first.acknowledged,
+    )
+    expected = {
+        "access_tier": {"public": committed.expected_access["access_tier"]["public"]}
+    }
+    current = replace(committed, expected_access=expected, endpoints=[changed])
+    diff = check(replace(committed, endpoints=[first]), current)
+    assert diff == [
+        f"~ expected_access: {json.dumps(committed.expected_access)} -> {json.dumps(expected)}",
+        f"~ {first.label()} authentication.evidence: {first.authentication.evidence or 'null'} -> a.py:1",
+        f"~ {first.label()} acknowledged: {json.dumps(first.acknowledged)} -> {json.dumps(changed.acknowledged)}",
+    ]
