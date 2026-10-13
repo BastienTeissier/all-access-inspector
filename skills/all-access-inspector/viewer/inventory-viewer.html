@@ -78,8 +78,8 @@ button:focus-visible,[data-s]:focus-visible,label.btn:focus-within{outline:2px s
 .doors{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr));gap:8px}
 .door{border:1px solid var(--line);border-top:4px solid var(--c);border-radius:6px;padding:10px;background:var(--bg);display:grid;gap:4px;align-content:start}
 .door.flag{outline:2px solid var(--unknown);outline-offset:1px}
-.door .note,.tier.flag{color:var(--unknown)}
-.door .note{font-size:.8rem}
+.door .note{font-size:.8rem;color:var(--muted)}
+.door.flag .note,.tier.flag{color:var(--unknown)}
 /* clickable endpoints, detail drawer */
 [data-s]{cursor:pointer}
 .row[data-s]:hover,.door[data-s]:hover{border-color:var(--accent)}
@@ -192,17 +192,18 @@ function why(e) {
 
 /* ---- expected access per zone ---- */
 const expectation = (d, value) => INV.expected_access?.[d]?.[value] || null;
-function mismatch(e, d) {
+/** How an endpoint compares with its zone: a status (only 'outside' is a finding) and a note to show. */
+function zoneCheck(e, d) {
   const x = expectation(d, e.dimensions[d]);
-  if (!x) return '';
-  if (e.level === 'ack') return 'Acknowledged: cannot be checked against the zone';
-  if (e.level === 'unknown') return 'Nobody can tell whether it matches the zone';
+  if (!x) return {status: 'unchecked', note: ''};
+  if (e.level === 'ack') return {status: 'ack', note: 'Acknowledged: cannot be checked against the zone'};
+  if (e.level === 'unknown') return {status: 'unknown', note: 'Nobody can tell whether it matches the zone'};
   const off = [];
   if (!x.authentication.includes(e.authentication.value)) off.push(`authentication ${e.authentication.value}, zone expects ${x.authentication.join(' or ')}`);
   if (!x.authorization.includes(e.authorization.value)) off.push(`authorization ${e.authorization.value}, zone expects ${x.authorization.join(' or ')}`);
-  return off.join('; ');
+  return off.length ? {status: 'outside', note: off.join('; ')} : {status: 'ok', note: ''};
 }
-const flagged = (e, d) => mismatch(e, d) !== '' && e.level !== 'ack';
+const flagged = (e, d) => zoneCheck(e, d).status === 'outside';
 const describe = x => x ? `expects authentication ${x.authentication.join(' or ')}, authorization ${x.authorization.join(' or ')}` : 'no expected access declared';
 
 /* ---- views ---- */
@@ -239,7 +240,7 @@ function zones() {
     h += `<section class="zone"><header><h3>${esc(value)}</h3><span class="muted">${list.length} endpoint${list.length === 1 ? '' : 's'} · ${describe(expectation(dim, value))}</span>` +
       `${bad ? `<span class="chip l-unknown">${bad} outside the zone</span>` : ''}</header><div class="doors">`;
     h += list.map(e => {
-      const note = mismatch(e, dim);
+      const {note} = zoneCheck(e, dim);
       return `<div class="door ${flagged(e, dim) ? 'flag' : ''}" ${pick(e)} style="--c:${LEVELS[e.level].c}"><div>${methods(e)}</div>` +
         `<span class="path">${esc(e.path)}</span>${chip(e.level)}${note ? `<span class="note">${esc(note)}</span>` : ''}</div>`;
     }).join('') || '<span class="muted">No endpoint.</span>';
@@ -262,7 +263,7 @@ function detail(e) {
   const outside = [a, z].filter(x => x.layer === null).map(x => x === a ? line('Who', a) : line('What', z));
   const chain = LAYERS.map(step).join('') + (outside.length ? `<div class="step"><div class="lyr">unplaced</div><div class="what">${outside.join('')}</div></div>` : '');
   const dims = Object.entries(e.dimensions).map(([d, v]) => {
-    const note = mismatch(e, d);
+    const {note} = zoneCheck(e, d);
     return `<div class="tier ${flagged(e, d) ? 'flag' : ''}">${esc(d)} <b>${esc(v)}</b>${note ? ` · ${esc(note)}` : ''}</div>`;
   }).join('');
   const reason = e.unknown_reason ? `<div class="step"><div class="lyr">${e.acknowledged ? 'acknowledged' : 'reason'}</div><div class="what">${esc(e.unknown_reason)}</div></div>` : '';
