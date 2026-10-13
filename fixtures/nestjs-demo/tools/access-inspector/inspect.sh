@@ -32,7 +32,8 @@ runner="$(node -e '
 ')"
 case "$runner" in
   vitest) args=(vitest run --config tools/access-inspector/vitest.config.ts) ;;
-  jest) args=(jest --config tools/access-inspector/jest.config.cjs --runInBand --ci) ;;
+  # --forceExit: a provider holding a handle open must not keep jest alive once the result files are written.
+  jest) args=(jest --config tools/access-inspector/jest.config.cjs --runInBand --ci --forceExit) ;;
   *)
     echo "access-inspector: package.json declares neither vitest nor jest; one of them runs the inspector" >&2
     exit 2
