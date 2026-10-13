@@ -20,7 +20,7 @@ AAU (developer, with the project's Node toolchain installed), running the NestJS
 ## Success Scenario
 
 - AAU, an `APP_GUARD` `AuthGuard` lets `@Public()` routes through and requires a bearer token elsewhere, with two Recognition Rules on it (public metadata, then default), I see public routes `anonymous` and the others `required`, both at layer `global`.
-- AAU, a handler carries `@Roles('admin')` (`SetMetadata` + `UseGuards(RolesGuard)`), I see authorization `rule` at layer `method` with the roles in the raw field.
+- AAU, a handler carries `@Roles('admin')` (`SetMetadata` + `UseGuards(RolesGuard)`), I see authorization `rule` at the layer where `RolesGuard` is attached (`class` or `method`) with the roles in the raw field.
 - AAU, the application sets a global prefix `api` excluding `health`, I see `/api/users` and `/health/live`.
 
 ## Error Scenario
