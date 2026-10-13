@@ -84,6 +84,7 @@ Field names are camelCase in TypeScript: `pathPrefix`, `safeAuthn`, `safeAuthz`,
 - An Express 5 optional segment or wildcard (`users{/:id}`, `files{*path}`) is listed once, as if present (`/users/{id}`); the route without it shares its guards.
 - Routes registered on Express outside Nest appear as unknown endpoints naming the handler function; a router mounted where the script did not see the mount path shows `{mount}`.
 - With the Fastify adapter, routes registered on Fastify outside Nest are not listed: `coverage` is `best-effort`.
+- An `APP_GUARD` provided with `useFactory` or `useExisting` and request-scoped is named after its factory or alias, not the guard class: write the rule for that name.
 - Interceptors and pipes are not read; an interceptor that rejects requests is a blind spot like a middleware.
 
 ## Candidate dimensions
