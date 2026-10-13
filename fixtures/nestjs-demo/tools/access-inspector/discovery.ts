@@ -53,7 +53,8 @@ interface Container {
 
 const OUTSIDE = 'mounted on Express outside Nest; its access checks are not readable';
 
-const stack = (app: ExpressApp): Layer[] => (app.router ?? app._router)?.stack ?? [];
+// Express 4 keeps the router in _router, and its app.router getter throws; Express 5 has only app.router.
+const stack = (app: ExpressApp): Layer[] => (app._router ?? app.router)?.stack ?? [];
 
 /** Called before the project's setup runs, so every app.use(path, router) and Nest internal layer is seen. */
 export const watch = (app: INestApplication): Watched => {

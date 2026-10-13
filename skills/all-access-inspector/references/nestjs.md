@@ -1,6 +1,6 @@
 # NestJS reference
 
-Tested with NestJS 12 (ESM, vitest) and NestJS 11 (CommonJS, jest), on the Express adapter.
+Tested with NestJS 12 (ESM, vitest) and NestJS 11 (CommonJS, jest), on the Express 5 adapter. Express 4 (NestJS 10 and earlier) is read too, but no fixture covers it.
 
 ## How the script runs
 
