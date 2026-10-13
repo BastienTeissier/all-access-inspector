@@ -56,9 +56,10 @@ def test_inventory_sort() -> None:
     ]
     inventory = replace(load("canonical.input.json"), endpoints=shuffled)
     lines = to_canonical_json(inventory).splitlines()
+    start = lines.index('  "endpoints": [') + 1
     order = [
         (e["method"], e["path"], e["handler"])
-        for e in map(json.loads, (line.strip(" ,") for line in lines[11:16]))
+        for e in map(json.loads, (line.strip(" ,") for line in lines[start:-2]))
     ]
     assert order == [
         ("ANY", "/a", "shop/views.py:1"),

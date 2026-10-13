@@ -25,7 +25,8 @@ test('sort by path, then method, then handler, by code point', () => {
     endpoint('GET', '/～'),
   ];
   const lines = toCanonicalJson({ ...load('canonical.input.json'), endpoints: shuffled }).split('\n');
-  const order = lines.slice(11, 18).map(line => {
+  const start = lines.indexOf('  "endpoints": [') + 1;
+  const order = lines.slice(start, -3).map(line => {
     const e = JSON.parse(line.trim().replace(/,$/, '')) as Endpoint;
     return [e.method, e.path, e.handler];
   });
