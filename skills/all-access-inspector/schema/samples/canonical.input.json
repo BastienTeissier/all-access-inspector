@@ -1,17 +1,20 @@
 {
     "endpoints": [
         {
+            "acknowledged": false,
             "unknown_reason": null,
             "dimensions": {
                 "access_tier": "public"
             },
             "authorization": {
+                "evidence": null,
                 "rule": "builtin:AllowAny",
                 "raw": "AllowAny",
                 "layer": "framework-default",
                 "value": "none"
             },
             "authentication": {
+                "evidence": null,
                 "rule": "builtin:AllowAny",
                 "raw": "AllowAny",
                 "layer": "framework-default",
@@ -22,17 +25,20 @@
             "method": "GET"
         },
         {
+            "acknowledged": false,
             "unknown_reason": null,
             "dimensions": {
                 "access_tier": "customer"
             },
             "authorization": {
+                "evidence": null,
                 "rule": "builtin:IsAuthenticatedOrReadOnly",
                 "raw": "IsAuthenticatedOrReadOnly",
                 "layer": "class",
                 "value": "none"
             },
             "authentication": {
+                "evidence": null,
                 "rule": "builtin:IsAuthenticatedOrReadOnly",
                 "raw": "IsAuthenticatedOrReadOnly",
                 "layer": "class",
@@ -43,17 +49,20 @@
             "method": "POST"
         },
         {
+            "acknowledged": false,
             "unknown_reason": null,
             "dimensions": {
                 "access_tier": "public"
             },
             "authorization": {
+                "evidence": null,
                 "rule": "builtin:AllowAny",
                 "raw": "AllowAny",
                 "layer": "method",
                 "value": "none"
             },
             "authentication": {
+                "evidence": null,
                 "rule": "builtin:AllowAny",
                 "raw": "AllowAny",
                 "layer": "method",
@@ -64,17 +73,20 @@
             "method": "ANY"
         },
         {
+            "acknowledged": false,
             "unknown_reason": null,
             "dimensions": {
                 "access_tier": "staff"
             },
             "authorization": {
+                "evidence": null,
                 "rule": "builtin:django_admin",
                 "raw": "is_staff",
                 "layer": "global",
                 "value": "rule"
             },
             "authentication": {
+                "evidence": null,
                 "rule": "builtin:django_admin",
                 "raw": "is_staff",
                 "layer": "global",
@@ -85,17 +97,20 @@
             "method": "GET"
         },
         {
+            "acknowledged": true,
             "unknown_reason": "IsOwner checks ownership in has_object_permission; not modelled",
             "dimensions": {
                 "access_tier": "customer"
             },
             "authorization": {
+                "evidence": null,
                 "rule": null,
                 "raw": "IsOwner",
                 "layer": "method",
                 "value": "unknown"
             },
             "authentication": {
+                "evidence": "config/middleware.py:12",
                 "rule": "recognition:tenant_middleware",
                 "raw": "TenantMiddleware",
                 "layer": "global",
@@ -106,17 +121,20 @@
             "method": "GET"
         },
         {
+            "acknowledged": false,
             "unknown_reason": null,
             "dimensions": {
                 "access_tier": "customer"
             },
             "authorization": {
+                "evidence": null,
                 "rule": "builtin:IsAuthenticatedOrReadOnly",
                 "raw": "IsAuthenticatedOrReadOnly",
                 "layer": "class",
                 "value": "none"
             },
             "authentication": {
+                "evidence": null,
                 "rule": "builtin:IsAuthenticatedOrReadOnly",
                 "raw": "IsAuthenticatedOrReadOnly",
                 "layer": "class",
@@ -127,17 +145,20 @@
             "method": "GET"
         },
         {
+            "acknowledged": false,
             "unknown_reason": null,
             "dimensions": {
                 "access_tier": "public"
             },
             "authorization": {
+                "evidence": null,
                 "rule": "builtin:no_check",
                 "raw": null,
                 "layer": "framework-default",
                 "value": "none"
             },
             "authentication": {
+                "evidence": null,
                 "rule": "builtin:no_check",
                 "raw": null,
                 "layer": "framework-default",
@@ -148,6 +169,27 @@
             "method": "ANY"
         }
     ],
+    "expected_access": {
+        "access_tier": {
+            "public": {
+                "authentication": [
+                    "anonymous",
+                    "optional"
+                ],
+                "authorization": [
+                    "none"
+                ]
+            },
+            "staff": {
+                "authentication": [
+                    "required"
+                ],
+                "authorization": [
+                    "rule"
+                ]
+            }
+        }
+    },
     "project_dimensions": {
         "access_tier": [
             "public",

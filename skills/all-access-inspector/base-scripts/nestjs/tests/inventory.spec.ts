@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
 
-import { type Endpoint, ValidationError, toCanonicalJson, validate } from '../access_inspector/inventory.js';
+import { type Endpoint, type ExpectedAccess, ValidationError, toCanonicalJson, validate } from '../access_inspector/inventory.js';
 import { SAMPLES, endpoint, load } from './samples.js';
 
 test('canonical bytes', () => {
@@ -25,7 +25,7 @@ test('sort by path, then method, then handler, by code point', () => {
     endpoint('GET', '/～'),
   ];
   const lines = toCanonicalJson({ ...load('canonical.input.json'), endpoints: shuffled }).split('\n');
-  const order = lines.slice(10, 17).map(line => {
+  const order = lines.slice(11, 18).map(line => {
     const e = JSON.parse(line.trim().replace(/,$/, '')) as Endpoint;
     return [e.method, e.path, e.handler];
   });
@@ -64,11 +64,23 @@ describe('validate', () => {
   test.each<[Partial<Endpoint>, string]>([
     [{ method: 'TRACE' }, 'method "TRACE"'],
     [{ path: 'orders/' }, 'path must start with /'],
-    [{ authentication: { value: 'sso', layer: null, raw: null, rule: 'builtin:x' } }, 'outside the Core Classification'],
-    [{ authentication: { value: 'anonymous', layer: 'view' as never, raw: null, rule: 'builtin:x' } }, 'layer "view"'],
-    [{ authentication: { value: 'unknown', layer: null, raw: null, rule: 'builtin:x' } }, 'unknown value has no rule'],
+    [{ authentication: { value: 'sso', layer: null, raw: null, rule: 'builtin:x', evidence: null } }, 'outside the Core Classification'],
+    [{ authentication: { value: 'anonymous', layer: 'view' as never, raw: null, rule: 'builtin:x', evidence: null } }, 'layer "view"'],
+    [{ authentication: { value: 'unknown', layer: null, raw: null, rule: 'builtin:x', evidence: null } }, 'unknown value has no rule'],
     [{ unknown_reason: 'custom' }, 'unknown_reason must'],
+    [{ authentication: { value: 'required', layer: null, raw: null, rule: 'recognition:x', evidence: null } }, 'evidence is set exactly'],
+    [{ authentication: { value: 'anonymous', layer: null, raw: null, rule: 'builtin:no_check', evidence: 'a.ts:1' } }, 'evidence is set exactly'],
+    [{ acknowledged: true }, 'acknowledged endpoint carries'],
   ])('endpoint %j', (change, message) => invalid(change, message));
+
+  test.each<[ExpectedAccess, string]>([
+    [{ team: { sales: { authentication: ['required'], authorization: ['none'] } } }, 'team="sales" is not a declared'],
+    [{ access_tier: { partner: { authentication: ['required'], authorization: ['none'] } } }, 'access_tier="partner" is not a declared'],
+    [{ access_tier: { staff: { authentication: ['required'] } as never } }, 'needs exactly'],
+    [{ access_tier: { staff: { authentication: [], authorization: ['rule'] } } }, 'authentication needs a non-empty list'],
+    [{ access_tier: { staff: { authentication: ['required'], authorization: ['unknown'] } } }, 'authorization needs a non-empty list'],
+  ])('expected access %j', (expected, message) =>
+    expect(() => validate({ ...base, expected_access: expected })).toThrow(message));
 
   test('duplicate', () => {
     const twice = [endpoint('GET', '/orders/'), endpoint('GET', '/orders/')];

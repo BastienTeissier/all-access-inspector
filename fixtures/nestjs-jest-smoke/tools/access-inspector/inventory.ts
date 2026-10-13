@@ -5,6 +5,10 @@ export const METHODS = ['ANY', 'DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POS
 export const AUTHENTICATION = ['anonymous', 'optional', 'required', 'unknown'] as const;
 export const AUTHORIZATION = ['none', 'rule', 'unknown'] as const;
 export const LAYERS = ['global', 'class', 'method', 'framework-default', null] as const;
+export const EXPECTED_AXES = {
+  authentication: ['anonymous', 'optional', 'required'],
+  authorization: ['none', 'rule'],
+} as const;
 
 export type Layer = (typeof LAYERS)[number];
 
@@ -15,6 +19,7 @@ export interface Axis {
   layer: Layer;
   raw: string | null;
   rule: string | null;
+  evidence: string | null; // the Recognition Rule's file:line; null otherwise
 }
 
 export interface Endpoint {
@@ -25,6 +30,7 @@ export interface Endpoint {
   authorization: Axis;
   dimensions: Record<string, string>;
   unknown_reason: string | null;
+  acknowledged: boolean; // the unknown_reason is an Acknowledged Unknown's
 }
 
 export interface Env {
@@ -60,8 +66,12 @@ export interface Inventory {
   base_script: { stack: string; version: string };
   boot_environment: BootEnvironment;
   project_dimensions: Record<string, string[]>;
+  expected_access: ExpectedAccess;
   endpoints: Endpoint[];
 }
+
+/** What each dimension value should allow: { dimension: { value: { authentication, authorization } } }. */
+export type ExpectedAccess = Record<string, Record<string, { authentication: string[]; authorization: string[] }>>;
 
 export const isUnknown = (e: Endpoint): boolean =>
   e.authentication.value === 'unknown' || e.authorization.value === 'unknown';
@@ -92,7 +102,7 @@ export const compareEndpoints = (a: Endpoint, b: Endpoint): number => {
 
 const identity = (e: Endpoint): string => JSON.stringify(sortKey(e));
 
-const axis = (a: Axis): Axis => ({ value: a.value, layer: a.layer, raw: a.raw, rule: a.rule });
+const axis = (a: Axis): Axis => ({ value: a.value, layer: a.layer, raw: a.raw, rule: a.rule, evidence: a.evidence });
 
 const endpoint = (e: Endpoint, dimensions: string[]): Endpoint => ({
   method: e.method,
@@ -106,6 +116,7 @@ const endpoint = (e: Endpoint, dimensions: string[]): Endpoint => ({
     ),
   ),
   unknown_reason: e.unknown_reason,
+  acknowledged: e.acknowledged,
 });
 
 /** Rebuild every object with its keys in schema order, whatever order the source had. */
@@ -126,6 +137,7 @@ export const canonical = (inventory: Inventory): Inventory => {
       pinned: boot.pinned.map(p => ({ setting: p.setting, value: p.value, reason: p.reason })),
     },
     project_dimensions: inventory.project_dimensions,
+    expected_access: inventory.expected_access,
     endpoints: inventory.endpoints.map(e => endpoint(e, dimensions)),
   };
 };
@@ -225,11 +237,33 @@ export const validate = (inventory: Inventory): void => {
       throw new ValidationError(`dimension ${name} needs a non-empty list of distinct non-empty values`);
     }
   }
+  validateExpected(inventory.expected_access, inventory.project_dimensions);
   const seen = new Set<string>();
   for (const e of inventory.endpoints) {
     validateEndpoint(e, inventory.project_dimensions);
     if (seen.has(identity(e))) throw new ValidationError(`duplicate endpoint ${label(e)}`);
     seen.add(identity(e));
+  }
+};
+
+const validateExpected = (expected: ExpectedAccess, projectDimensions: Record<string, string[]>): void => {
+  for (const [dimension, values] of Object.entries(expected)) {
+    for (const [value, access] of Object.entries(values)) {
+      const where = `expected access ${dimension}=${JSON.stringify(value)}`;
+      if (!(projectDimensions[dimension] ?? []).includes(value)) {
+        throw new ValidationError(`${where} is not a declared dimension value`);
+      }
+      const axes = Object.keys(EXPECTED_AXES);
+      if (JSON.stringify(Object.keys(access).sort()) !== JSON.stringify(axes)) {
+        throw new ValidationError(`${where} needs exactly [${axes}]`);
+      }
+      for (const [name, allowed] of Object.entries(EXPECTED_AXES)) {
+        const listed = access[name as keyof typeof EXPECTED_AXES];
+        if (listed.length === 0 || new Set(listed).size !== listed.length || !listed.every(v => (allowed as readonly string[]).includes(v))) {
+          throw new ValidationError(`${where}: ${name} needs a non-empty list of distinct values from ${allowed.join(', ')}`);
+        }
+      }
+    }
   }
 };
 
@@ -250,10 +284,14 @@ const validateEndpoint = (e: Endpoint, projectDimensions: Record<string, string[
     if ((a.value === 'unknown') !== (a.rule === null)) {
       fail(`${name}: an unknown value has no rule and any other value names one`);
     }
+    if ((a.rule?.startsWith('recognition:') ?? false) !== Boolean(a.evidence)) {
+      fail(`${name}: evidence is set exactly when a Recognition Rule decides`);
+    }
   }
   if (e.unknown_reason !== null && (!e.unknown_reason || !isUnknown(e))) {
     fail('unknown_reason must be non-empty and sit next to an unknown value');
   }
+  if (e.acknowledged && e.unknown_reason === null) fail('an acknowledged endpoint carries its unknown_reason');
   const declared = Object.keys(projectDimensions).sort();
   if (JSON.stringify(Object.keys(e.dimensions).sort()) !== JSON.stringify(declared)) {
     fail(`dimensions [${Object.keys(e.dimensions).sort()}] must equal project dimensions [${declared}]`);

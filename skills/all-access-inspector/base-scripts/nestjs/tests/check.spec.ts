@@ -13,7 +13,7 @@ test('three-way diff', () => {
   const committed = load('canonical.json');
   const [gone, kept, ...rest] = committed.endpoints;
   const changed = { ...kept!, authentication: { ...kept!.authentication, value: 'optional' } };
-  const unknown: Axis = { value: 'unknown', layer: null, raw: null, rule: null };
+  const unknown: Axis = { value: 'unknown', layer: null, raw: null, rule: null, evidence: null };
   const added = { ...gone!, path: '/hooks/', authentication: unknown, authorization: unknown, unknown_reason: 'custom hook' };
   const diff = check(committed, { ...committed, endpoints: [changed, added, ...rest] });
   expect(diff).toContain(`- ${label(gone!)}`);

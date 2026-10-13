@@ -138,11 +138,12 @@ def resolve(
     path: str,
     recognition: list[Rule] | None = None,
     acknowledged: list[Ack] | None = None,
-) -> tuple[Axis, Axis, str | None]:
+) -> tuple[Axis, Axis, str | None, bool]:
     """All checks apply: per axis the strictest component wins, and the first one holding that value is reported.
 
     Components are in request order (path rules, then findings as the classifier lists them: global, decorators,
-    view), so on a tie the check a request meets first is the one reported.
+    view), so on a tie the check a request meets first is the one reported. The last item is True when an
+    Acknowledged Unknown gave the reason.
     """
     recognition = RECOGNITION if recognition is None else recognition
     acknowledged = ACKNOWLEDGED if acknowledged is None else acknowledged
@@ -157,7 +158,7 @@ def resolve(
     authn = _strictest([c[0] for c in components], AUTHENTICATION_STRICTNESS)
     authz = _strictest([c[1] for c in components], AUTHORIZATION_STRICTNESS)
     if "unknown" not in (authn.value, authz.value):
-        return authn, authz, None
+        return authn, authz, None, False
     unknown = {
         f.construct
         for f, c in zip(findings, own)
@@ -165,9 +166,9 @@ def resolve(
     }
     for ack in acknowledged:
         if ack.path == path or (ack.construct is not None and ack.construct in unknown):
-            return authn, authz, ack.reason
+            return authn, authz, ack.reason, True
     reasons = [f.reason for f in findings if f.reason and f.construct in unknown]
-    return authn, authz, reasons[0] if reasons else None
+    return authn, authz, reasons[0] if reasons else None, False
 
 
 def methods(
@@ -241,7 +242,9 @@ def _recognised(
 ) -> tuple[Axis, Axis]:
     authn, authz = _for_method(rule, method)
     tag = f"recognition:{rule.name}"
-    return _axis(authn, layer, raw, tag), _axis(authz, layer, raw, tag)
+    return _axis(authn, layer, raw, tag, rule.evidence), _axis(
+        authz, layer, raw, tag, rule.evidence
+    )
 
 
 def _for_method(check: Builtin | Rule, method: str) -> tuple[str, str]:
@@ -253,9 +256,20 @@ def _for_method(check: Builtin | Rule, method: str) -> tuple[str, str]:
     )
 
 
-def _axis(value: str, layer: str | None, raw: str | None, rule: str | None) -> Axis:
+def _axis(
+    value: str,
+    layer: str | None,
+    raw: str | None,
+    rule: str | None,
+    evidence: str | None = None,
+) -> Axis:
+    known = value != "unknown"
     return Axis(
-        value=value, layer=layer, raw=raw, rule=None if value == "unknown" else rule
+        value=value,
+        layer=layer,
+        raw=raw,
+        rule=rule if known else None,
+        evidence=evidence if known else None,
     )
 
 

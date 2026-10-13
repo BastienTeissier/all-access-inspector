@@ -106,7 +106,8 @@ export const isNeutral = (construct: string, neutral: Neutral[] = NEUTRAL): bool
 /**
  * All checks apply: per axis the strictest component wins, and the first one holding that value is reported.
  * Components are in request order (path rules, then findings as the classifier lists them: global, class,
- * method), so on a tie the check a request meets first is the one reported.
+ * method), so on a tie the check a request meets first is the one reported. The last item is true when an
+ * Acknowledged Unknown gave the reason.
  */
 export const resolveAccess = (
   findings: Finding[],
@@ -115,7 +116,7 @@ export const resolveAccess = (
   metadata: Metadata = {},
   recognition: Rule[] = RECOGNITION,
   acknowledged: Ack[] = ACKNOWLEDGED,
-): [Axis, Axis, string | null] => {
+): [Axis, Axis, string | null, boolean] => {
   const own = findings.map(f => component(f, method, metadata, recognition));
   const components = [
     ...recognition
@@ -126,14 +127,14 @@ export const resolveAccess = (
   if (components.length === 0) throw new RuleError(`${method} ${path}: no finding to classify`);
   const authn = strictest(components.map(c => c[0]), AUTHENTICATION_STRICTNESS);
   const authz = strictest(components.map(c => c[1]), AUTHORIZATION_STRICTNESS);
-  if (authn.value !== 'unknown' && authz.value !== 'unknown') return [authn, authz, null];
+  if (authn.value !== 'unknown' && authz.value !== 'unknown') return [authn, authz, null, false];
   const unknown = new Set(
     findings.filter((_, i) => own[i]![0].value === 'unknown' || own[i]![1].value === 'unknown').map(f => f.construct),
   );
   const ack = acknowledged.find(a => a.path === path || (a.construct !== undefined && unknown.has(a.construct)));
-  if (ack !== undefined) return [authn, authz, ack.reason];
+  if (ack !== undefined) return [authn, authz, ack.reason, true];
   const reason = findings.find(f => f.reason && unknown.has(f.construct))?.reason;
-  return [authn, authz, reason ?? null];
+  return [authn, authz, reason ?? null, false];
 };
 
 /** An ANY endpoint whose checks differ for safe methods is split into one row per method. */
@@ -211,7 +212,7 @@ const recognised = (rule: Rule, method: string, layer: Layer, raw: string | null
   const value = rule.rawMetadata === undefined ? undefined : metadata[rule.rawMetadata];
   const shown = value === undefined ? raw : `${raw ?? rule.name} ${rule.rawMetadata}=${JSON.stringify(value)}`;
   const tag = `recognition:${rule.name}`;
-  return [axis(authn, layer, shown, tag), axis(authz, layer, shown, tag)];
+  return [axis(authn, layer, shown, tag, rule.evidence), axis(authz, layer, shown, tag, rule.evidence)];
 };
 
 /** GET/HEAD/OPTIONS take the safe value when the check sets one. */
@@ -220,11 +221,12 @@ const forMethod = (check: Builtin | Rule, method: string): [string, string] => {
   return [(safe && check.safeAuthn) || check.authn, (safe && check.safeAuthz) || check.authz];
 };
 
-const axis = (value: string, layer: Layer, raw: string | null, rule: string | null): Axis => ({
+const axis = (value: string, layer: Layer, raw: string | null, rule: string | null, evidence: string | null = null): Axis => ({
   value,
   layer,
   raw,
   rule: value === 'unknown' ? null : rule,
+  evidence: value === 'unknown' ? null : evidence,
 });
 
 const strictest = (axes: Axis[], order: string[]): Axis => {

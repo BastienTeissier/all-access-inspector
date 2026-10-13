@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { BootError, type Booted, HERE, ROOT, boot } from './boot.js';
 import { classify, passportGuards } from './classify.js';
 import { discover } from './discovery.js';
-import { DIMENSIONS, MissingDimension, assign } from './dimensions.js';
+import { DIMENSIONS, EXPECTED, MissingDimension, assign } from './dimensions.js';
 import {
   type Endpoint,
   type Inventory,
@@ -37,7 +37,7 @@ const build = async ({ app, environment, watched }: Booted): Promise<Inventory> 
   for (const raw of discover(app, watched)) {
     const { findings, metadata } = classify(raw, app, passport);
     for (const method of methods(findings, raw.method, raw.path, metadata)) {
-      const [authentication, authorization, reason] = resolveAccess(findings, method, raw.path, metadata);
+      const [authentication, authorization, reason, acknowledged] = resolveAccess(findings, method, raw.path, metadata);
       const endpoint: Endpoint = {
         method,
         path: raw.path,
@@ -46,6 +46,7 @@ const build = async ({ app, environment, watched }: Booted): Promise<Inventory> 
         authorization,
         dimensions: {},
         unknown_reason: reason,
+        acknowledged,
       };
       endpoints.push({ ...endpoint, dimensions: assign(endpoint) });
     }
@@ -60,6 +61,7 @@ const build = async ({ app, environment, watched }: Booted): Promise<Inventory> 
     base_script: { stack: 'nestjs', version: readFileSync(join(ROOT, HERE, 'VERSION'), 'utf8').trim() },
     boot_environment: environment,
     project_dimensions: DIMENSIONS,
+    expected_access: EXPECTED,
     endpoints: endpoints.sort(compareEndpoints),
   };
 };

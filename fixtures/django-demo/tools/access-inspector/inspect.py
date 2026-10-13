@@ -42,8 +42,10 @@ def build(environment: inventory.BootEnvironment) -> inventory.Inventory:
             unreadable = f"{len(variants)} URL patterns resolve to this path with different access checks"
             findings = [rules.Finding(handler, None, None, unreadable)]
         for m in rules.methods(findings, method, path):
-            authn, authz, reason = rules.resolve(findings, m, path)
-            endpoint = inventory.Endpoint(m, path, handler, authn, authz, {}, reason)
+            authn, authz, reason, acked = rules.resolve(findings, m, path)
+            endpoint = inventory.Endpoint(
+                m, path, handler, authn, authz, {}, reason, acked
+            )
             endpoints.append(
                 dataclasses.replace(endpoint, dimensions=dimensions.assign(endpoint))
             )
@@ -58,6 +60,7 @@ def build(environment: inventory.BootEnvironment) -> inventory.Inventory:
         ),
         boot_environment=environment,
         project_dimensions=dimensions.DIMENSIONS,
+        expected_access=dimensions.EXPECTED,
         endpoints=sorted(endpoints, key=inventory.sort_key),
     )
 

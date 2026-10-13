@@ -70,19 +70,19 @@ def test_rules_precedence(flags: tuple[bool, bool, bool, bool], layer: str) -> N
     [("GET", "optional"), ("HEAD", "optional"), ("POST", "required")],
 )
 def test_rules_read_only_is_per_method(method: str, value: str) -> None:
-    authn, authz, _ = resolve([READ_ONLY], method, "/catalog/", [], [])
+    authn, authz, *_ = resolve([READ_ONLY], method, "/catalog/", [], [])
     assert (authn.value, authz.value) == (value, "none")
     assert authn.rule == "builtin:IsAuthenticatedOrReadOnly"
 
 
 def test_rules_custom_permission_is_unknown() -> None:
-    authn, authz, reason = resolve([IS_OWNER], "GET", "/orders/", [], [])
+    authn, authz, reason, _ = resolve([IS_OWNER], "GET", "/orders/", [], [])
     assert authn == authz == Axis("unknown", "class", "IsOwner", None)
     assert reason is None
 
 
 def test_rules_checks_combine_strictest_wins() -> None:
-    authn, authz, _ = resolve([IS_AUTHENTICATED, IS_OWNER], "GET", "/orders/", [], [])
+    authn, authz, *_ = resolve([IS_AUTHENTICATED, IS_OWNER], "GET", "/orders/", [], [])
     assert authn == Axis(
         "required", "class", "IsAuthenticated", "builtin:IsAuthenticated"
     )
@@ -90,9 +90,10 @@ def test_rules_checks_combine_strictest_wins() -> None:
 
 
 def test_rules_tie_reports_the_check_met_first() -> None:
-    authn, authz, _ = resolve([NO_CHECK], "GET", "/api/orders/", [TENANT], [])
-    assert authn == Axis("required", "global", "Tenant", "recognition:tenant")
-    assert authz == Axis("none", "global", "Tenant", "recognition:tenant")
+    authn, authz, *_ = resolve([NO_CHECK], "GET", "/api/orders/", [TENANT], [])
+    tenant = ("global", "Tenant", "recognition:tenant", "config/middleware.py:2")
+    assert authn == Axis("required", *tenant)
+    assert authz == Axis("none", *tenant)
 
 
 def test_rules_recognition_rule_resolves_a_construct() -> None:
@@ -103,9 +104,10 @@ def test_rules_recognition_rule_resolves_a_construct() -> None:
         "rule",
         construct="shop.permissions.IsOwner",
     )
-    authn, authz, reason = resolve([IS_OWNER], "GET", "/orders/", [owner], [])
-    assert authn == Axis("required", "class", "IsOwner", "recognition:owner")
-    assert authz == Axis("rule", "class", "IsOwner", "recognition:owner")
+    authn, authz, reason, _ = resolve([IS_OWNER], "GET", "/orders/", [owner], [])
+    recognised = ("class", "IsOwner", "recognition:owner", "shop/permissions.py:4")
+    assert authn == Axis("required", *recognised)
+    assert authz == Axis("rule", *recognised)
     assert reason is None
 
 
@@ -137,7 +139,7 @@ def test_rules_recognition_rule_is_per_method(
         safe_authz="none",
         **where,
     )
-    authn, authz, _ = resolve([finding], method, "/orders/1/", [edit], [])
+    authn, authz, *_ = resolve([finding], method, "/orders/1/", [edit], [])
     assert (authn.value, authz.value) == expected
     assert authz.rule == "recognition:edit"
 
@@ -185,7 +187,10 @@ def test_rules_any_endpoint_splits_when_a_rule_differs_per_method() -> None:
     ids=["by-construct", "by-path"],
 )
 def test_rules_acknowledged_unknown(ack: Ack) -> None:
-    assert resolve([IS_OWNER], "GET", "/orders/", [], [ack])[2] == "ownership is data"
+    assert resolve([IS_OWNER], "GET", "/orders/", [], [ack])[2:] == (
+        "ownership is data",
+        True,
+    )
 
 
 def test_rules_script_reason_on_unreadable_callable() -> None:
@@ -195,8 +200,9 @@ def test_rules_script_reason_on_unreadable_callable() -> None:
         "shop.views.Hook",
         reason="shop.views.Hook is not a Django view",
     )
-    authn, _, reason = resolve([hook], "ANY", "/hooks/", [], [])
+    authn, _, reason, acknowledged = resolve([hook], "ANY", "/hooks/", [], [])
     assert (authn.value, reason) == ("unknown", "shop.views.Hook is not a Django view")
+    assert acknowledged is False
 
 
 def test_rules_login_required_middleware() -> None:
@@ -204,7 +210,7 @@ def test_rules_login_required_middleware() -> None:
     assert global_findings(middleware, login_required=False) == []
     assert global_findings([], login_required=True) == []
     (finding,) = global_findings(middleware, login_required=True)
-    authn, authz, _ = resolve([finding, NO_CHECK], "GET", "/", [], [])
+    authn, authz, *_ = resolve([finding, NO_CHECK], "GET", "/", [], [])
     assert authn == Axis(
         "required",
         "global",

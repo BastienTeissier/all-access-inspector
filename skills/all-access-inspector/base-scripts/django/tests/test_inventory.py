@@ -58,7 +58,7 @@ def test_inventory_sort() -> None:
     lines = to_canonical_json(inventory).splitlines()
     order = [
         (e["method"], e["path"], e["handler"])
-        for e in map(json.loads, (line.strip(" ,") for line in lines[10:15]))
+        for e in map(json.loads, (line.strip(" ,") for line in lines[11:16]))
     ]
     assert order == [
         ("ANY", "/a", "shop/views.py:1"),
@@ -150,6 +150,25 @@ def test_inventory_validate_static_is_best_effort() -> None:
             "unknown_reason must",
             id="reason-without-unknown",
         ),
+        pytest.param(
+            {"authentication": Axis("required", None, None, "recognition:x")},
+            "evidence is set exactly",
+            id="recognition-without-evidence",
+        ),
+        pytest.param(
+            {
+                "authentication": Axis(
+                    "anonymous", None, None, "builtin:no_check", "shop/views.py:1"
+                )
+            },
+            "evidence is set exactly",
+            id="builtin-with-evidence",
+        ),
+        pytest.param(
+            {"acknowledged": True},
+            "acknowledged endpoint carries",
+            id="acknowledged-without-reason",
+        ),
     ],
 )
 def test_inventory_validate_endpoint(change: dict[str, object], message: str) -> None:
@@ -162,3 +181,62 @@ def test_inventory_validate_duplicate() -> None:
     twice = [endpoint("GET", "/orders/"), endpoint("GET", "/orders/")]
     with pytest.raises(ValidationError, match="duplicate endpoint GET /orders/"):
         validate(replace(load("canonical.input.json"), endpoints=twice))
+
+
+@pytest.mark.parametrize(
+    ("expected", "message"),
+    [
+        pytest.param(
+            {
+                "team": {
+                    "sales": {"authentication": ["required"], "authorization": ["none"]}
+                }
+            },
+            "team='sales' is not a declared",
+            id="dimension",
+        ),
+        pytest.param(
+            {
+                "access_tier": {
+                    "partner": {
+                        "authentication": ["required"],
+                        "authorization": ["none"],
+                    }
+                }
+            },
+            "access_tier='partner' is not a declared",
+            id="value",
+        ),
+        pytest.param(
+            {"access_tier": {"staff": {"authentication": ["required"]}}},
+            "needs exactly",
+            id="missing-axis",
+        ),
+        pytest.param(
+            {
+                "access_tier": {
+                    "staff": {"authentication": [], "authorization": ["rule"]}
+                }
+            },
+            "authentication needs a non-empty list",
+            id="empty",
+        ),
+        pytest.param(
+            {
+                "access_tier": {
+                    "staff": {
+                        "authentication": ["required"],
+                        "authorization": ["unknown"],
+                    }
+                }
+            },
+            "authorization needs a non-empty list",
+            id="unknown",
+        ),
+    ],
+)
+def test_inventory_validate_expected_access(
+    expected: dict[str, object], message: str
+) -> None:
+    with pytest.raises(ValidationError, match=message):
+        validate(replace(load("canonical.input.json"), expected_access=expected))  # type: ignore[arg-type]
