@@ -162,11 +162,11 @@ const ruleKind = r => !r ? '' : r.startsWith('recognition:') ? 'Recognition Rule
 const evidence = a => a.evidence ? ` <code>${esc(a.evidence)}</code>` : '';
 const check = a => a.raw ? `<code>${esc(a.raw)}</code>` : a.layer === 'framework-default' ? 'no check' : 'the framework';
 
-/** Endpoints with the same path, handler and classification are one row, e.g. HEAD beside GET. */
+/** A HEAD row identical to its GET row (same handler and classification) is shown as one row; nothing else is merged. */
 function fold(endpoints) {
   const out = [], bySig = new Map();
   for (const e of endpoints) {
-    const sig = JSON.stringify([e.path, e.handler, e.authentication, e.authorization, e.dimensions, e.unknown_reason, e.acknowledged]);
+    const sig = JSON.stringify([e.method === 'HEAD' ? 'GET' : e.method, e.path, e.handler, e.authentication, e.authorization, e.dimensions, e.unknown_reason, e.acknowledged]);
     const prev = bySig.get(sig);
     if (prev) { prev.methods.push(e.method); continue; }
     const row = {...e, id: String(out.length), methods: [e.method], level: level(e)};
