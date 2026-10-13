@@ -32,7 +32,7 @@ AAU (developer, with the project's Node toolchain installed), running the NestJS
 
 - AAU, if a route is protected only by a middleware (`MiddlewareConsumer.forRoutes`), I see it `anonymous` until a `path_prefix` Recognition Rule covers it.
 - AAU, if a guard reads the request body or calls a service to decide, I see `unknown` until a Recognition Rule or an Acknowledged Unknown settles it.
-- AAU, if the application uses the Fastify adapter, I see every Nest route; routes registered on Fastify directly are not listed, and the reference says so.
+- AAU, if the application uses the Fastify adapter, I see every Nest route; routes registered on Fastify directly are not listed, the inventory reads `coverage: best-effort` with a note, and the reference says so.
 
 ## Acceptance Criteria
 
