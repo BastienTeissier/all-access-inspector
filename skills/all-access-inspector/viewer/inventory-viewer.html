@@ -150,8 +150,10 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const isUnknown = e => e.authentication.value === 'unknown' || e.authorization.value === 'unknown';
 const level = e => {
   if (isUnknown(e)) return e.acknowledged ? 'ack' : 'unknown';
-  if (e.authorization.value === 'rule') return 'role';
-  return {anonymous:'open', optional:'optional'}[e.authentication.value] || 'signin';
+  // Who may call it decides first: a rule on an endpoint anyone can call does not make it sign-in only.
+  if (e.authentication.value === 'anonymous') return 'open';
+  if (e.authentication.value === 'optional') return 'optional';
+  return e.authorization.value === 'rule' ? 'role' : 'signin';
 };
 const chip = l => `<span class="chip ${LEVELS[l].cls}">${LEVELS[l].g} ${LEVELS[l].label}</span>`;
 const methods = e => e.methods.map(m => `<span class="m">${esc(m)}</span>`).join(' ');
