@@ -96,6 +96,9 @@ test('nestjs golden classifications', () => {
   expect(find('ANY', '/api/webhooks/payments').unknown_reason).toContain('SignatureGuard');
   // the Express router outside Nest
   expect(find('GET', '/legacy/status').unknown_reason).toBe('mounted on Express outside Nest; its access checks are not readable');
+  // a router mounted on several paths, and one mounted without a path
+  expect(find('GET', '/old/status').handler).toBe('legacyStatus');
+  expect(find('GET', '/robots.txt').handler).toBe('robotsTxt');
   // HEAD beside each GET, ThrottlerGuard never shown
   const endpoints = expected();
   const gets = endpoints.filter(e => e.method === 'GET').map(e => e.path);
@@ -111,6 +114,10 @@ test('nestjs unknowns output', () => {
     'ANY /api/webhooks/payments',
     'GET /legacy/status',
     'HEAD /legacy/status',
+    'GET /old/status',
+    'HEAD /old/status',
+    'GET /robots.txt',
+    'HEAD /robots.txt',
   ]);
   expect(unknowns.every(e => e.unknown_reason)).toBe(true);
   expect(existsSync(output())).toBe(false);

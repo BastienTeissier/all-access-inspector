@@ -16,7 +16,7 @@ export interface RawEndpoint {
 
 /** What the boot saw on Express: router mount paths, and the layers Nest adds that serve no endpoint. */
 export interface Watched {
-  mounts: Map<unknown, string>;
+  mounts: Map<unknown, string[]>; // a router's mount paths; '' when mounted without one
   internal: Set<unknown>; // middleware routes and the not-found handler
 }
 
@@ -64,7 +64,11 @@ export const watch = (app: INestApplication): Watched => {
   const instance = adapter.getInstance();
   const use = instance.use;
   instance.use = function (this: unknown, ...args: unknown[]) {
-    if (typeof args[0] === 'string') for (const handler of args.slice(1)) watched.mounts.set(handler, args[0]);
+    const [first, ...rest] = args;
+    const paths = typeof first === 'string' ? [first] : Array.isArray(first) ? first.map(String) : [''];
+    for (const handler of typeof first === 'function' ? args : rest) {
+      watched.mounts.set(handler, [...new Set([...(watched.mounts.get(handler) ?? []), ...paths])]);
+    }
     return use.apply(this, args);
   };
   const internal = <A extends unknown[]>(register: (...args: A) => unknown) => (...args: A) => {
@@ -115,8 +119,8 @@ const express = (layers: Layer[], prefix: string, nest: RawEndpoint[], watched: 
     }
     const router = layer.handle;
     if (!Array.isArray(router?.stack)) return []; // middleware: not an endpoint
-    const mount = watched.mounts.get(router);
-    return express(router.stack, join(prefix, mount ?? '{mount}'), nest, watched);
+    const mounts = watched.mounts.get(router) ?? ['{mount}'];
+    return mounts.flatMap(mount => express(router.stack!, join(prefix, mount), nest, watched));
   });
 
 const key = (e: RawEndpoint): string => `${e.method} ${e.path} ${e.handler}`;
