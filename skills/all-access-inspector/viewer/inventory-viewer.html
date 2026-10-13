@@ -204,7 +204,7 @@ function zoneCheck(e, d) {
   return off.length ? {status: 'outside', note: off.join('; ')} : {status: 'ok', note: ''};
 }
 const flagged = (e, d) => zoneCheck(e, d).status === 'outside';
-const describe = x => x ? `expects authentication ${x.authentication.join(' or ')}, authorization ${x.authorization.join(' or ')}` : 'no expected access declared';
+const describe = x => x ? `expects authentication ${esc(x.authentication.join(' or '))}, authorization ${esc(x.authorization.join(' or '))}` : 'no expected access declared';
 
 /* ---- views ---- */
 const pick = e => `data-s="${e.id}" role="button" tabindex="0" aria-label="Details for ${esc(e.methods.join(' '))} ${esc(e.path)}"`;
