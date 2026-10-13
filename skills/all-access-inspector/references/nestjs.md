@@ -2,7 +2,9 @@
 
 Tested with NestJS 12 (ESM, vitest) and NestJS 11 (CommonJS, jest), on the Express 5 adapter. Express 4 (NestJS 10 and earlier) is read too, but no fixture covers it.
 
-## How the script runs
+## Vendor and run
+
+Copy every file of `<skill>/base-scripts/nestjs/access_inspector/` into `tools/access-inspector/`, with `cp -L` for `VERSION`. Never copy the toolkit's `package.json`, lockfile, `tests/` or `tsconfig.json`. The project's dependencies must be installed.
 
 `inspect.sh` runs `run.spec.ts` as a single test through the project's own runner, vitest or jest, whichever `package.json` declares. The runner gives the script the project's TypeScript transform, decorator metadata and path aliases. The project's test files, setup files, coverage and test `env` are not loaded. The package manager is read from the nearest lockfile, up to a monorepo root.
 
@@ -27,7 +29,7 @@ Guards are named by their class name. Metadata (`@SetMetadata`, `Reflector.creat
 
 1. `ENTRY` is the root module `main.ts` passes to `NestFactory.create`, as a specifier relative to `tools/access-inspector/boot.ts`, with the `.js` extension `main.ts` imports it with (`../../src/app.module.js`).
 2. `CONFIGURE` is the function `main.ts` calls on the app before `listen` (`setGlobalPrefix`, `enableVersioning`, `useGlobalGuards`, `app.use`). When `main.ts` does this inline, ask the team to extract it into an exported function first, or leave `CONFIGURE` null and say in the summary which setup the inventory misses. Never copy the setup into `boot.ts`.
-3. Setup guarded by `NODE_ENV` (Swagger in non-production, a dev-only module) follows `ENVIRON`: `NODE_ENV=production` is required.
+3. Setup guarded by `NODE_ENV` (Swagger in non-production, a dev-only module) follows `ENVIRON`: `NODE_ENV=production` is required, and `boot.ts` refuses any other value.
 
 ## Environment
 
