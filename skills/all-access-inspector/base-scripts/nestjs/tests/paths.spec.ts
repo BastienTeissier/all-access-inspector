@@ -11,6 +11,10 @@ test.each([
   ['//api//health', '/api/health'],
   ['/users/', '/users/'],
   ['/', '/'],
+  ['files/{*path}', '/files/{path}'],
+  ['users{/:id}', '/users/{id}'],
+  ['/a{/:b{/:c}}', '/a/{b}/{c}'],
+  ['/users/{id}', '/users/{id}'],
 ])('normalize %s', (path, expected) => expect(normalize(path)).toBe(expected));
 
 test.each([

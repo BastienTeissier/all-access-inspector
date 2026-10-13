@@ -81,6 +81,7 @@ Field names are camelCase in TypeScript: `pathPrefix`, `safeAuthn`, `safeAuthz`,
 - Middleware is not read. An endpoint behind an authenticating middleware reads its guards only. Always review `configure(consumer)` and `app.use` calls.
 - Checks inside handlers or services (`if (user.role !== 'admin') throw new ForbiddenException()`) are invisible. Grep handlers flagged `anonymous` or `none` for `ForbiddenException`, `UnauthorizedException`, `request.user`.
 - A guard reading metadata with `reflector.get` (handler only) or `getAllAndMerge` sees a different value than the script on an endpoint where both the controller and the handler set the key. Check such guards by hand.
+- An Express 5 optional segment or wildcard (`users{/:id}`, `files{*path}`) is listed once, as if present (`/users/{id}`); the route without it shares its guards.
 - Routes registered on Express outside Nest appear as unknown endpoints naming the handler function; a router mounted where the script did not see the mount path shows `{mount}`.
 - With the Fastify adapter, routes registered on Fastify outside Nest are not listed: `coverage` is `best-effort`.
 - Interceptors and pipes are not read; an interceptor that rejects requests is a blind spot like a middleware.
