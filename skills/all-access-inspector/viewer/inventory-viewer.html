@@ -327,14 +327,28 @@ function problem(data) {
   for (const k of ['stack', 'coverage', 'base_script', 'boot_environment', 'project_dimensions', 'expected_access', 'endpoints']) {
     if (!(k in data)) return `missing "${k}": regenerate the inventory with Base Script 0.3.0 or later`;
   }
+  const obj = x => !!x && typeof x === 'object' && !Array.isArray(x);
+  for (const k of ['base_script', 'boot_environment', 'project_dimensions', 'expected_access']) {
+    if (!obj(data[k])) return `"${k}" is not an object`;
+  }
+  if (!Array.isArray(data.boot_environment.environ) || !Array.isArray(data.boot_environment.stubs)) return '"boot_environment" misses its "environ" or "stubs" list';
+  for (const [d, values] of Object.entries(data.project_dimensions)) {
+    if (!Array.isArray(values)) return `dimension "${d}" is not a list of values`;
+  }
+  for (const [d, byValue] of Object.entries(data.expected_access)) {
+    for (const [v, x] of Object.entries(obj(byValue) ? byValue : {'': null})) {
+      if (!obj(x) || !Array.isArray(x.authentication) || !Array.isArray(x.authorization)) return `expected access of "${d}" ${v}: needs "authentication" and "authorization" lists`;
+    }
+  }
   if (!Array.isArray(data.endpoints)) return '"endpoints" is not a list';
   for (const e of data.endpoints) {
     const where = `${e?.method} ${e?.path}`;
     for (const k of ['method', 'path', 'handler', 'authentication', 'authorization', 'dimensions', 'acknowledged']) {
-      if (!e || !(k in e)) return `${where}: missing "${k}": regenerate the inventory with Base Script 0.3.0 or later`;
+      if (!obj(e) || !(k in e)) return `${where}: missing "${k}": regenerate the inventory with Base Script 0.3.0 or later`;
     }
+    if (!obj(e.dimensions)) return `${where}: "dimensions" is not an object`;
     for (const ax of [e.authentication, e.authorization]) {
-      if (!ax || !('value' in ax) || !('evidence' in ax)) return `${where}: an axis misses "value" or "evidence"`;
+      if (!obj(ax) || !('value' in ax) || !('evidence' in ax)) return `${where}: an axis misses "value" or "evidence"`;
     }
   }
   return '';
@@ -346,9 +360,17 @@ async function load(file) {
   try { data = JSON.parse(await file.text()); } catch (err) { error = `${file.name} is not valid JSON: ${err.message}`; render(); return; }
   const p = problem(data);
   if (p) { error = `${file.name} is not an Endpoint Inventory this viewer reads: ${p}`; render(); return; }
-  INV = data; FILE = file.name === 'inventory.json' ? `${data.stack} inventory` : file.name;
-  EPS = fold(data.endpoints); sel = null; dim = null; error = '';
-  render();
+  const before = [INV, FILE, EPS, sel, dim];
+  try {
+    INV = data; FILE = file.name === 'inventory.json' ? `${data.stack} inventory` : file.name;
+    EPS = fold(data.endpoints); sel = null; dim = null; error = '';
+    render();
+  } catch (err) {
+    // A shape problem() did not catch: keep showing what was open before.
+    [INV, FILE, EPS, sel, dim] = before;
+    error = `${file.name} could not be shown: ${err.message}`;
+    render();
+  }
 }
 
 /* ---- events ---- */
