@@ -125,6 +125,7 @@ Edge cases identified:
 | UF8 | Inventory a Symfony project | [uf8-inventory-symfony-project.md](./uf8-inventory-symfony-project.md) |
 | UF9 | Fit an unsupported stack | [uf9-fit-unsupported-stack.md](./uf9-fit-unsupported-stack.md) |
 | UF10 | Inventory a NestJS project | [uf10-inventory-nestjs-project.md](./uf10-inventory-nestjs-project.md) |
+| UF11 | View the inventory | [uf11-view-inventory.md](./uf11-view-inventory.md) |
 
 *(Each UF is documented in its own file. Notion integration was not requested.)*
 
