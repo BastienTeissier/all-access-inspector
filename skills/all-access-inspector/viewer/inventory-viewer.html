@@ -256,6 +256,7 @@ function detail(e) {
   const step = lyr => {
     const parts = [];
     if (a.layer === lyr) parts.push(line('Who', a));
+    // One check that lets a signed-in user in and checks nothing more decides both axes: show it once, as Who.
     if (z.layer === lyr && !(a.layer === lyr && z.raw === a.raw && z.rule === a.rule && z.value === 'none')) parts.push(line('What', z));
     if (!parts.length) return lyr === 'framework-default' ? '' : `<div class="step off"><div class="lyr">${lyr}</div><div class="what">nothing decides here</div></div>`;
     return `<div class="step"><div class="lyr">${lyr}</div><div class="what">${parts.join('')}</div></div>`;
