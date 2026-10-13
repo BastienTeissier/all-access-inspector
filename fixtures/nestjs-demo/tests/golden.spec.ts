@@ -16,6 +16,7 @@ interface Axis {
   layer: string | null;
   raw: string | null;
   rule: string | null;
+  evidence: string | null;
 }
 interface Endpoint {
   method: string;
@@ -24,6 +25,7 @@ interface Endpoint {
   authentication: Axis;
   authorization: Axis;
   unknown_reason: string | null;
+  acknowledged: boolean;
 }
 
 let project: string;
@@ -70,6 +72,7 @@ test('nestjs golden classifications', () => {
     layer: 'global',
     raw: 'SessionGuard',
     rule: 'recognition:session_public',
+    evidence: 'src/auth/session.guard.ts:8',
   });
   expect(find('GET', '/api/admin/users/stats').authentication.rule).toBe('recognition:session');
   // @Roles on the handler, RolesGuard on the controller; no @Roles reads none
@@ -78,6 +81,7 @@ test('nestjs golden classifications', () => {
     layer: 'class',
     raw: 'RolesGuard roles=["admin"]',
     rule: 'recognition:roles',
+    evidence: 'src/auth/roles.guard.ts:8',
   });
   expect(find('GET', '/api/admin/users/stats').authorization.value).toBe('none');
   // passport, under a versioned path
@@ -86,6 +90,7 @@ test('nestjs golden classifications', () => {
     layer: 'class',
     raw: "AuthGuard('jwt')",
     rule: 'builtin:AuthGuard',
+    evidence: null,
   });
   // the global prefix is excluded on /health; RouterModule mounts the admin module
   expect(find('GET', '/health')).toBeDefined();
@@ -94,8 +99,10 @@ test('nestjs golden classifications', () => {
   expect(find('GET', '/api/partner/orders').authentication.rule).toBe('recognition:partner_key');
   // @All() and the body-reading guard
   expect(find('ANY', '/api/webhooks/payments').unknown_reason).toContain('SignatureGuard');
+  expect(find('ANY', '/api/webhooks/payments').acknowledged).toBe(true);
   // the Express router outside Nest
   expect(find('GET', '/legacy/status').unknown_reason).toBe('mounted on Express outside Nest; its access checks are not readable');
+  expect(find('GET', '/legacy/status').acknowledged).toBe(false);
   // a router mounted on several paths, and one mounted without a path
   expect(find('GET', '/old/status').handler).toBe('legacyStatus');
   expect(find('GET', '/robots.txt').handler).toBe('robotsTxt');

@@ -22,6 +22,17 @@ class MissingDimension(Exception):
 # --- project ---
 DIMENSIONS: dict[str, list[str]] = {"access_tier": ["public", "customer", "staff"]}
 
+EXPECTED: dict[str, dict[str, dict[str, list[str]]]] = {
+    "access_tier": {
+        "public": {
+            "authentication": ["anonymous", "optional"],
+            "authorization": ["none"],
+        },
+        "customer": {"authentication": ["required"], "authorization": ["none", "rule"]},
+        "staff": {"authentication": ["required"], "authorization": ["rule"]},
+    }
+}
+
 PUBLIC = ("/catalog/", "/pages/", "/en/", "/fr/", "/health/", "/graphql/", "/hooks/")
 
 RULES: list[Assign] = [

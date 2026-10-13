@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 
-import { type Axis, check, fromJson } from '../access_inspector/inventory.js';
+import { type Axis, check, compact, fromJson } from '../access_inspector/inventory.js';
 import { endpoint, load } from './samples.js';
 
 const label = (e: { method: string; path: string; handler: string }) => `${e.method} ${e.path} (${e.handler})`;
@@ -13,7 +13,7 @@ test('three-way diff', () => {
   const committed = load('canonical.json');
   const [gone, kept, ...rest] = committed.endpoints;
   const changed = { ...kept!, authentication: { ...kept!.authentication, value: 'optional' } };
-  const unknown: Axis = { value: 'unknown', layer: null, raw: null, rule: null };
+  const unknown: Axis = { value: 'unknown', layer: null, raw: null, rule: null, evidence: null };
   const added = { ...gone!, path: '/hooks/', authentication: unknown, authorization: unknown, unknown_reason: 'custom hook' };
   const diff = check(committed, { ...committed, endpoints: [changed, added, ...rest] });
   expect(diff).toContain(`- ${label(gone!)}`);
@@ -26,6 +26,28 @@ test('header change', () => {
   const committed = load('canonical.json');
   expect(check(committed, { ...committed, project_dimensions: { access_tier: ['public'] } })).toEqual([
     '~ project_dimensions: {"access_tier": ["public", "customer", "staff"]} -> {"access_tier": ["public"]}',
+  ]);
+});
+
+test('ignores expected access key order', () => {
+  const current = load('canonical.json');
+  const reversed = <T>(o: Record<string, T>) => Object.fromEntries(Object.entries(o).reverse());
+  const reordered = Object.fromEntries(
+    Object.entries(current.expected_access).map(([d, byValue]) => [d, reversed(Object.fromEntries(Object.entries(byValue).map(([v, x]) => [v, reversed(x)])))]),
+  );
+  expect(check({ ...current, expected_access: reordered as typeof current.expected_access }, current)).toEqual([]);
+});
+
+test('new fields', () => {
+  const committed = load('canonical.json');
+  const first = committed.endpoints[0]!;
+  const changed = { ...first, authentication: { ...first.authentication, evidence: 'a.ts:1' }, acknowledged: !first.acknowledged };
+  const expected = { access_tier: { public: committed.expected_access.access_tier!.public! } };
+  const diff = check({ ...committed, endpoints: [first] }, { ...committed, expected_access: expected, endpoints: [changed] });
+  expect(diff).toEqual([
+    `~ expected_access: ${compact(committed.expected_access)} -> ${compact(expected)}`,
+    `~ ${label(first)} authentication.evidence: ${first.authentication.evidence ?? 'null'} -> a.ts:1`,
+    `~ ${label(first)} acknowledged: ${first.acknowledged} -> ${changed.acknowledged}`,
   ]);
 });
 

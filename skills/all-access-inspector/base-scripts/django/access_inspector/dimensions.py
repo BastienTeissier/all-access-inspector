@@ -23,6 +23,10 @@ class MissingDimension(Exception):
 # Declared values, in order, e.g. {"access_tier": ["public", "customer", "staff"]}.
 DIMENSIONS: dict[str, list[str]] = {}
 
+# What each value should allow, as the team confirmed it; a value left out is not checked, e.g.
+# {"access_tier": {"staff": {"authentication": ["required"], "authorization": ["rule"]}}}.
+EXPECTED: dict[str, dict[str, dict[str, list[str]]]] = {}
+
 # Most specific first; the first matching rule of a dimension wins, e.g.:
 # Assign("access_tier", "staff", lambda e: e.path.startswith("/admin/")),
 RULES: list[Assign] = []

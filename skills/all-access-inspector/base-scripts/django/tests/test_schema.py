@@ -159,6 +159,39 @@ def test_schema_samples_valid(path: Path) -> None:
             ["project_dimensions", "access_tier"],
             id="dimension-with-duplicate-values",
         ),
+        pytest.param(
+            set_at(["endpoints", 5, "authentication", "evidence"], None),
+            "type",
+            ["endpoints", 5, "authentication", "evidence"],
+            id="recognition-rule-without-evidence",
+        ),
+        pytest.param(
+            set_at(["endpoints", 0, "authentication", "evidence"], "admin.py:1"),
+            "type",
+            ["endpoints", 0, "authentication", "evidence"],
+            id="builtin-rule-with-evidence",
+        ),
+        pytest.param(
+            set_at(["endpoints", 0, "acknowledged"], True),
+            "type",
+            ["endpoints", 0, "unknown_reason"],
+            id="acknowledged-without-reason",
+        ),
+        pytest.param(
+            set_at(
+                ["expected_access", "access_tier", "staff", "authorization"],
+                ["unknown"],
+            ),
+            "enum",
+            ["expected_access", "access_tier", "staff", "authorization", 0],
+            id="expected-unknown",
+        ),
+        pytest.param(
+            delete_at(["expected_access", "access_tier", "staff", "authentication"]),
+            "required",
+            ["expected_access", "access_tier", "staff"],
+            id="expected-without-authentication",
+        ),
     ],
 )
 def test_schema_rejects(

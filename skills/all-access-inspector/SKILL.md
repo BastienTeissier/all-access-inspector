@@ -80,8 +80,11 @@ Rerun `--unknowns` until it prints only endpoints that carry an `unknown_reason`
 
 1. Draft one or two dimensions with candidate values from what you found: path prefixes, guarding middleware, admin, roles named in rules. See "Candidate dimensions" in the reference.
 2. For each value, show the user the assignment rule and the endpoints it covers, by path prefix with counts.
-3. Ask with AskUserQuestion: confirm, rename, merge or reject, per dimension.
-4. Write the confirmed result in the dimensions file: `DIMENSIONS`, then `RULES` with the most specific rule first. If the user rejects every dimension, leave both empty.
+3. For each value, propose its expected access from what the value means, never from what the endpoints currently get: the `authentication` values and the `authorization` values an endpoint of that value may have (`unknown` is never expected). For example `public`: anonymous or optional, none; `staff`: required, rule. Name the endpoints that fall outside it.
+4. Ask with AskUserQuestion: confirm, rename, merge or reject, per dimension, and confirm or correct each value's expected access. A value the user gives no expectation is left out.
+5. Write the confirmed result in the dimensions file: `DIMENSIONS`, then `EXPECTED`, then `RULES` with the most specific rule first. If the user rejects every dimension, leave all three empty.
+
+An endpoint outside its value's expected access is not an error: the inventory records it and the viewer flags it. Never change a rule or an expectation to hide one; list them in the summary.
 
 Exit 2 naming an endpoint means a rule misses it. Extend the rules; never add a catch-all the user did not confirm.
 
@@ -90,7 +93,8 @@ Exit 2 naming an endpoint means a rule misses it. Extend the rules; never add a 
 1. Run `<inspect> --table` and show the user the result, or a summary of it when it is long.
 2. Run `<inspect>` to write `tools/access-inspector/inventory.json`, then `<inspect> --check`. It must exit 0.
 3. Pick the template in `<skill>/assets/ci-snippets/` that matches the project's CI: `github-actions.yml` when `.github/workflows/` exists, `gitlab-ci.yml` for `.gitlab-ci.yml`, `generic.sh` otherwise. Fill `{{setup}}`, `{{install}}` and `{{check}}` from the project's own test job, then write it as `tools/access-inspector/ci-snippet.<ext>` and check it parses. Do not touch the pipeline.
-4. Find every linter and type checker the project's CI or pre-commit hook runs over the whole tree. Exclude `tools/access-inspector/` in each one's configuration, as the reference's "Linters" says, then run them: they must pass as they did before the fit.
+4. Tell the user how to look at the result: open `<skill>/viewer/inventory-viewer.html` in a browser and load `tools/access-inspector/inventory.json` (file picker or drag-and-drop). Give the absolute path of both. Nothing is copied into the project.
+5. Find every linter and type checker the project's CI or pre-commit hook runs over the whole tree. Exclude `tools/access-inspector/` in each one's configuration, as the reference's "Linters" says, then run them: they must pass as they did before the fit.
 
 ### 8. Branch, commit, summary
 
@@ -109,5 +113,5 @@ A project already has `tools/access-inspector/`. Keep what the team decided and 
    - Exit 2 from a boot error: fix the boot file under the same toward-production rule, without touching rules.
    - Exit 2 from a missing dimension: extend the dimensions file, asking for any new value.
 4. Run `--unknowns` and resolve only the new ones, as in step 5.
-5. Refresh the Base Script only when the user asks. Replace each vendored file with the current Base Script file, keeping the project's project section, and update `VERSION`. When the new Base Script's project section declares something the kept one lacks (e.g. a new `ENVIRON` list), add that declaration with the Base Script's empty default. Then regenerate `inventory.json` before running `--check`: an inventory written by an older Base Script may not load. The inventory diff shows any endpoint whose classification the toolkit change moved; list those endpoints in the summary.
+5. Refresh the Base Script only when the user asks. Replace each vendored file with the current Base Script file, keeping the project's project section, and update `VERSION`. When the new Base Script's project section declares something the kept one lacks (e.g. a new `ENVIRON` list, or `EXPECTED`), add that declaration with the Base Script's empty default, then offer to fill `EXPECTED` as in step 6. Then regenerate `inventory.json` before running `--check`: an inventory written by an older Base Script may not load. The inventory diff shows any endpoint whose classification the toolkit change moved; list those endpoints in the summary.
 6. Regenerate `inventory.json` and run `--check`. If neither `tools/access-inspector/` nor `inventory.json` changed, say "no change" and do not commit. Otherwise do step 8, with a summary limited to what changed.

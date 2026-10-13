@@ -13,7 +13,7 @@ const rule = (over: Partial<Rule>): Rule => ({ name: 'r', evidence: 'src/a.ts:1'
 describe('resolveAccess', () => {
   test('passport is a builtin', () => {
     const [authn, authz, reason] = resolveAccess([passport], 'GET', '/me', {}, [], []);
-    expect(authn).toEqual({ value: 'required', layer: 'global', raw: "AuthGuard('jwt')", rule: 'builtin:AuthGuard' });
+    expect(authn).toEqual({ value: 'required', layer: 'global', raw: "AuthGuard('jwt')", rule: 'builtin:AuthGuard', evidence: null });
     expect(authz.value).toBe('none');
     expect(reason).toBeNull();
   });
@@ -26,13 +26,13 @@ describe('resolveAccess', () => {
   test('a custom guard is unknown until a rule names it', () => {
     const [authn, authz] = resolveAccess([passport, roles], 'GET', '/admin', {}, [], []);
     expect(authn.value).toBe('required');
-    expect(authz).toEqual({ value: 'unknown', layer: 'method', raw: 'RolesGuard', rule: null });
+    expect(authz).toEqual({ value: 'unknown', layer: 'method', raw: 'RolesGuard', rule: null, evidence: null });
   });
 
   test('a recognised guard with its metadata in raw', () => {
     const recognition = [rule({ name: 'roles', construct: 'RolesGuard', authz: 'rule', rawMetadata: 'roles' })];
     const [, authz] = resolveAccess([passport, roles], 'GET', '/admin', { roles: ['admin'] }, recognition, []);
-    expect(authz).toEqual({ value: 'rule', layer: 'method', raw: 'RolesGuard roles=["admin"]', rule: 'recognition:roles' });
+    expect(authz).toEqual({ value: 'rule', layer: 'method', raw: 'RolesGuard roles=["admin"]', rule: 'recognition:roles', evidence: 'src/a.ts:1' });
   });
 
   test('whenMetadata precedes the default rule', () => {
@@ -72,9 +72,9 @@ describe('resolveAccess', () => {
 
   test('acknowledged by construct, then by path', () => {
     const ack = [{ reason: 'reads the body', construct: 'RolesGuard' }, { reason: 'out of scope', path: '/graphql' }];
-    expect(resolveAccess([roles], 'POST', '/a', {}, [], ack)[2]).toBe('reads the body');
-    expect(resolveAccess([{ ...roles, construct: 'X' }], 'POST', '/graphql', {}, [], ack)[2]).toBe('out of scope');
-    expect(resolveAccess([{ ...roles, construct: 'X' }], 'POST', '/b', {}, [], ack)[2]).toBeNull();
+    expect(resolveAccess([roles], 'POST', '/a', {}, [], ack).slice(2)).toEqual(['reads the body', true]);
+    expect(resolveAccess([{ ...roles, construct: 'X' }], 'POST', '/graphql', {}, [], ack).slice(2)).toEqual(['out of scope', true]);
+    expect(resolveAccess([{ ...roles, construct: 'X' }], 'POST', '/b', {}, [], ack).slice(2)).toEqual([null, false]);
   });
 
   test('an unreadable finding carries its reason', () => {

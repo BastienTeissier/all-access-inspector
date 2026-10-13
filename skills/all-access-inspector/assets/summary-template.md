@@ -30,6 +30,8 @@ Branch `{{branch}}`, commit `{{sha}}`. Base Script {{stack}} {{version}}. Discov
 ## Project Dimensions
 
 - `{{dimension}}`: {{value}} ({{n}}), …; confirmed by the user {{as proposed | with changes}}
+- Expected access: `{{value}}` → authentication {{list}}, authorization {{list}}; …
+- Outside their zone: {{none | `METHOD path` (value): {{what differs}}, …}}
 
 ## Update mode only
 
@@ -40,5 +42,6 @@ Branch `{{branch}}`, commit `{{sha}}`. Base Script {{stack}} {{version}}. Discov
 ## Next steps
 
 - Review the commit: each rule's evidence and each stub is the trust gate.
+- See the inventory: open `{{skill}}/viewer/inventory-viewer.html` and load `tools/access-inspector/inventory.json`.
 - Wire `tools/access-inspector/ci-snippet.{{ext}}` into CI; it runs `{{check command}}`.
 - Questions left open: {{none | list}}
