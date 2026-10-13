@@ -52,6 +52,7 @@ interface Container {
 }
 
 const OUTSIDE = 'mounted on Express outside Nest; its access checks are not readable';
+const NO_CONTROLLER = 'controller not found in the Nest container; its guards are not readable';
 
 // Express 4 keeps the router in _router, and its app.router getter throws; Express 5 has only app.router.
 const stack = (app: ExpressApp): Layer[] => (app._router ?? app.router)?.stack ?? [];
@@ -92,15 +93,16 @@ export const discover = (app: INestApplication, watched: Watched): RawEndpoint[]
   const nest = Object.values(container.serializedGraph.toJSON().entrypoints)
     .flat()
     .filter(e => e.type === 'http-endpoint')
-    .map(
-      (e): RawEndpoint => ({
+    .map((e): RawEndpoint => {
+      const controller = controllers.get(e.classNodeId);
+      return {
         method: e.metadata.requestMethod === 'ALL' ? 'ANY' : e.metadata.requestMethod,
         path: normalize(e.metadata.path),
         handler: `${e.className}.${e.methodName}`,
-        controller: controllers.get(e.classNodeId)!,
         methodName: e.methodName,
-      }),
-    );
+        ...(controller === undefined ? { reason: NO_CONTROLLER } : { controller }),
+      };
+    });
   const adapter = app.getHttpAdapter() as unknown as Adapter;
   const outside = adapter.getType() === 'express' ? express(stack(adapter.getInstance()), '', nest, watched) : [];
   return withHead(dedupe([...nest, ...outside]));
