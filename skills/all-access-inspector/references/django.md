@@ -1,5 +1,11 @@
 # Django reference
 
+## Vendor and run
+
+Copy every `*.py` of `<skill>/base-scripts/django/access_inspector/` except `__init__.py` into `tools/access-inspector/`, and `VERSION` with `cp -L`.
+
+Find how the project runs its Python, from its README, Makefile, `pyproject.toml`, Dockerfile or docker-compose (for example `uv run`, `poetry run`, an activated venv, `docker compose run web`). Call this `<run>`. `<inspect>` is `<run> python tools/access-inspector/inspect.py`, from the directory that holds `manage.py`.
+
 ## Where access is decided, by layer
 
 | Layer | Django / DRF construct | Read by the Base Script |
@@ -21,9 +27,13 @@ Look for the settings module production runs, in this order:
 
 `manage.py` usually defaults to a dev module, so `ENTRY = None` is rarely right. When production settings and dev settings mount different URLs (`if DEBUG: urlpatterns += …`, `debug_toolbar`), the production module is the one that counts.
 
+## Environment
+
+Grep the settings for environment reads (`os.environ`, `os.getenv`, `env(`) that shape `INSTALLED_APPS`, `MIDDLEWARE`, `ROOT_URLCONF` or the URLconf. Pin each one in `ENVIRON` to its production value. `ENVIRON` is applied before the settings import and overrides the shell.
+
 ## Boot failure → stub cookbook
 
-Stub the narrowest dotted name the traceback points at. Never stub the settings module or anything under its package.
+Exit 2 prints the traceback. Stub the narrowest dotted name it points at. Never stub the settings module or anything under its package: `boot.py` refuses it, and refuses a `Pin` that does not move toward production (`DEBUG` to `False`).
 
 | Symptom in the traceback | Toward-production fix |
 |---|---|
@@ -78,7 +88,7 @@ Use them when the decision is data-dependent or out of scope, with a reason the 
 
 ## Blind spots
 
-- Custom middleware is not read. An endpoint behind an authenticating middleware still reads `no_check`/`anonymous` until a `path_prefix` rule covers it. Always review `MIDDLEWARE`.
+- Custom middleware is not read. An endpoint behind an authenticating middleware still reads `no_check`/`anonymous` until a `path_prefix` rule covers it. Always review `MIDDLEWARE` in the production settings.
 - `authentication_classes` are not read: they say how a user is identified, not whether one is required.
 - `method_decorator` on `dispatch` or a handler is unknown (decorators are hidden until call time); write a rule for `<module>.<ViewClass>.<method>`, naming the project class that applies the decorator: one rule covers every view inheriting it.
 - Checks inside the view body (`if not request.user.is_staff: raise PermissionDenied`) are invisible: the endpoint reads `no_check`. Grep handlers flagged `anonymous` for `PermissionDenied`, `raise Http404`, `request.user` before accepting them.
@@ -96,3 +106,12 @@ Propose from what the fitting found, never from naming alone:
 - Public catalog or auth pages (`/accounts/login/`, `/password_reset/`) → `public`.
 
 Typical shape: `access_tier` with `public`, `customer`, `staff`. Write assignment rules as path predicates, most specific first.
+
+## Linters
+
+Exclude `tools/access-inspector/` from:
+
+- ruff: `extend-exclude` under `[tool.ruff]` in `pyproject.toml`, or in `ruff.toml`;
+- mypy: `exclude` under `[tool.mypy]`, or in `mypy.ini` / `setup.cfg`;
+- flake8: `extend-exclude` in `.flake8`, `setup.cfg` or `tox.ini`;
+- pyright: `exclude` in `pyrightconfig.json` or `[tool.pyright]`.

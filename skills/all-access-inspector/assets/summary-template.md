@@ -1,6 +1,6 @@
 # Access Inspector — {{project}} ({{mode: fit | update}})
 
-Branch `{{branch}}`, commit `{{sha}}`. Base Script django {{version}}. Discovery {{discovery_mode}}, coverage {{coverage}}.
+Branch `{{branch}}`, commit `{{sha}}`. Base Script {{stack}} {{version}}. Discovery {{discovery_mode}}, coverage {{coverage}}.
 
 ## Endpoints
 
@@ -14,7 +14,7 @@ Branch `{{branch}}`, commit `{{sha}}`. Base Script django {{version}}. Discovery
 
 ## Boot decisions
 
-- Entry `{{settings module}}`: {{why this module is the production one}}
+- Entry `{{production entry}}`: {{why it is the one production runs}}
 - Stub `{{target}}`: {{reason}}
 - Pin `{{setting}} = {{value}}`: {{reason}}
 - Env `{{name}} = {{value}}`: {{reason}}
