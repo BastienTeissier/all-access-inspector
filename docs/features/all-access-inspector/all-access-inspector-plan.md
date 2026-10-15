@@ -33,7 +33,7 @@ PRD: [prd.md](./prd.md). Vocabulary: [CONTEXT.md](../../../CONTEXT.md). Decision
 - Review Key = (method, path, handler with trailing `:<digits>` stripped). Latest `reviewed` event per key wins: `at`, then line order.
 - Outdated: endpoint inside its zone's `expected_access` (or no expectation) ⇒ authentication or authorization `value` ≠ seen; outside ⇒ any of `value`, `layer`, `raw`, `rule` ≠ seen on either axis; `accepted` with `until` < today. Moot: seen classification was outside, current is inside ⇒ still valid. Orphaned: key not in inventory.
 - Tiers (highest wins, then path, method): 1 open `finding` · 2 outdated · 3 outside expected · 4 any axis `unknown` (Acknowledged or not) · 5 sibling inconsistency · 6 anonymous|optional × unsafe method (`POST PUT PATCH DELETE ANY`) · 7 open agent Signal · 8 required × authz none × path has `{` · 9 anonymous|optional × safe method · 10 other authz none · 11 authz `rule`. Endpoint with a valid `safe`/`accepted` Verdict ⇒ out of queue. Valid `finding` ⇒ in queue, tier 1.
-- Sibling inconsistency: two endpoints sharing a Review Key handler, or whose paths differ only by one trailing `{param}/` segment, with different authentication or authorization `value`, unless both axes' `rule` are equal.
+- Sibling inconsistency: two endpoints sharing a project handler (`file:line`; a dotted framework handler such as `RedirectView` serves unrelated paths and groups nothing), or whose paths differ only by one trailing `{param}/` segment, with different authentication or authorization `value`, unless both axes' `rule` are equal. `OPTIONS` rows and `unknown` endpoints are never compared. (Found on moi in 5c: grouping by every handler and comparing `OPTIONS` put 77 rows in tier 5, all noise.)
 - HEAD with the same classification as its GET ⇒ one row; a Verdict on GET also appends one on HEAD.
 - Agent events (`signal_raised`, `triaged`) carry `seen`; they go outdated by the same rule; a valid human Verdict supersedes them in the queue.
 - Bulk review: one event per endpoint selected at save time, shared `batch`; selection containing an open `finding` needs explicit confirmation.
@@ -555,13 +555,13 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 
 ### Phase 5c — UF12 Track reviews from the command line
 
-- [ ] **Tooling**: `review/{package.json,tsconfig.json,vitest.config.ts}` (BA); `Makefile` `install-review`, `test-review`, `typecheck-review` wired into `test`/`check-all`; CI job `review` (BQ).
-- [ ] **Contract**: `schema/review-event.schema.json` (BB) + `review/tests/samples/*.jsonl` (valid + invalid lines).
-- [ ] **Core**: `review/src/{inventory,replay,signals,tiers}.ts` (BC, BE, BF).
-- [ ] **Shell**: `review/src/{log,cli}.ts` (BD, BG): `status [--json]`, `append --verdict`, `append --agent`; `app` stub exiting 2 until 5e.
-- [ ] **Docs**: README section "Review the inventory" (CLI usage, commit `reviews.jsonl` with the code); `SKILL.md` step 7 mentions `review status` after a fit.
-- [ ] **Write tests**: §4 review package unit tests; review CLI tests.
-- [ ] **Verify**: `make check-all`, `make test`; on moi (scratch copy, never committed there): `status` shows 514 endpoints, tiers 1–2 empty, tier 11 = the `rule` endpoints; one `append` then `status` → out of queue.
+- [x] **Tooling**: `review/{package.json,tsconfig.json,vitest.config.ts}` (BA); `Makefile` `install-review`, `test-review`, `typecheck-review` wired into `test`/`check-all`; CI job `review` (BQ).
+- [x] **Contract**: `schema/review-event.schema.json` (BB) + `review/tests/samples/*.jsonl` (valid + invalid lines).
+- [x] **Core**: `review/src/{inventory,replay,signals,tiers}.ts` (BC, BE, BF).
+- [x] **Shell**: `review/src/{log,cli}.ts` (BD, BG): `status [--json]`, `append --verdict`, `append --agent`; `app` stub exiting 2 until 5e.
+- [x] **Docs**: README section "Review the inventory" (CLI usage, commit `reviews.jsonl` with the code); `SKILL.md` step 7 mentions `review status` after a fit.
+- [x] **Write tests**: §4 review package unit tests; review CLI tests.
+- [x] **Verify**: `make check-all`, `make test`; on moi (scratch copy, never committed there): `status` shows 514 endpoints, tiers 1–2 empty, tier 11 = the `rule` endpoints; one `append` then `status` → out of queue.
 
 ### Phase 5d — UF13 Triage the inventory with the Agent
 

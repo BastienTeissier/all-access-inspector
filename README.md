@@ -247,6 +247,38 @@ When several checks apply, the strictest wins per axis.
 
 A `HEAD` row identical to its `GET` is shown merged with it.
 
+## Review the inventory
+
+Five hundred endpoints are too many to read one by one. The review CLI keeps track of what you checked and ranks what is left. It needs Node 24.2 or later and nothing else: no install, no build.
+
+```bash
+REVIEW="node <skill>/review/src/cli.ts"
+$REVIEW status <project>                     # the Review Queue, worst first
+$REVIEW status <project> --json              # one JSON row per queued endpoint
+$REVIEW append <project> --verdict safe --reason "Owner-scoped queryset" DELETE '/api/invoices/{pk}/'
+$REVIEW append <project> --verdict finding --severity high --ticket https://tracker/SEC-12 --reason "…" ANY /pages/v1/old/
+$REVIEW append <project> --verdict accepted --until 2027-01-01 --reason "…" ANY /health/
+```
+
+`<project>` is the directory holding `tools/access-inspector/`.
+
+- **Verdicts.** `safe` means you checked it. `accepted` means a known risk, optionally until a date. `finding` needs a severity and can carry a ticket. Only a person gives a Verdict, and `by` is your `git config user.email`. When two handlers serve one method and path, name one with `--handler`. A `GET` Verdict also covers the `HEAD` shown with it.
+- **Outdated.** A Verdict on an endpoint inside its expected access goes outdated when its authentication or authorization value changes. Outside it, any change to the check goes outdated: value, layer, raw or rule. Moving the handler within its file keeps the Verdict. A Verdict on an endpoint that is no longer in the inventory is listed as orphaned.
+- **The queue.** Every endpoint without a valid `safe` or `accepted` Verdict is in the queue, ranked by its worst tier:
+  1. open finding
+  2. outdated Verdict
+  3. outside its expected access
+  4. unknown
+  5. sibling inconsistency, where the list and the detail of one resource disagree
+  6. anyone can write
+  7. an agent Signal
+  8. a path parameter with no authorization rule
+  9. anyone can read
+  10. signed in, no authorization rule
+  11. an authorization rule
+
+Verdicts are appended to `tools/access-inspector/reviews.jsonl`, one JSON line per event. The CLI never rewrites the file and never runs git. Commit it with your code. The first `append` also writes `tools/access-inspector/.gitattributes` with `reviews.jsonl merge=union`, so two branches that both review endpoints merge without a conflict. When the same endpoint is reviewed twice, the later Verdict wins.
+
 ## Wire it into CI
 
 The Agent writes `tools/access-inspector/ci-snippet.yml` (GitHub Actions or GitLab CI) or `ci-snippet.sh` (anything else), filled from your existing test job. Paste it into your pipeline yourself. A GitHub Actions job looks like:
