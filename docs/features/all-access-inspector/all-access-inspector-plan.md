@@ -565,10 +565,10 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 
 ### Phase 5d — UF13 Triage the inventory with the Agent
 
-- [ ] **Skill**: `SKILL.md` `## Triage` + description + hard rule (BN); `references/{django,nestjs}.md` `## Triage checklist` (BO).
-- [ ] **Viewer**: Triage tab → Overview (BP); README and UF11 wording.
-- [ ] **Write tests**: none new beyond 5c's `append --agent` tests (Triage is Agent work, manual acceptance).
-- [ ] **Verify (manual)**: triage `fixtures/django-demo` copy → signals on its anonymous write and `IsOwner` handlers, `triaged` on the rest of the scope, one batch; second run reads nothing; edit one handler's guard, rerun → only it is read. Then moi scratch copy: ≈136 handlers read, summary lists raised signals; nothing changed outside `reviews.jsonl`.
+- [x] **Skill**: `SKILL.md` `## Triage` + description + hard rule (BN); `references/{django,nestjs}.md` `## Triage checklist` (BO).
+- [x] **Viewer**: Triage tab → Overview (BP); README and UF11 wording.
+- [x] **Write tests**: none new beyond 5c's `append --agent` tests (Triage is Agent work, manual acceptance).
+- [x] **Verify (manual)**: triage `fixtures/django-demo` copy → signals on its open writes and unscoped lookups (`IsOwner` itself holds: `get_object` checks it), `triaged` on the rest of the scope, one batch; second run reads nothing; edit one handler's guard, rerun → only it is read. Then moi scratch copy: 110 rows in scope (33 project handlers), a sample read, summary lists raised signals; nothing changed outside `reviews.jsonl`.
 
 ### Phase 5e — UF14 Review endpoints in the app
 

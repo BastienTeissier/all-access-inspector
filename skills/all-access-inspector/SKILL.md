@@ -140,6 +140,6 @@ The user asks you to triage the inventory. The deterministic tiers see only the 
    EOF
    ```
    Add `"handler"` to a line when the method and path have several handlers. A refusal (exit 2) writes nothing: fix the line it names and run the call again.
-7. Print a summary: the endpoints you read, every Signal you raised with its reason, and every row you skipped with why. Tell the user to run `<review> status <project>`: Signals land in tier 7, "suggested by the agent".
+7. Print a summary: the endpoints you read, every Signal you raised with its reason, and every row you skipped with why. Tell the user to run `<review> status <project>`: a Signal lifts its row to tier 7, "suggested by the agent", unless the row already sits in a higher tier, where it shows beside the other Signals.
 
 Never give a Verdict, never edit the inventory or the Adapted Script, and never commit: `reviews.jsonl` is the only file that changes, and the user commits it.
