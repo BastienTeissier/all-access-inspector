@@ -93,7 +93,7 @@ Field names are camelCase in TypeScript: `pathPrefix`, `safeAuthn`, `safeAuthz`,
 
 Read each handler in the Triage scope (`SKILL.md` § Triage) for what the inventory cannot see. Raise a Signal on the first item that holds; otherwise mark it `triaged`.
 
-- **Name and verb against the guard.** A handler named `delete*`, `approve`, `export`, `impersonate` or `refund` with `required/none` or an `anonymous` write is a Signal. So is a `@Post` restricted by role beside a `@Put` or `@Patch` on the same entity that any signed-in user reaches.
+- **Name and verb against the guard.** A handler named `delete*`, `approve`, `export`, `impersonate` or `refund` with `required/none` or an `anonymous` write is a Signal. So is a `@Put` or `@Patch` that any signed-in user reaches on an entity whose `@Post` is restricted by role: raise it on the open handler, since the guarded one is not in scope.
 - **Checks in the handler or its service.** `@Req() req` / a `@CurrentUser()` decorator compared to the entity, `throw new ForbiddenException()`, an ownership filter in the service call (`where: { userId }`): follow the call one level into the service and say whether the check covers every route of the handler.
 - **Lookups by id.** A `findOne(id)` / `findById(id)` on a `{id}` path with no owner or tenant in the query is a Signal: any signed-in user reads any row.
 - **Bulk and export.** A response that streams many rows (CSV, `StreamableFile`, a `limit` with no ceiling) on an `anonymous` or `required/none` endpoint is a Signal.

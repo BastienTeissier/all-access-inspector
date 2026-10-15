@@ -127,7 +127,12 @@ The user asks you to triage the inventory. The deterministic tiers see only the 
 
 1. Check that `tools/access-inspector/inventory.json` is committed (`git ls-files`). If it is not, tell the user to fit the project first and stop.
 2. Run `<review> status <project> --json`. Each line is one queued row.
-3. Pick the scope: rows with `tier` not 11 and `agent` null. A row whose agent event is still valid for its current classification was already read. If the user named endpoints or a path prefix, keep only those.
+3. Pick the scope: rows with `triage` true. The CLI leaves out:
+   - rows a human gave a valid Verdict;
+   - rows an authorization rule decides alone, since judging a rule is the reviewer's work;
+   - rows whose agent event still holds for their current classification.
+
+   If the user named endpoints or a path prefix, keep only those.
 4. For each row in scope, open its `handler` (`file:line`) and read it with the stack reference's "Triage checklist". A handler that is a dotted name with no project file is third-party: read the project line that mounts it, or skip the row and say why.
 5. Decide one event per row:
    - `signal_raised`, when something in the handler needs a human: a one-line `reason` (at most 500 characters) and the `evidence` you read, as `relative/path:line`;

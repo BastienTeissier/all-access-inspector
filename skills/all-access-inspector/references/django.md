@@ -100,7 +100,7 @@ Use them when the decision is data-dependent or out of scope, with a reason the 
 
 Read each handler in the Triage scope (`SKILL.md` § Triage) for what the inventory cannot see. Raise a Signal on the first item that holds; otherwise mark it `triaged`.
 
-- **Name and verb against the guard.** A handler named `delete_*`, `approve`, `export`, `impersonate`, `refund` or `admin_*` with `required/none` or an `anonymous` write is a Signal. So is a `POST` restricted to staff beside a `PUT` or `PATCH` on the same model that any signed-in user reaches.
+- **Name and verb against the guard.** A handler named `delete_*`, `approve`, `export`, `impersonate`, `refund` or `admin_*` with `required/none` or an `anonymous` write is a Signal. So is a `PUT` or `PATCH` that any signed-in user reaches on a model whose `POST` is restricted to staff: raise it on the open handler, since the guarded one is not in scope.
 - **Checks in the body.** `request.user` compared to the object, `raise PermissionDenied`, `raise Http404` on a foreign object, `user_passes_test` called inline: say whether they cover every method the endpoint serves.
 - **The queryset.** A `get_queryset` that does not filter by `request.user` (or the tenant), or a `get_object` that skips `check_object_permissions`, on a `{pk}` path, is a Signal: any signed-in user reads any row.
 - **Bulk and export.** A response that streams many rows (CSV, XLSX, `StreamingHttpResponse`, a `?page_size=` with no ceiling) on an `anonymous` or `required/none` endpoint is a Signal.

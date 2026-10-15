@@ -16,6 +16,9 @@ export const TIERS: Record<number, string> = {
   11: 'authorization rule',
 };
 
+/** The last tier: an authorization rule decides, and judging it is the reviewer's work, not the Agent's. */
+export const RULE_TIER = 11;
+
 const SIGNAL_TIER: Record<Signal['id'], number> = {
   outside_expected: 3,
   unknown: 4,
@@ -38,7 +41,7 @@ export interface Tiered {
 export const tierOf = (row: Tiered): number => {
   if (row.state === 'valid' && row.verdict?.verdict === 'finding') return 1;
   if (row.state === 'outdated') return 2;
-  const fallback = row.authorization.value === 'rule' ? 11 : 10;
+  const fallback = row.authorization.value === 'rule' ? RULE_TIER : 10;
   return Math.min(fallback, ...row.signals.map(s => SIGNAL_TIER[s.id]));
 };
 
