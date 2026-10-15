@@ -3,7 +3,7 @@ import { expect, test } from 'vitest';
 import { type Endpoint } from '../src/inventory.ts';
 import type { Logged } from '../src/log.ts';
 import { replay } from '../src/replay.ts';
-import { queue } from '../src/tiers.ts';
+import { queue, tierOf } from '../src/tiers.ts';
 import { agentEvent, axis, endpoint as built, inventory, reviewed } from './build.ts';
 
 const other = { dimensions: { zone: 'other' } };
@@ -70,4 +70,14 @@ test('valid safe and accepted leave the queue, a valid finding stays first; orde
   const events = [reviewed(safe), reviewed(accepted, { verdict: 'accepted' }), reviewed(finding, { verdict: 'finding', severity: 'low' })];
   const order = queue(replay(inventory(endpoints), events, '2026-10-15').rows).map(r => `${r.tier} ${r.method} ${r.path}`);
   expect(order).toEqual(['1 GET /z', '10 GET /d', '11 GET /C', '11 GET /c', '11 POST /c']);
+});
+
+test('the tier is the highest-ranked Signal, whatever the order they are listed in', () => {
+  const row = { method: 'GET', path: '/a', authorization: { value: 'none' }, state: 'none' as const, verdict: null };
+  const signals = [
+    { id: 'open_read' as const, text: '' },
+    { id: 'outside_expected' as const, text: '' },
+  ];
+  expect(tierOf({ ...row, signals })).toBe(3);
+  expect(tierOf({ ...row, signals: signals.toReversed() })).toBe(3);
 });

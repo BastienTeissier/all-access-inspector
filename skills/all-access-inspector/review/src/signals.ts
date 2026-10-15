@@ -69,7 +69,7 @@ const outsideText = (row: Folded, expected: ExpectedAccess): string => {
   return off.join('; ');
 };
 
-/** Every Signal of a row, in tier order. */
+/** Every Signal of a row, listed in tier order for reading; the tier itself does not depend on that order. */
 export const signals = (row: Signalled, siblingRows: Folded[], expected: ExpectedAccess): Signal[] => {
   const out: Signal[] = [];
   if (row.inside === false) out.push({ id: 'outside_expected', text: outsideText(row, expected) });

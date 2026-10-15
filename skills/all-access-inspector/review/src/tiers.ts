@@ -38,9 +38,8 @@ export interface Tiered {
 export const tierOf = (row: Tiered): number => {
   if (row.state === 'valid' && row.verdict?.verdict === 'finding') return 1;
   if (row.state === 'outdated') return 2;
-  const first = row.signals[0];
-  if (first) return SIGNAL_TIER[first.id];
-  return row.authorization.value === 'rule' ? 11 : 10;
+  const fallback = row.authorization.value === 'rule' ? 11 : 10;
+  return Math.min(fallback, ...row.signals.map(s => SIGNAL_TIER[s.id]));
 };
 
 const byCodePoint = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
