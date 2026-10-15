@@ -572,11 +572,11 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 
 ### Phase 5e — UF14 Review endpoints in the app
 
-- [ ] **App scaffold**: `apps/review/{package.json,next.config.ts,tsconfig.json}` (BM); `review app` in `cli.ts` builds on first run and starts on `127.0.0.1` (BG).
-- [ ] **Projection**: `apps/review/lib/projection.ts` (BH).
-- [ ] **Queue + panel + verdict**: `app/page.tsx`, `app/endpoint-panel.tsx`, `app/actions.ts` `saveVerdict` (BI, BJ, BK); viewer CSS tokens.
-- [ ] **Write tests**: §4 app tests not marked 5f.
-- [ ] **Verify**: `make check-all`, `make test`; on the moi scratch copy, review ten tier-8 endpoints, `git diff` shows ten appended lines (plus folded HEADs); delete the cache file, restart → same state.
+- [x] **App scaffold**: `apps/review/{package.json,next.config.ts,tsconfig.json}` (BM); `review app` in `cli.ts` builds on first run and starts on `127.0.0.1` (BG). `review/src/app.ts` also rebuilds when a source is newer than `.next/BUILD_ID`, and refuses outside a toolkit checkout or before `make install-review`.
+- [x] **Projection**: `apps/review/lib/projection.ts` (BH). `meta` also keys on `today`, so an `accepted` Verdict expires without a log change; `endpoint.siblings` holds the sibling keys; `orphans()` left to 5f.
+- [x] **Queue + panel + verdict**: `app/page.tsx`, `app/endpoint-panel.tsx`, `app/actions.ts` `saveVerdict` (BI, BJ, BK); viewer CSS tokens. The form submits in a transition (`onSubmit`), not as a form action: React resets a form after its action, which lost the checked Verdict on a refusal.
+- [x] **Write tests**: §4 app tests not marked 5f (`tests/projection.spec.ts`, `tests/e2e/review.spec.ts`, Playwright in `make test` and CI).
+- [x] **Verify**: `make check-all`, `make test`; on the moi scratch copy, ten tier-8 endpoints reviewed in the app → `git diff` shows 12 appended lines (10 + 2 folded HEADs); cache file deleted, restart → same header and the same 473 queue rows.
 
 ### Phase 5f — UF15 Review in bulk and read the history
 
