@@ -52,6 +52,14 @@ test('moot: reviewed outside, inside now, is still valid', () => {
   expect([row.state, row.moot]).toEqual(['valid', true]);
 });
 
+test('outdated wins over moot: a fix that moves the endpoint inside outdates its Verdict', () => {
+  const before = endpoint('GET', '/a', 'required', 'none');
+  const verdict = reviewed(before, { verdict: 'finding', severity: 'high' });
+  expect(verdict.seen.inside).toBe(false);
+  const row = only([endpoint('GET', '/a')], [verdict]).rows[0]!;
+  expect([row.inside, row.state, row.moot, row.tier]).toEqual([true, 'outdated', false, 2]);
+});
+
 test('orphan: a key no endpoint has any more', () => {
   const gone = endpoint('GET', '/a');
   const moved = { ...gone, handler: 'app/other.py:10' };

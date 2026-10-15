@@ -31,7 +31,7 @@ Rules applied on replay:
 - Review Key: method, path, handler with any `:line` stripped.
 - The latest valid event for a key wins (by date, then by line order).
 - A Verdict is **outdated** when the endpoint is inside its expected access and its authentication or authorization value differs from the reviewed one; when it is outside its expected access and any of authentication value, authorization value, layer, raw or rule differs; or when an `accepted` Verdict is past its `until` date. A project with no expected access for the endpoint's zone uses the first rule.
-- A Verdict is **moot** when the reviewed classification was outside expected access and the endpoint is now inside it; moot Verdicts stay valid.
+- A Verdict is **moot** when the reviewed classification was outside expected access and the endpoint is now inside it; moot Verdicts stay valid. Outdated wins: when the endpoint moved inside because its authentication or authorization value changed, the Verdict is outdated (that is how a `finding` closes after a fix). Moot is reached only when the expected access changed and the endpoint did not.
 - A Verdict is **orphaned** when its key matches no endpoint.
 - A **sibling inconsistency**: two endpoints sharing a handler, or whose paths differ only by a trailing parameter segment (`/observations/` and `/observations/{id}/`), with a different authentication or authorization value, unless both values come from the same rule.
 
