@@ -119,7 +119,11 @@ export const main = (argv: string[], stdin: () => string): { code: number; stdou
   }
 };
 
-if (import.meta.main) {
+if (import.meta.main === undefined) {
+  // Node strips types before 24.2 but has no import.meta.main there: say so rather than exit 0 silently.
+  process.stderr.write(`review needs Node 24.2 or later, this is ${process.version}\n`);
+  process.exitCode = 2;
+} else if (import.meta.main) {
   const result = main(process.argv.slice(2), () => readFileSync(0, 'utf8'));
   process.stdout.write(result.stdout);
   process.stderr.write(result.stderr);
