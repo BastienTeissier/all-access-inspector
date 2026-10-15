@@ -7,6 +7,7 @@ import { SIGNAL_IDS } from '../../../skills/all-access-inspector/review/src/sign
 import { TIERS } from '../../../skills/all-access-inspector/review/src/tiers.ts';
 import { FILTERS, filtersOf, href, projectDir } from '../lib/filters.ts';
 import { type Projected, header, history, project, queue, row, uncommitted, zones } from '../lib/projection.ts';
+import { BulkPanel } from './bulk-panel.tsx';
 import { EndpointPanel } from './endpoint-panel.tsx';
 
 export const dynamic = 'force-dynamic';
@@ -44,10 +45,11 @@ export default async function Queue({ searchParams }: { searchParams: Promise<Re
   const pending = uncommitted(abs);
   const open = params.get('e');
   const selected = open ? row(db, open) : null;
+  const bulk = !selected && params.get('bulk') === '1';
   const filterText = new URLSearchParams(Object.entries(filters)).toString();
   const tiers = [...new Set(rows.map(r => r.tier))];
   return (
-    <main className={selected ? 'wrap with-panel' : 'wrap'}>
+    <main className={selected || bulk ? 'wrap with-panel' : 'wrap'}>
       <header className="top">
         <div>
           <div className="brand">
@@ -97,9 +99,17 @@ export default async function Queue({ searchParams }: { searchParams: Promise<Re
       </form>
       <div className="layout">
         <section aria-label={filters.view === 'reviewed' ? 'Reviewed' : 'Review Queue'} className="queue">
-          <p className="muted">
-            {rows.length} {filters.view === 'reviewed' ? 'reviewed endpoints' : 'rows in the queue'}
-          </p>
+          <form className="selection" method="get" action="/">
+            <span className="muted">
+              {rows.length} {filters.view === 'reviewed' ? 'reviewed endpoints' : 'rows in the queue'}
+            </span>
+            {Object.entries(filters).map(([k, v]) => (
+              <input key={k} type="hidden" name={k} value={v} />
+            ))}
+            <button type="submit" name="bulk" value="1" className="btn" disabled={!rows.length}>
+              Review selection
+            </button>
+          </form>
           {tiers.map(tier => (
             <section key={tier} aria-label={`Tier ${tier}`} className="tier">
               <h2>
@@ -117,6 +127,7 @@ export default async function Queue({ searchParams }: { searchParams: Promise<Re
             </section>
           ))}
         </section>
+        {bulk && <BulkPanel selection={rows} filters={filterText} close={href(filters)} />}
         {selected && (
           <EndpointPanel
             row={selected}

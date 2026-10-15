@@ -26,7 +26,7 @@ export const reset = (): void => copyFileSync(SAMPLE_LOG, join(dir(), 'tools', '
 
 export const review = (...args: string[]): string => execFileSync(process.execPath, [CLI, ...args], { cwd: dir(), env: env(), encoding: 'utf8' });
 
-export const status = (): { key: string[]; tier: number; state: string; method: string; path: string; verdict: { verdict: string; reason: string } | null }[] =>
+export const status = (): { key: string[]; tier: number; state: string; method: string; head: boolean; path: string; verdict: { verdict: string; reason: string } | null }[] =>
   review('status', dir(), '--json')
     .trimEnd()
     .split('\n')

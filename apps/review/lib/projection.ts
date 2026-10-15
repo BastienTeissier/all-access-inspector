@@ -40,6 +40,9 @@ export interface Filters {
 /** A projected row: the replayed Row, plus the keys of its siblings. */
 export type Projected = Row & { siblings: Key[] };
 
+/** A row whose valid Verdict is a finding: replacing it takes a confirmation. */
+export const openFinding = (r: Row): boolean => r.state === 'valid' && r.verdict?.verdict === 'finding';
+
 export interface Projection {
   project: string;
   /** What could not be read, shown above the last good state. */

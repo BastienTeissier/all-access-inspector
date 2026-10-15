@@ -79,3 +79,5 @@ select,input,textarea{font:inherit;color:var(--fg);background:var(--panel);borde
 .verdict-form legend{font-weight:600;margin-bottom:4px}
 .verdict-form label.choice{flex-direction:row;align-items:center;gap:6px}
 .field-error{color:var(--unknown);margin:0;font-size:.8rem}
+.selection{display:flex;align-items:center;gap:12px;margin:0 0 12px}
+.sample{margin:8px 0 12px;padding-left:18px}

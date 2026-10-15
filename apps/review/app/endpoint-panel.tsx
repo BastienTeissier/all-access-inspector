@@ -3,6 +3,7 @@
 import { type Axis, type SeenAxis, classification, keyText } from '../../../skills/all-access-inspector/review/src/inventory.ts';
 import type { Logged } from '../../../skills/all-access-inspector/review/src/log.ts';
 import type { Projected } from '../lib/projection.ts';
+import { saveVerdict } from './actions.ts';
 import { VerdictForm } from './verdict-form.tsx';
 
 const FIELDS = ['value', 'layer', 'raw', 'rule', 'evidence'] as const;
@@ -155,7 +156,13 @@ export const EndpointPanel = ({
           <p className="muted">No event yet.</p>
         )}
       </section>
-      <VerdictForm key={keyText(row.key)} keyText={keyText(row.key)} filters={filters} reason={outdated?.reason} />
+      <VerdictForm
+        key={keyText(row.key)}
+        save={saveVerdict}
+        hidden={{ key: keyText(row.key), filters }}
+        submit="Save verdict"
+        reason={outdated?.reason}
+      />
     </aside>
   );
 };
