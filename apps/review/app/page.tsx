@@ -3,6 +3,7 @@
 import { basename } from 'node:path';
 
 import { keyText } from '../../../skills/all-access-inspector/review/src/inventory.ts';
+import { SIGNAL_IDS } from '../../../skills/all-access-inspector/review/src/signals.ts';
 import { TIERS } from '../../../skills/all-access-inspector/review/src/tiers.ts';
 import { FILTERS, filtersOf, href, projectDir } from '../lib/filters.ts';
 import { type Projected, header, history, project, queue, row, uncommitted, zones } from '../lib/projection.ts';
@@ -10,7 +11,6 @@ import { EndpointPanel } from './endpoint-panel.tsx';
 
 export const dynamic = 'force-dynamic';
 
-const SIGNALS = ['outside_expected', 'unknown', 'sibling', 'open_write', 'agent', 'id_without_authz', 'open_read'];
 const STATES = ['none', 'outdated'];
 
 const Select = ({ name, label, value, options }: { name: string; label: string; value?: string; options: [string, string][] }) => (
@@ -77,7 +77,7 @@ export default async function Queue({ searchParams }: { searchParams: Promise<Re
       <form className="filters" method="get" action="/">
         {head.dimensions && <Select name="zone" label="Zone" value={filters.zone} options={zones(db).map(z => [z, z])} />}
         <Select name="tier" label="Tier" value={filters.tier} options={Object.entries(TIERS).map(([t, name]) => [t, `${t} · ${name}`])} />
-        <Select name="signal" label="Signal" value={filters.signal} options={SIGNALS.map(s => [s, s])} />
+        <Select name="signal" label="Signal" value={filters.signal} options={SIGNAL_IDS.map(s => [s, s])} />
         <Select name="state" label="Verdict" value={filters.state} options={STATES.map(s => [s, s])} />
         <label>
           Path
