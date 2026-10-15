@@ -58,6 +58,12 @@ const output = (row: Row) => ({
     reason: row.verdict.reason,
     ...(row.verdict.severity ? { severity: row.verdict.severity } : {}),
   },
+  agent: row.agent && {
+    event: row.agent.event,
+    by: row.agent.by,
+    at: row.agent.at,
+    ...(row.agent.event === 'signal_raised' ? { reason: row.agent.reason, evidence: row.agent.evidence } : {}),
+  },
   signals: row.signals,
   tier: row.tier,
 });

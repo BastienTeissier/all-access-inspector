@@ -9,7 +9,7 @@ export const TIERS: Record<number, string> = {
   4: 'unknown',
   5: 'sibling inconsistency',
   6: 'anyone can write',
-  7: 'agent signal',
+  7: 'suggested by the agent',
   8: 'path parameter, no authorization rule',
   9: 'anyone can read',
   10: 'signed in, no authorization rule',
