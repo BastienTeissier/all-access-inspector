@@ -1,7 +1,7 @@
 // The Review Log: tools/access-inspector/reviews.jsonl, one event per line, append-only.
 
 import { randomBytes } from 'node:crypto';
-import { closeSync, existsSync, openSync, readFileSync, writeFileSync, writeSync } from 'node:fs';
+import { appendFileSync, closeSync, existsSync, openSync, readFileSync, writeSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { type Key, SEEN_FIELDS, type Seen, seenAxis, toolsDir } from './inventory.ts';
@@ -147,14 +147,16 @@ export const readLog = (project: string): { events: Logged[]; errors: LogError[]
   return existsSync(path) ? parseLog(readFileSync(path, 'utf8')) : { events: [], errors: [] };
 };
 
-/** Appends whole events in one write, after checking every one; creates the union-merge attribute on first use. */
+/** Appends whole events in one write, after checking every one; adds the union-merge attribute when it is missing. */
 export const append = (project: string, events: Event[]): void => {
   for (const e of events) {
     const wrong = problem(e);
     if (wrong) throw new Error(`refused: ${wrong}`);
   }
   const attributes = join(toolsDir(project), '.gitattributes');
-  if (!existsSync(attributes)) writeFileSync(attributes, ATTRIBUTES);
+  const present = existsSync(attributes) ? readFileSync(attributes, 'utf8') : '';
+  if (!present.split('\n').some(line => line.trim().split(/\s+/).join(' ') === ATTRIBUTES.trim()))
+    appendFileSync(attributes, `${present && !present.endsWith('\n') ? '\n' : ''}${ATTRIBUTES}`);
   const fd = openSync(logPath(project), 'a');
   try {
     writeSync(fd, events.map(serialize).join(''));

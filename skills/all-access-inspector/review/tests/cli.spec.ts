@@ -93,6 +93,14 @@ test('append a Verdict: one line per endpoint, the folded HEAD too, the union me
   expect(readFileSync(tools('.gitattributes'), 'utf8')).toBe('reviews.jsonl merge=union\n');
 });
 
+test('append adds the union merge attribute to an existing .gitattributes, once', () => {
+  writeFileSync(tools('.gitattributes'), '*.json text');
+  const args = ['append', project, '--verdict', 'safe', '--reason', 'r', 'DELETE', '/api/invoices/{pk}/'];
+  review(args);
+  review(args);
+  expect(readFileSync(tools('.gitattributes'), 'utf8')).toBe('*.json text\nreviews.jsonl merge=union\n');
+});
+
 test.each([
   ['an unknown path', ['--verdict', 'safe', '--reason', 'r', 'GET', '/nowhere/'], 'no endpoint GET /nowhere/'],
   ['no reason', ['--verdict', 'safe', 'GET', '/api/invoices/'], 'reason is required'],
