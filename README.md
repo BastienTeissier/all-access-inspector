@@ -279,6 +279,16 @@ $REVIEW append <project> --verdict accepted --until 2027-01-01 --reason "…" AN
 
 Verdicts are appended to `tools/access-inspector/reviews.jsonl`, one JSON line per event. The CLI never rewrites the file and never runs git. Commit it with your code. The first `append` also writes `tools/access-inspector/.gitattributes` with `reviews.jsonl merge=union`, so two branches that both review endpoints merge without a conflict. When the same endpoint is reviewed twice, the later Verdict wins.
 
+### In the browser
+
+From a checkout of this repository, `make install-review` once, then:
+
+```bash
+node skills/all-access-inspector/review/src/cli.ts app <project>
+```
+
+It builds the app the first time and serves it on `http://127.0.0.1:4377`, or on the next free port. It is never reachable from another machine. The page shows the queue by tier, with the same filters as `status`. Click a row to see both axes, the Signals, the siblings and the endpoint's history, then give a Verdict. The app writes through the same `append` as the CLI, and the header counts the events you have not committed yet. A change to the inventory or the log shows on the next reload. The app's cache under `~/.cache/all-access-inspector/` can be deleted at any time.
+
 ## Wire it into CI
 
 The Agent writes `tools/access-inspector/ci-snippet.yml` (GitHub Actions or GitLab CI) or `ci-snippet.sh` (anything else), filled from your existing test job. Paste it into your pipeline yourself. A GitHub Actions job looks like:
