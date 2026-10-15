@@ -7,6 +7,8 @@ import { join } from 'node:path';
 
 import { expect, test } from 'vitest';
 
+import { prepare } from '../src/app.ts';
+import { Refused } from '../src/project.ts';
 import { GOLDEN, INVENTORY, SAMPLE_LOG, events, git, gitconfig, log, project, review, tools, useProject } from './project.ts';
 
 useProject();
@@ -127,11 +129,9 @@ test('append --agent takes a lower-case method and names refused lines as they a
   expect(log()).toBe(before);
 });
 
-test('append --agent needs a model, and the app is not there yet', () => {
+test('append --agent needs a model', () => {
   const noModel = review(['append', project, '--agent'], { input: '' });
   expect([noModel.status, noModel.stderr]).toEqual([2, '--agent needs --model <id>\n']);
-  const app = review(['app', project]);
-  expect([app.status, app.stderr]).toEqual([2, 'the review app is not available yet\n']);
 });
 
 test('two branches reviewing one endpoint merge without conflict, the later Verdict wins', () => {
@@ -152,4 +152,16 @@ test('two branches reviewing one endpoint merge without conflict, the later Verd
   expect(review(['status', project]).stdout).toContain('Verdicts: 1 valid (0 moot)');
   // `ours` (accepted) is the latest: the endpoint left the queue, `theirs` (a finding) would keep it at tier 1
   expect(review(['status', project, '--json']).stdout).not.toContain('"method":"DELETE","path":"/api/invoices/{pk}/"');
+});
+
+test('app refuses a project that was not fitted, before building anything', () => {
+  const result = review(['app', mkdtempSync(join(tmpdir(), 'empty-'))]);
+  expect(result.status).toBe(2);
+  expect(result.stderr).toContain('fit the project first');
+});
+
+test('app refuses outside a checkout of the toolkit: the skill ships without the app', () => {
+  expect(() => prepare(project, mkdtempSync(join(tmpdir(), 'vendored-')))).toThrow(
+    new Refused('the review app runs from a checkout of all-access-inspector'),
+  );
 });
