@@ -102,6 +102,31 @@ describe('sibling', () => {
     expect(b!.signals[0]).toEqual({ id: 'sibling', text: 'POST /observations/ is required/rule' });
   });
 
+  test('a parent ending in a parameter is related to its child, two peer parameter paths are not', () => {
+    const zone = { dimensions: { zone: 'other' } };
+    const rows = only(
+      [
+        endpoint('GET', '/r/{ct}/', 'required', 'rule', { ...zone, handler: 'app/a.py:1' }),
+        endpoint('GET', '/r/{ct}/{obj}/', 'required', 'none', { ...zone, handler: 'app/b.py:1' }),
+        endpoint('GET', '/files/{id}', 'required', 'rule', { ...zone, handler: 'app/c.py:1' }),
+        endpoint('GET', '/files/{name}/', 'required', 'none', { ...zone, handler: 'app/d.py:1' }),
+      ],
+      [],
+    ).rows;
+    expect(Object.fromEntries(rows.map(r => [r.path, r.signals[0]?.text ?? null]))).toEqual({
+      '/r/{ct}/': 'GET /r/{ct}/{obj}/ is required/none',
+      '/r/{ct}/{obj}/': 'GET /r/{ct}/ is required/rule',
+      '/files/{id}': null,
+      '/files/{name}/': 'path parameter, no authorization rule',
+    });
+  });
+
+  test('two methods of one path with different access are siblings', () => {
+    const zone = { dimensions: { zone: 'other' }, handler: 'django.contrib.admin.sites.index' };
+    const rows = only([endpoint('ANY', '/admin/', 'required', 'rule', zone), endpoint('DELETE', '/admin/', 'anonymous', 'none', zone)], []).rows;
+    expect(rows.map(r => r.signals[0]?.id)).toEqual(['sibling', 'sibling']);
+  });
+
   test('one rule splitting by method is not a sibling inconsistency', () => {
     const rule = { rule: 'builtin:IsAuthenticatedOrReadOnly' };
     const get = endpoint('GET', '/a', 'optional', 'none', { dimensions: { zone: 'other' } });

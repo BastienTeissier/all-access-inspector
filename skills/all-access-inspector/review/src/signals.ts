@@ -16,8 +16,11 @@ export interface Signalled extends Folded {
 
 const open = (e: Folded) => e.authentication.value === 'anonymous' || e.authentication.value === 'optional';
 
-/** The path without its last `{param}` segment, always ending in `/`: `/observations/{id}/` and `/observations/` share it. */
-const stem = (path: string) => path.replace(/\{[^}/]+\}\/?$/, '').replace(/\/?$/, '/');
+/** The path with a trailing `/`, so `/a` and `/a/` are one resource. */
+const slashed = (path: string) => path.replace(/\/?$/, '/');
+
+/** The path one trailing `{param}` segment up: `/observations/{id}/` → `/observations/`; null when it ends in a literal. */
+const parent = (path: string) => (/\{[^}/]+\}\/?$/.test(path) ? slashed(path.replace(/\{[^}/]+\}\/?$/, '')) : null);
 
 /**
  * Same resource, different access, and not one rule deciding both (IsAuthenticatedOrReadOnly splits by method on purpose).
@@ -31,29 +34,35 @@ const inconsistent = (a: Folded, b: Folded) =>
   (a.authentication.value !== b.authentication.value || a.authorization.value !== b.authorization.value) &&
   !(a.authentication.rule === b.authentication.rule && a.authorization.rule === b.authorization.rule);
 
+const index = <T>(rows: T[], key: (row: T) => string | null): Map<string, T[]> => {
+  const map = new Map<string, T[]>();
+  for (const row of rows) {
+    const k = key(row);
+    if (k !== null) map.set(k, [...(map.get(k) ?? []), row]);
+  }
+  return map;
+};
+
 /**
- * For each row, the rows of the same resource whose access differs: same project handler (`file:line`), or same path stem.
- * A framework handler (a dotted name such as RedirectView) is shared by unrelated paths, so it groups nothing.
+ * For each row, the rows of the same resource whose access differs: same path, the path one `{param}` up or down,
+ * or the same project handler (`file:line`). A framework handler (a dotted name such as RedirectView) serves unrelated
+ * paths, so it relates nothing; two peer `{param}` paths under one parent are not related either.
  */
 export const siblings = <T extends Folded>(rows: T[]): Map<T, T[]> => {
-  const groups = new Map<string, T[]>();
-  for (const row of rows) {
-    const keys = [`path ${stem(row.path)}`, ...(/:\d+$/.test(row.handler) ? [`handler ${row.handler}`] : [])];
-    for (const group of keys) {
-      if (!groups.has(group)) groups.set(group, []);
-      groups.get(group)!.push(row);
-    }
-  }
+  const byPath = index(rows, r => slashed(r.path));
+  const byParent = index(rows, r => parent(r.path));
+  const byHandler = index(rows, r => (/:\d+$/.test(r.handler) ? r.handler : null));
   const found = new Map<T, T[]>();
-  for (const group of groups.values()) {
-    for (const row of group) {
-      for (const other of group) {
-        if (other === row || !inconsistent(row, other)) continue;
-        const list = found.get(row) ?? [];
-        if (!list.includes(other)) list.push(other);
-        found.set(row, list);
-      }
-    }
+  for (const row of rows) {
+    const up = parent(row.path);
+    const related = new Set([
+      ...(byPath.get(slashed(row.path)) ?? []),
+      ...(up === null ? [] : (byPath.get(up) ?? [])),
+      ...(byParent.get(slashed(row.path)) ?? []),
+      ...(byHandler.get(row.handler) ?? []),
+    ]);
+    const differing = [...related].filter(other => other !== row && inconsistent(row, other));
+    if (differing.length) found.set(row, differing);
   }
   return found;
 };
