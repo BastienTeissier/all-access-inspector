@@ -24,8 +24,8 @@ test('every event type serialises to its sample line', () => {
 });
 
 test('the optional fields are left out, never null', () => {
-  const safe = JSON.parse(valid[1]!) as Record<string, unknown>;
-  expect(Object.keys(safe)).toEqual(['v', 'at', 'by', 'event', 'batch', 'endpoint', 'seen', 'verdict', 'reason']);
+  const safe = { ...(JSON.parse(valid[1]!) as Event), severity: undefined, ticket: undefined, until: undefined } as Event;
+  expect(Object.keys(JSON.parse(serialize(safe)) as object)).toEqual(['v', 'at', 'by', 'event', 'batch', 'endpoint', 'seen', 'verdict', 'reason']);
 });
 
 describe('readLog errors', () => {
