@@ -1,6 +1,7 @@
 // The projection against the review package: same queue as `review status --json`, a cache that can be deleted, the last
 // good state kept when a file breaks.
 
+import { execFileSync } from 'node:child_process';
 import { appendFileSync, chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -10,7 +11,7 @@ import { beforeEach, expect, test } from 'vitest';
 import { keyText } from '../../../skills/all-access-inspector/review/src/inventory.ts';
 import { load } from '../../../skills/all-access-inspector/review/src/project.ts';
 import { queue as reviewQueue } from '../../../skills/all-access-inspector/review/src/tiers.ts';
-import { cachePath, header, history, project, queue, row } from '../lib/projection.ts';
+import { cachePath, header, history, project, queue, row, uncommitted } from '../lib/projection.ts';
 
 const REPO = join(import.meta.dirname, '..', '..', '..');
 const INVENTORY = join(REPO, 'fixtures', 'django-demo', 'expected', 'inventory.json');
@@ -97,4 +98,10 @@ test('a cache that cannot be rebuilt keeps the last good state', () => {
   } finally {
     chmodSync(cache, 0o700);
   }
+});
+
+test('before the first commit, every line of the log is not committed', () => {
+  execFileSync('git', ['init', '-q'], { cwd: dir });
+  execFileSync('git', ['add', '-A'], { cwd: dir });
+  expect(uncommitted(dir)).toBe(readFileSync(tools('reviews.jsonl'), 'utf8').split('\n').filter(Boolean).length);
 });

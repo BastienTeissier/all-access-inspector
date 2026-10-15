@@ -207,12 +207,10 @@ export const uncommitted = (dir: string): number | null => {
   if (!existsSync(log)) return 0;
   try {
     git('ls-files', '--error-unmatch', log);
+    git('rev-parse', '--verify', '-q', 'HEAD');
   } catch {
+    // untracked, or no commit yet: git has none of its lines
     return readFileSync(log, 'utf8').split('\n').filter(Boolean).length;
   }
-  try {
-    return Number(git('diff', '--numstat', 'HEAD', '--', log).split('\t')[0] || 0);
-  } catch {
-    return Number(git('diff', '--numstat', '--', log).split('\t')[0] || 0); // no commit yet
-  }
+  return Number(git('diff', '--numstat', 'HEAD', '--', log).split('\t')[0] || 0);
 };
