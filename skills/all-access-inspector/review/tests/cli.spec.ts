@@ -159,6 +159,28 @@ test('append --agent writes one batch of signals and triages, never a Verdict', 
   expect(events()).toHaveLength(3);
 });
 
+test('append --agent takes a lower-case method and names refused lines as they appear on stdin', () => {
+  const signal = { event: 'signal_raised', path: '/api/orders/{pk}/refund/', reason: 'odd', evidence: 'shop/api.py:24' };
+  expect(review(['append', project, '--agent', '--model', 'm'], { input: JSON.stringify({ ...signal, method: 'post' }) }).status).toBe(0);
+  const before = log();
+  for (const [input, message] of [
+    [`\n\n${JSON.stringify(signal)}`, 'stdin line 3: method and path are required'],
+    ['{not json', 'stdin line 1: not valid JSON'],
+  ] as const) {
+    const result = review(['append', project, '--agent', '--model', 'm'], { input });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain(message);
+  }
+  expect(log()).toBe(before);
+});
+
+test('append --agent needs a model, and the app is not there yet', () => {
+  const noModel = review(['append', project, '--agent'], { input: '' });
+  expect([noModel.status, noModel.stderr]).toEqual([2, '--agent needs --model <id>\n']);
+  const app = review(['app', project]);
+  expect([app.status, app.stderr]).toEqual([2, 'the review app is not available yet\n']);
+});
+
 test('two branches reviewing one endpoint merge without conflict, the later Verdict wins', () => {
   git('init', '-q');
   review(['append', project, '--verdict', 'safe', '--reason', 'first', 'DELETE', '/api/invoices/{pk}/']);
