@@ -13,6 +13,7 @@ export const VerdictForm = ({
   hidden,
   submit,
   reason,
+  candidates = [],
   confirm,
 }: {
   save: (previous: FormState, form: FormData) => Promise<FormState>;
@@ -20,6 +21,8 @@ export const VerdictForm = ({
   hidden: Record<string, string>;
   submit: string;
   reason?: string;
+  /** Orphaned Verdicts whose reason the reviewer may copy: the orphan itself is left as it is. */
+  candidates?: { endpoint: string; verdict: string; reason: string }[];
   /** Shown as a checkbox the reviewer ticks before saving, when the save replaces an open finding. */
   confirm?: string;
 }) => {
@@ -45,6 +48,21 @@ export const VerdictForm = ({
       {Object.entries(hidden).map(([name, value]) => (
         <input key={name} type="hidden" name={name} value={value} />
       ))}
+      {candidates.length > 0 && (
+        <section aria-label="Orphan candidates">
+          <h3>Was it one of these?</h3>
+          <ul>
+            {candidates.map(c => (
+              <li key={c.endpoint}>
+                <code>{c.endpoint}</code> {c.verdict}: {c.reason}{' '}
+                <button type="button" className="btn" onClick={() => setFields({ ...fields, reason: c.reason })}>
+                  Copy reason
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <fieldset aria-invalid={Boolean(errors.verdict)}>
         <legend>Verdict</legend>
         {['safe', 'accepted', 'finding'].map(v => (

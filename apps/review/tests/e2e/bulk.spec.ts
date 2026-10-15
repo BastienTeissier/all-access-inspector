@@ -59,3 +59,21 @@ test('a selection holding an open finding names it and writes nothing until conf
   await expect(page.getByRole('button', { name: 'Review selection' })).toBeDisabled();
   expect(added(before).map(e => [e.verdict, e.endpoint[1]])).toContainEqual(['accepted', finding.path]);
 });
+
+test('a renamed endpoint proposes the orphan from its handler file, and copying its reason leaves the orphan in History', async ({ page }) => {
+  const orphan = orphans().find(o => o.path === '/api/coupons/')!;
+  const row = status().find(r => r.method === 'GET' && r.path === '/catalog/status')!;
+  await page.goto(`/?e=${encodeURIComponent(JSON.stringify(row.key))}`);
+  const proposed = page.getByRole('region', { name: 'Orphan candidates' });
+  await expect(proposed).toContainText('GET /api/coupons/ (shop/api.py)');
+  await proposed.getByRole('button', { name: 'Copy reason' }).click();
+  await expect(page.getByLabel('Reason')).toHaveValue(orphan.reason);
+  await page.getByRole('radio', { name: 'safe' }).check();
+  await page.getByRole('button', { name: 'Save verdict' }).click();
+  await expect(page.locator(`tr[data-key='${JSON.stringify(row.key)}']`)).toHaveCount(0);
+  const last = JSON.parse(log().trimEnd().split('\n').at(-1)!);
+  expect(last).toMatchObject({ event: 'reviewed', verdict: 'safe', endpoint: row.key, reason: orphan.reason });
+  expect(orphans()).toContainEqual(orphan);
+  await page.goto('/history');
+  await expect(page.getByRole('region', { name: /Orphaned verdicts/ })).toContainText('/api/coupons/');
+});

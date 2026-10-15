@@ -2,6 +2,7 @@
 
 import { type Axis, type SeenAxis, classification, keyText } from '../../../skills/all-access-inspector/review/src/inventory.ts';
 import type { Logged } from '../../../skills/all-access-inspector/review/src/log.ts';
+import type { Orphan } from '../../../skills/all-access-inspector/review/src/replay.ts';
 import type { Projected } from '../lib/projection.ts';
 import { saveVerdict } from './actions.ts';
 import { VerdictForm } from './verdict-form.tsx';
@@ -47,6 +48,7 @@ export const EndpointPanel = ({
   row,
   siblings,
   history,
+  candidates,
   project,
   filters,
   close,
@@ -54,6 +56,8 @@ export const EndpointPanel = ({
   row: Projected;
   siblings: Projected[];
   history: Logged[];
+  /** Orphaned Verdicts this endpoint may have been, renamed or moved. */
+  candidates: Orphan[];
   project: string;
   filters: string;
   close: string;
@@ -162,6 +166,7 @@ export const EndpointPanel = ({
         hidden={{ key: keyText(row.key), filters }}
         submit="Save verdict"
         reason={outdated?.reason}
+        candidates={candidates.map(o => ({ endpoint: `${o.key[0]} ${o.key[1]} (${o.key[2]})`, verdict: o.verdict.verdict, reason: o.verdict.reason }))}
       />
     </aside>
   );

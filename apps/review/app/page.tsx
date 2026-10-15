@@ -6,7 +6,8 @@ import { keyText } from '../../../skills/all-access-inspector/review/src/invento
 import { SIGNAL_IDS } from '../../../skills/all-access-inspector/review/src/signals.ts';
 import { TIERS } from '../../../skills/all-access-inspector/review/src/tiers.ts';
 import { FILTERS, filtersOf, href, projectDir } from '../lib/filters.ts';
-import { type Projected, header, history, project, queue, row, uncommitted, zones } from '../lib/projection.ts';
+import { candidates } from '../lib/history.ts';
+import { type Projected, header, history, orphans, project, queue, row, uncommitted, zones } from '../lib/projection.ts';
 import { BulkPanel } from './bulk-panel.tsx';
 import { EndpointPanel } from './endpoint-panel.tsx';
 
@@ -136,6 +137,7 @@ export default async function Queue({ searchParams }: { searchParams: Promise<Re
             row={selected}
             siblings={selected.siblings.flatMap(k => row(db, keyText(k)) ?? [])}
             history={history(db, keyText(selected.key))}
+            candidates={candidates(selected, orphans(db))}
             project={abs}
             filters={filterText}
             close={href(filters)}
