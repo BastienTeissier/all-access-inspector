@@ -2,7 +2,7 @@
 
 import { execFileSync } from 'node:child_process';
 
-import { type Endpoint, type Inventory, keyOf, seenOf } from './inventory.ts';
+import { type Endpoint, type Inventory, type Key, keyOf, keyText, seenOf } from './inventory.ts';
 import { type Event, type Reviewed, SEVERITIES, VERDICTS, VERSION, append, newBatch, now, problem } from './log.ts';
 import { Refused, load } from './project.ts';
 import type { Row } from './replay.ts';
@@ -35,27 +35,29 @@ const gitEmail = (project: string): string => {
 
 export type Values = Record<string, string | boolean | undefined>;
 
-export const appendVerdict = (project: string, values: Values, positionals: string[]) => {
-  const [method, path] = positionals;
-  if (!method || !path || positionals.length !== 2) throw new Refused('append needs <METHOD> <path>');
+/** Checks the Verdict fields every endpoint shares, before anything is resolved. */
+const checkVerdict = (values: Values): string => {
   const verdict = values.verdict as string | undefined;
   if (!verdict || !VERDICTS.includes(verdict as Reviewed['verdict'])) throw new Refused(`--verdict must be one of ${VERDICTS.join(', ')}`);
   if (values.severity !== undefined && !SEVERITIES.includes(values.severity as NonNullable<Reviewed['severity']>))
     throw new Refused(`--severity must be one of ${SEVERITIES.join(', ')}`);
-  const { inventory, rows } = load(project);
-  const endpoints = resolve(inventory, rows, method, path, values.handler as string | undefined);
+  return verdict;
+};
+
+/** One `reviewed` event per endpoint, all with the same author, time and batch; refused as a whole on the first problem. */
+const reviewed = (project: string, inventory: Inventory, endpoints: Endpoint[], values: Values, batch: string | null): Event[] => {
   const by = gitEmail(project);
   const at = now();
-  const events = endpoints.map(e => {
+  return endpoints.map(e => {
     const event: Record<string, unknown> = {
       v: VERSION,
       at,
       by,
       event: 'reviewed',
-      batch: null,
+      batch,
       endpoint: keyOf(e),
       seen: seenOf(e, inventory.expected_access),
-      verdict,
+      verdict: values.verdict,
       reason: values.reason ?? '',
     };
     for (const k of ['severity', 'ticket', 'until']) if (values[k] !== undefined) event[k] = values[k];
@@ -63,8 +65,34 @@ export const appendVerdict = (project: string, values: Values, positionals: stri
     if (wrong) throw new Refused(wrong);
     return event as unknown as Event;
   });
+};
+
+export const appendVerdict = (project: string, values: Values, positionals: string[]) => {
+  const [method, path] = positionals;
+  if (!method || !path || positionals.length !== 2) throw new Refused('append needs <METHOD> <path>');
+  const verdict = checkVerdict(values);
+  const { inventory, rows } = load(project);
+  const events = reviewed(project, inventory, resolve(inventory, rows, method, path, values.handler as string | undefined), values, null);
   append(project, events);
   return `appended ${events.length} event${events.length === 1 ? '' : 's'}: ${verdict} ${method.toUpperCase()} ${path}\n`;
+};
+
+/**
+ * One Verdict on every row the keys name, as one batch: each endpoint gets its own event (a folded HEAD too), none names
+ * a selector. Refused, and nothing written, when a key is no longer a row of the inventory.
+ */
+export const appendBulk = (project: string, values: Values, keys: Key[]): { events: number; batch: string } => {
+  checkVerdict(values);
+  if (!keys.length) throw new Refused('the selection is empty');
+  const { inventory, rows } = load(project);
+  const endpoints = keys.flatMap(key => {
+    if (!rows.some(r => keyText(r.key) === keyText(key))) throw new Refused(`${key[0]} ${key[1]} is no longer in the inventory: reload the selection`);
+    return resolve(inventory, rows, key[0], key[1], key[2]);
+  });
+  const batch = newBatch();
+  const events = reviewed(project, inventory, endpoints, values, batch);
+  append(project, events);
+  return { events: events.length, batch };
 };
 
 export const appendAgent = (project: string, model: string | undefined, input: string) => {
