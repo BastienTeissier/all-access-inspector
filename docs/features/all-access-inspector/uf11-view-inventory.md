@@ -10,7 +10,7 @@ The Endpoint Inventory is JSON written for machines and diffs. A developer or a 
 
 AAU (developer or reviewer), I open the viewer shipped with the skill in a browser and load a project's `inventory.json` (file picker or drag-and-drop). Nothing is sent anywhere and nothing needs to be installed. I see:
 - a header with the stack, Base Script version, coverage and boot entry
-- **Triage**: endpoints in buckets, worst first: can't tell, acknowledged, open to anyone, sign-in optional, role required, sign-in required; each with one sentence saying why
+- **Overview** (named Triage before UF13 gave that word to the Agent run): endpoints in buckets, worst first: can't tell, acknowledged, open to anyone, sign-in optional, role required, sign-in required; each with one sentence saying why
 - **Zones**: endpoints grouped by the values of a Project Dimension; an endpoint whose classification is outside the team's expected access for its value is flagged
 - on click, a detail panel: the request going through each layer (global, class, method) to the handler, the check deciding each axis, its rule and the `file:line` evidence
 
