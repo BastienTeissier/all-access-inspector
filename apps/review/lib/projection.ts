@@ -13,6 +13,7 @@ import { type Logged, logPath, readLog } from '../../../skills/all-access-inspec
 import { load } from '../../../skills/all-access-inspector/review/src/project.ts';
 import type { Orphan, Row } from '../../../skills/all-access-inspector/review/src/replay.ts';
 import { siblings } from '../../../skills/all-access-inspector/review/src/signals.ts';
+import { queue as reviewQueue } from '../../../skills/all-access-inspector/review/src/tiers.ts';
 
 // Next bundles this file, so its own location means nothing at run time: `review app` and the tests run from apps/review.
 const VERSION_FILE = join(process.cwd(), '..', '..', 'skills', 'all-access-inspector', 'VERSION');
@@ -62,6 +63,8 @@ const fingerprint = (project: string): Record<string, string> => {
     log_size: String(log?.size ?? -1),
     log_mtime: String(log?.mtimeMs ?? -1),
     toolkit_version: readFileSync(VERSION_FILE, 'utf8').trim(),
+    // the shape of the tables below: a cache of another shape is rebuilt, not read
+    projection: '2',
     // an `accepted` Verdict goes outdated the day after its `until`: a new day is a new replay
     today: new Date().toISOString().slice(0, 10),
   };
@@ -69,7 +72,7 @@ const fingerprint = (project: string): Record<string, string> => {
 
 const SCHEMA = `
   CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);
-  CREATE TABLE endpoint(key TEXT PRIMARY KEY, method TEXT, path TEXT, handler TEXT, row TEXT, tier INT, signals TEXT, state TEXT, verdict TEXT, siblings TEXT);
+  CREATE TABLE endpoint(key TEXT PRIMARY KEY, method TEXT, path TEXT, handler TEXT, row TEXT, tier INT, signals TEXT, state TEXT, verdict TEXT, siblings TEXT, position INT);
   CREATE TABLE event(line INT PRIMARY KEY, at TEXT, by TEXT, event TEXT, batch TEXT, key TEXT, payload TEXT);
   CREATE TABLE orphan(key TEXT PRIMARY KEY, verdict TEXT);
   CREATE TABLE header(value TEXT);
@@ -84,10 +87,12 @@ const build = (path: string, meta: Record<string, string>, inventory: Inventory,
   const insertMeta = db.prepare('INSERT INTO meta VALUES (?, ?)');
   for (const [k, v] of Object.entries(meta)) insertMeta.run(k, v);
   const related = siblings(rows);
-  const insertRow = db.prepare('INSERT INTO endpoint VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  // the package decides what is queued and in what order: the app only filters it
+  const position = new Map(reviewQueue(rows).map((r, i) => [r, i]));
+  const insertRow = db.prepare('INSERT INTO endpoint VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
   for (const r of rows) {
     const keys = (related.get(r) ?? []).map(s => s.key);
-    insertRow.run(keyText(r.key), r.method, r.path, r.handler, JSON.stringify(r), r.tier, JSON.stringify(r.signals), r.state, r.verdict && JSON.stringify(r.verdict), JSON.stringify(keys));
+    insertRow.run(keyText(r.key), r.method, r.path, r.handler, JSON.stringify(r), r.tier, JSON.stringify(r.signals), r.state, r.verdict && JSON.stringify(r.verdict), JSON.stringify(keys), position.get(r) ?? null);
   }
   const insertEvent = db.prepare('INSERT INTO event VALUES (?, ?, ?, ?, ?, ?, ?)');
   for (const e of events) insertEvent.run(e.line, e.at, e.by, e.event, e.batch, keyText(e.endpoint), JSON.stringify(e));
@@ -157,7 +162,8 @@ export const queue = (db: DatabaseSync, filters: Filters): Projected[] => {
     where.push(sql);
     args.push(...values);
   };
-  add(filters.view === 'reviewed' ? "state = 'valid'" : "NOT (state = 'valid' AND json_extract(verdict, '$.verdict') <> 'finding')");
+  const reviewed = filters.view === 'reviewed';
+  add(reviewed ? "state = 'valid'" : 'position IS NOT NULL');
   if (filters.tier) add('tier = ?', filters.tier);
   if (filters.state) add('state = ?', filters.state);
   if (filters.q) add('instr(path, ?) > 0', filters.q);
@@ -166,7 +172,7 @@ export const queue = (db: DatabaseSync, filters: Filters): Projected[] => {
     const at = filters.zone.indexOf('=');
     add("EXISTS (SELECT 1 FROM json_each(row, '$.dimensions') WHERE key = ? AND value = ?)", filters.zone.slice(0, at), filters.zone.slice(at + 1));
   }
-  const sql = `SELECT row, siblings FROM endpoint WHERE ${where.join(' AND ')} ORDER BY tier, path, method`;
+  const sql = `SELECT row, siblings FROM endpoint WHERE ${where.join(' AND ')} ORDER BY ${reviewed ? 'tier, path, method' : 'position'}`;
   return (db.prepare(sql).all(...args) as { row: string; siblings: string }[]).map(parse);
 };
 
