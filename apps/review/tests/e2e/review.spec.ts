@@ -46,6 +46,21 @@ test('a finding without a severity is flagged and nothing is written', async ({ 
   expect(log()).toBe(before);
 });
 
+test('a form posting no Review Key is refused and nothing is written', async ({ page }) => {
+  const before = log();
+  const [row] = status().filter(r => r.tier === 8);
+  await page.goto(`/?e=${encodeURIComponent(keyOf(row!))}`);
+  await page.getByRole('radio', { name: 'safe' }).check();
+  await page.getByLabel('Reason').fill('only the allowed methods');
+  // after the last re-render, which would put the key back
+  await page.locator('input[name="key"]').evaluate(input => {
+    (input as HTMLInputElement).value = 'not a key';
+  });
+  await page.getByRole('button', { name: 'Save verdict' }).click();
+  await expect(page.getByText('This endpoint is not in the inventory: reload the page.')).toBeVisible();
+  expect(log()).toBe(before);
+});
+
 test('an outdated verdict shows what was reviewed beside what is now, its reason prefilled', async ({ page }) => {
   const row = status().find(r => r.state === 'outdated' && r.method === 'GET' && r.path === '/reports/{slug}')!;
   await page.goto(`/?e=${encodeURIComponent(keyOf(row))}`);

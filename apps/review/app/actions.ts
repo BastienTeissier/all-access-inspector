@@ -20,8 +20,19 @@ const text = (form: FormData, name: string): string | undefined => {
   return value || undefined;
 };
 
+/** The Review Key the form posted, or null when it is not one. */
+const keyOf = (value: FormDataEntryValue | null): Key | null => {
+  try {
+    const key: unknown = JSON.parse(String(value));
+    return Array.isArray(key) && key.length === 3 && key.every(k => typeof k === 'string') ? (key as Key) : null;
+  } catch {
+    return null;
+  }
+};
+
 export const saveVerdict = async (_previous: FormState, form: FormData): Promise<FormState> => {
-  const key = JSON.parse(String(form.get('key'))) as Key;
+  const key = keyOf(form.get('key'));
+  if (!key) return { errors: { form: 'This endpoint is not in the inventory: reload the page.' } };
   const filters = filtersOf(new URLSearchParams(String(form.get('filters') ?? '')));
   const verdict = text(form, 'verdict');
   const reason = text(form, 'reason');
