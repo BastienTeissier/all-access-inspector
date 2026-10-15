@@ -3,8 +3,11 @@
 import { type ExpectedAccess, type Folded, SAFE_METHODS, classification, isUnknown } from './inventory.ts';
 import type { SignalRaised, Triaged } from './log.ts';
 
+/** Every Signal id, in tier order. */
+export const SIGNAL_IDS = ['outside_expected', 'unknown', 'sibling', 'open_write', 'agent', 'id_without_authz', 'open_read'] as const;
+
 export interface Signal {
-  id: 'outside_expected' | 'unknown' | 'sibling' | 'open_write' | 'agent' | 'id_without_authz' | 'open_read';
+  id: (typeof SIGNAL_IDS)[number];
   text: string;
 }
 
