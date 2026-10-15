@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 
-import { type Endpoint, type Inventory, InventoryError, classification, keyOf, loadInventory, seenOf } from './inventory.ts';
+import { type Endpoint, type Inventory, InventoryError, classification, keyOf, loadInventory, seenOf, toolsDir } from './inventory.ts';
 import { type Event, type Reviewed, SEVERITIES, VERDICTS, VERSION, append, newBatch, now, problem, readLog } from './log.ts';
 import { type Row, replay } from './replay.ts';
 import { TIERS, queue } from './tiers.ts';
@@ -18,7 +18,7 @@ const USAGE = `usage:
 
 class Refused extends Error {}
 
-const inventoryPath = (project: string) => join(project, 'tools', 'access-inspector', 'inventory.json');
+const inventoryPath = (project: string) => join(toolsDir(project), 'inventory.json');
 
 /** Inventory and log, or a refusal naming the first broken line. */
 const load = (project: string): { inventory: Inventory; rows: Row[]; orphans: ReturnType<typeof replay>['orphans'] } => {

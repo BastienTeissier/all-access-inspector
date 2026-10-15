@@ -4,7 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { closeSync, existsSync, openSync, readFileSync, writeFileSync, writeSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { Key, Seen } from './inventory.ts';
+import { type Key, SEEN_FIELDS, type Seen, seenAxis, toolsDir } from './inventory.ts';
 
 export const VERSION = 1;
 export const VERDICTS = ['safe', 'accepted', 'finding'] as const;
@@ -48,7 +48,7 @@ export interface LogError {
   message: string;
 }
 
-export const logPath = (project: string): string => join(project, 'tools', 'access-inspector', 'reviews.jsonl');
+export const logPath = (project: string): string => join(toolsDir(project), 'reviews.jsonl');
 
 const ATTRIBUTES = 'reviews.jsonl merge=union\n';
 
@@ -57,7 +57,6 @@ const isText = (x: unknown, max: number): boolean => isString(x) && x.trim() !==
 const isNullableString = (x: unknown): boolean => x === null || isString(x);
 const isObject = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 
-const AXIS_KEYS = ['value', 'layer', 'raw', 'rule'];
 const COMMON_KEYS = ['v', 'at', 'by', 'event', 'batch', 'endpoint', 'seen'];
 const EVENT_KEYS = {
   reviewed: ['verdict', 'reason', 'severity', 'ticket', 'until'],
@@ -66,8 +65,8 @@ const EVENT_KEYS = {
 } as const;
 
 const axisProblem = (axis: unknown, name: string): string | null => {
-  if (!isObject(axis) || Object.keys(axis).some(k => !AXIS_KEYS.includes(k))) return `seen.${name} must hold only value, layer, raw, rule`;
-  if (!isString(axis.value) || !AXIS_KEYS.slice(1).every(k => isNullableString(axis[k]))) return `seen.${name} has a wrong type`;
+  if (!isObject(axis) || Object.keys(axis).some(k => !(SEEN_FIELDS as readonly string[]).includes(k))) return `seen.${name} must hold only ${SEEN_FIELDS.join(', ')}`;
+  if (!isString(axis.value) || !SEEN_FIELDS.slice(1).every(k => isNullableString(axis[k]))) return `seen.${name} has a wrong type`;
   return null;
 };
 
@@ -106,7 +105,6 @@ export const problem = (e: unknown): string | null => {
 
 /** One compact line, keys in the order of the schema, absent optional fields left out. */
 export const serialize = (e: Event): string => {
-  const axis = (a: Seen['authentication']) => ({ value: a.value, layer: a.layer, raw: a.raw, rule: a.rule });
   const out: Record<string, unknown> = {
     v: e.v,
     at: e.at,
@@ -114,7 +112,7 @@ export const serialize = (e: Event): string => {
     event: e.event,
     batch: e.batch,
     endpoint: e.endpoint,
-    seen: { handler: e.seen.handler, authentication: axis(e.seen.authentication), authorization: axis(e.seen.authorization), inside: e.seen.inside },
+    seen: { handler: e.seen.handler, authentication: seenAxis(e.seen.authentication), authorization: seenAxis(e.seen.authorization), inside: e.seen.inside },
   };
   for (const k of EVENT_KEYS[e.event]) {
     const value = (e as unknown as Record<string, unknown>)[k];
@@ -155,7 +153,7 @@ export const append = (project: string, events: Event[]): void => {
     const wrong = problem(e);
     if (wrong) throw new Error(`refused: ${wrong}`);
   }
-  const attributes = join(project, 'tools', 'access-inspector', '.gitattributes');
+  const attributes = join(toolsDir(project), '.gitattributes');
   if (!existsSync(attributes)) writeFileSync(attributes, ATTRIBUTES);
   const fd = openSync(logPath(project), 'a');
   try {

@@ -1,8 +1,15 @@
 // The Committed Inventory as the review needs it: its endpoints, their Review Key, HEAD folding and zones.
 
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 export const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+/** Where the toolkit keeps a project's inventory and Review Log. */
+export const toolsDir = (project: string): string => join(project, 'tools', 'access-inspector');
+
+/** What a review keeps of an axis: evidence is left out, it moves with unrelated edits. */
+export const SEEN_FIELDS = ['value', 'layer', 'raw', 'rule'] as const;
 
 export interface Axis {
   value: string;
@@ -37,13 +44,8 @@ export interface Inventory {
 /** (method, path, handler with its line stripped): moving a handler within its file keeps its reviews. */
 export type Key = [string, string, string];
 
-/** An axis as a review saw it; evidence is left out, it moves with unrelated edits. */
-export interface SeenAxis {
-  value: string;
-  layer: string | null;
-  raw: string | null;
-  rule: string | null;
-}
+/** An axis as a review saw it: its SEEN_FIELDS. */
+export type SeenAxis = Pick<Axis, (typeof SEEN_FIELDS)[number]>;
 
 export interface Seen {
   handler: string;
@@ -114,7 +116,8 @@ export const inside = (e: Endpoint, expected: ExpectedAccess): boolean | null =>
   return checked ? true : null;
 };
 
-const seenAxis = (a: Axis): SeenAxis => ({ value: a.value, layer: a.layer, raw: a.raw, rule: a.rule });
+/** The SEEN_FIELDS of an axis, in that order. */
+export const seenAxis = (a: SeenAxis): SeenAxis => ({ value: a.value, layer: a.layer, raw: a.raw, rule: a.rule });
 
 export const seenOf = (e: Endpoint, expected: ExpectedAccess): Seen => ({
   handler: e.handler,

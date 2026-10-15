@@ -1,6 +1,6 @@
 // Replay: the Review Log read against the current inventory, into one row per endpoint and the orphaned Verdicts.
 
-import { type Endpoint, type Folded, type Inventory, type Key, type Seen, foldHead, inside, keyOf, keyText } from './inventory.ts';
+import { type Endpoint, type Folded, type Inventory, type Key, SEEN_FIELDS, type Seen, foldHead, inside, keyOf, keyText } from './inventory.ts';
 import type { Logged, Reviewed, SignalRaised, Triaged } from './log.ts';
 import { type Signal, siblings, signals } from './signals.ts';
 import { tierOf } from './tiers.ts';
@@ -23,14 +23,13 @@ export interface Orphan {
 }
 
 const AXES = ['authentication', 'authorization'] as const;
-const FIELDS = ['value', 'layer', 'raw', 'rule'] as const;
 
 /**
  * Whether what was reviewed no longer holds. Inside its expected access (or with none), only a change of value counts;
  * outside it, any change to the check that decided it.
  */
 export const changed = (seen: Seen, e: Endpoint, insideNow: boolean | null): boolean =>
-  AXES.some(axis => (insideNow === false ? FIELDS : (['value'] as const)).some(f => seen[axis][f] !== e[axis][f]));
+  AXES.some(axis => (insideNow === false ? SEEN_FIELDS : (['value'] as const)).some(f => seen[axis][f] !== e[axis][f]));
 
 const later = <T extends Logged>(a: T | undefined, b: T): T => (!a || b.at > a.at || (b.at === a.at && b.line > a.line) ? b : a);
 
