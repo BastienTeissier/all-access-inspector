@@ -70,9 +70,7 @@ const axisProblem = (axis: unknown, name: string): string | null => {
   return null;
 };
 
-/** What is wrong with a parsed line, or null; mirrors schema/review-event.schema.json. */
-export const problem = (e: unknown): string | null => {
-  if (!isObject(e)) return 'not a JSON object';
+const envelopeProblem = (e: Record<string, unknown>): string | null => {
   if (e.v !== VERSION) return typeof e.v === 'number' && e.v > VERSION ? `written by a newer toolkit (v ${e.v})` : `unknown v ${JSON.stringify(e.v)}`;
   if (!isString(e.event) || !(e.event in EVENT_KEYS)) return `unknown event ${JSON.stringify(e.event)}`;
   const allowed = [...COMMON_KEYS, ...EVENT_KEYS[e.event as Event['event']]];
@@ -82,25 +80,42 @@ export const problem = (e: unknown): string | null => {
   if (!isText(e.by, 320)) return 'by is required';
   if (!(e.batch === null || (isString(e.batch) && /^b-[0-9a-f]{8}$/.test(e.batch)))) return 'batch must be null or b-<8 hex>';
   if (!Array.isArray(e.endpoint) || e.endpoint.length !== 3 || !e.endpoint.every(isString)) return 'endpoint must be [method, path, handler]';
-  const seen = e.seen;
+  return null;
+};
+
+const seenProblem = (seen: unknown): string | null => {
   if (!isObject(seen) || Object.keys(seen).some(k => !['handler', 'authentication', 'authorization', 'inside'].includes(k))) return 'seen must hold handler, authentication, authorization, inside';
   if (!isString(seen.handler)) return 'seen.handler is required';
   const axis = axisProblem(seen.authentication, 'authentication') ?? axisProblem(seen.authorization, 'authorization');
   if (axis) return axis;
   if (!(seen.inside === null || typeof seen.inside === 'boolean')) return 'seen.inside must be true, false or null';
-  if (e.event === 'reviewed') {
-    if (!VERDICTS.includes(e.verdict as Reviewed['verdict'])) return `verdict must be one of ${VERDICTS.join(', ')}`;
-    if (!isText(e.reason, 2000)) return 'reason is required (at most 2000 characters)';
-    if (e.verdict === 'finding' && !SEVERITIES.includes(e.severity as NonNullable<Reviewed['severity']>)) return `a finding needs a severity: ${SEVERITIES.join(', ')}`;
-    if (e.verdict !== 'finding' && 'severity' in e) return 'severity is only for a finding';
-    if ('ticket' in e && (e.verdict !== 'finding' || !isString(e.ticket) || !/^https?:\/\/\S+$/.test(e.ticket))) return 'ticket must be an http(s) URL, on a finding';
-    if ('until' in e && (e.verdict !== 'accepted' || !isString(e.until) || !/^\d{4}-\d\d-\d\d$/.test(e.until))) return 'until must be YYYY-MM-DD, on an accepted verdict';
-  }
-  if (e.event === 'signal_raised') {
-    if (!isText(e.reason, 500)) return 'reason is required (at most 500 characters)';
-    if (!isString(e.evidence) || !/^[^\s:]+:\d+$/.test(e.evidence)) return 'evidence must be path:line';
-  }
   return null;
+};
+
+const reviewedProblem = (e: Record<string, unknown>): string | null => {
+  if (!VERDICTS.includes(e.verdict as Reviewed['verdict'])) return `verdict must be one of ${VERDICTS.join(', ')}`;
+  if (!isText(e.reason, 2000)) return 'reason is required (at most 2000 characters)';
+  if (e.verdict === 'finding' && !SEVERITIES.includes(e.severity as NonNullable<Reviewed['severity']>)) return `a finding needs a severity: ${SEVERITIES.join(', ')}`;
+  if (e.verdict !== 'finding' && 'severity' in e) return 'severity is only for a finding';
+  if ('ticket' in e && (e.verdict !== 'finding' || !isString(e.ticket) || !/^https?:\/\/\S+$/.test(e.ticket))) return 'ticket must be an http(s) URL, on a finding';
+  if ('until' in e && (e.verdict !== 'accepted' || !isString(e.until) || !/^\d{4}-\d\d-\d\d$/.test(e.until))) return 'until must be YYYY-MM-DD, on an accepted verdict';
+  return null;
+};
+
+const signalProblem = (e: Record<string, unknown>): string | null => {
+  if (!isText(e.reason, 500)) return 'reason is required (at most 500 characters)';
+  if (!isString(e.evidence) || !/^[^\s:]+:\d+$/.test(e.evidence)) return 'evidence must be path:line';
+  return null;
+};
+
+/** What is wrong with a parsed line, or null; mirrors schema/review-event.schema.json. */
+export const problem = (e: unknown): string | null => {
+  if (!isObject(e)) return 'not a JSON object';
+  return (
+    envelopeProblem(e) ??
+    seenProblem(e.seen) ??
+    (e.event === 'reviewed' ? reviewedProblem(e) : e.event === 'signal_raised' ? signalProblem(e) : null)
+  );
 };
 
 /** One compact line, keys in the order of the schema, absent optional fields left out. */

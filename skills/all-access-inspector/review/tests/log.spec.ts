@@ -55,8 +55,35 @@ describe('the schema and the CLI agree', () => {
     expect(parseLog(line).errors).toEqual([]);
   });
 
-  test.each(invalid.map((line, i) => [i + 1, line]))('invalid line %i', (_, line) => {
+  /** The refusal each line of invalid.jsonl must get, in file order: one rule broken per line. */
+  const REFUSALS = [
+    'written by a newer toolkit',
+    'unexpected field extra',
+    'at must be',
+    'by is required',
+    'batch must be',
+    'endpoint must be',
+    'seen.inside must be',
+    'seen.authentication must hold only',
+    'verdict must be one of',
+    'reason is required',
+    'reason is required',
+    'a finding needs a severity',
+    'severity is only for a finding',
+    'ticket must be',
+    'ticket must be',
+    'until must be',
+    'until must be',
+    'evidence must be path:line',
+    'reason is required',
+    'unexpected field reason',
+    'unknown event',
+  ];
+
+  test.each(invalid.map((line, i) => [i + 1, line, REFUSALS[i] ?? 'missing from REFUSALS'] as const))('invalid line %i', (_, line, refusal) => {
     expect(validate(JSON.parse(line))).toBe(false);
-    expect(parseLog(line).errors).toHaveLength(1);
+    expect(parseLog(line).errors).toEqual([{ line: 1, message: expect.stringContaining(refusal) }]);
   });
+
+  test('every invalid line has its refusal', () => expect(REFUSALS).toHaveLength(invalid.length));
 });
