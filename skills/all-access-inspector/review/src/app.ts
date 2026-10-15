@@ -32,11 +32,15 @@ export const prepare = (project: string, appDir = APP_DIR): App => {
   const built = join(appDir, '.next', 'BUILD_ID');
   if (!existsSync(built) || statSync(built).mtimeMs < Math.max(...SOURCES.filter(existsSync).map(newest))) {
     process.stderr.write('review app: building…\n');
-    execFileSync(process.execPath, [join(appDir, 'node_modules', 'next', 'dist', 'bin', 'next'), 'build'], {
-      cwd: appDir,
-      stdio: ['ignore', process.stderr, process.stderr],
-      env: { ...process.env, NEXT_TELEMETRY_DISABLED: '1' },
-    });
+    try {
+      execFileSync(process.execPath, [join(appDir, 'node_modules', 'next', 'dist', 'bin', 'next'), 'build'], {
+        cwd: appDir,
+        stdio: ['ignore', process.stderr, process.stderr],
+        env: { ...process.env, NEXT_TELEMETRY_DISABLED: '1' },
+      });
+    } catch {
+      throw new Refused('review app: the build failed, see its output above');
+    }
   }
   return { dir: appDir, project: resolve(project) };
 };

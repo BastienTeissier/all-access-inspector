@@ -1,7 +1,7 @@
 // The review CLI run as a user runs it, inside a temporary project holding the django-demo inventory.
 
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -164,4 +164,12 @@ test('app refuses outside a checkout of the toolkit: the skill ships without the
   expect(() => prepare(project, mkdtempSync(join(tmpdir(), 'vendored-')))).toThrow(
     new Refused('the review app runs from a checkout of all-access-inspector'),
   );
+});
+
+test('app names a failed build instead of a stack trace', () => {
+  const app = mkdtempSync(join(tmpdir(), 'checkout-'));
+  writeFileSync(join(app, 'package.json'), '{}');
+  mkdirSync(join(app, 'node_modules', 'next', 'dist', 'bin'), { recursive: true });
+  writeFileSync(join(app, 'node_modules', 'next', 'dist', 'bin', 'next'), 'process.exit(1);\n');
+  expect(() => prepare(project, app)).toThrow(new Refused('review app: the build failed, see its output above'));
 });
