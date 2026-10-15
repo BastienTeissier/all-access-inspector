@@ -321,7 +321,7 @@ Next.js App Router, server components + server actions, no client data fetching 
 ### Skill and viewer (Phase 5d)
 
 #### BN. `SKILL.md` 🔵
-**Changes**: description adds triage; new `## Triage` section: precondition Committed Inventory (else "fit first"); run `status --json`; scope = rows with no valid Verdict, tier ≠ 11, `agent` null (or as the user names: endpoints, prefix); read each handler per the stack reference's checklist; one `append --agent --model <own id>` call with all lines; never a Verdict, never edit outside `reviews.jsonl`, never commit; summary: read / raised (reasons) / skipped (why). Hard rules: Triage writes only through the CLI. Update mode and a Base Script refresh never touch `reviews.jsonl` or `.gitattributes` (not vendored files; a refresh leaves them, and the regenerated inventory makes Verdicts outdated through replay).
+**Changes**: description adds triage; new `## Triage` section: precondition Committed Inventory (else "fit first"); run `status --json`; scope = rows with `triage` true in `status --json`: no valid Verdict, tier ≠ 11, no agent event that still holds (or as the user names: endpoints, prefix); read each handler per the stack reference's checklist; one `append --agent --model <own id>` call with all lines; never a Verdict, never edit outside `reviews.jsonl`, never commit; summary: read / raised (reasons) / skipped (why). Hard rules: Triage writes only through the CLI. Update mode and a Base Script refresh never touch `reviews.jsonl` or `.gitattributes` (not vendored files; a refresh leaves them, and the regenerated inventory makes Verdicts outdated through replay).
 
 #### BO. `references/django.md`, `references/nestjs.md` 🔵 — `## Triage checklist`: handler name/verb vs guard; body checks the inventory cannot see (Django: `request.user`, `PermissionDenied`, `get_queryset` filter, `get_object`; NestJS: `@Req() user` use, service-level checks); bulk or export responses; anonymous writes; third-party handler ⇒ read the mounting line or skip.
 
@@ -568,7 +568,7 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 - [x] **Skill**: `SKILL.md` `## Triage` + description + hard rule (BN); `references/{django,nestjs}.md` `## Triage checklist` (BO).
 - [x] **Viewer**: Triage tab → Overview (BP); README and UF11 wording.
 - [x] **Write tests**: none new beyond 5c's `append --agent` tests (Triage is Agent work, manual acceptance).
-- [x] **Verify (manual)**: triage `fixtures/django-demo` copy → signals on its open writes and unscoped lookups (`IsOwner` itself holds: `get_object` checks it), `triaged` on the rest of the scope, one batch; second run reads nothing; edit one handler's guard, rerun → only it is read. Then moi scratch copy: 110 rows in scope (33 project handlers), a sample read, summary lists raised signals; nothing changed outside `reviews.jsonl`.
+- [x] **Verify (manual)**: triage `fixtures/django-demo` copy → signals on its open writes and unscoped lookups (`IsOwner` itself holds: `get_object` checks it), `triaged` on the rest of the scope, one batch; second run reads nothing; edit one handler's guard, rerun → only it is read. Then moi scratch copy: 110 rows in scope (33 project handlers); 3 handlers sampled here (5 `triaged`, one batch), the full run is left to the user on moi; nothing changed outside `reviews.jsonl` and `.gitattributes`.
 
 ### Phase 5e — UF14 Review endpoints in the app
 

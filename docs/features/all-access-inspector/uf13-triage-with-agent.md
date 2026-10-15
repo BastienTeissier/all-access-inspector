@@ -10,7 +10,7 @@ Deterministic Signals see only the inventory's facts. Some risks show only in th
 
 AAU (developer or security reviewer), in a project with a Committed Inventory, I invoke the all-access-inspector skill and ask it to triage the inventory. The skill:
 - runs `review status` to get the queue
-- reads the handler of every endpoint that has no valid Verdict, is not authorization `rule`, and has no `triaged` or `signal_raised` event valid for its current classification
+- reads the handler of every endpoint that has no valid Verdict, is not decided by an authorization `rule` alone (the last tier: a rule and no other Signal), and has no `triaged` or `signal_raised` event valid for its current classification
 - follows the stack reference's triage checklist: the handler's name and verb against its guard; checks in the body the inventory cannot see (`request.user`, `PermissionDenied`, a queryset filter); bulk or export responses; writes on anonymous endpoints
 - appends, through `review append --agent`, one event per endpoint read: `signal_raised` with a one-line reason and the `file:line` it read, or `triaged` when it found nothing; all events of one run share a batch id and `by` is `agent:<model id>`
 - prints a summary: endpoints read, Signals raised with their reasons, and endpoints skipped with why
@@ -21,7 +21,7 @@ AAU, I run `review status` after a triage, I see endpoints with an agent Signal 
 
 ## Success Scenario
 
-- AAU, on moi, the first triage reads about 136 handlers; a second triage with no code change reads none.
+- AAU, on moi, the first triage reads 110 rows (33 project handlers, plus third-party ones it skips); a second triage with no code change reads none.
 - AAU, a triaged endpoint later changes classification, the next triage reads it again.
 
 ## Error Scenario
@@ -40,4 +40,4 @@ AAU, I run `review status` after a triage, I see endpoints with an agent Signal 
 - [ ] SKILL.md has a Triage section; each stack reference has a triage checklist.
 - [ ] `append --agent` accepts only `signal_raised` and `triaged`, and stamps `by` as `agent:<model id>`.
 - [ ] Agent events go outdated by the same rules as Verdicts.
-- [ ] A triage run never changes anything outside `reviews.jsonl`.
+- [ ] A triage run never changes anything outside `reviews.jsonl`, and `.gitattributes` on the first run in a project.
