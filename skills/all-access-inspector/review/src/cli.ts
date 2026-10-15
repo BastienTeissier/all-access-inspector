@@ -51,10 +51,35 @@ const detail = (row: Row): string => {
   return notes.join('; ');
 };
 
+/** One queued row as `status --json` prints it: the interface Triage reads, kept apart from the internal Row. */
+const output = (row: Row) => ({
+  key: row.key,
+  method: row.method,
+  head: row.head,
+  path: row.path,
+  handler: row.handler,
+  authentication: row.authentication,
+  authorization: row.authorization,
+  dimensions: row.dimensions,
+  unknown_reason: row.unknown_reason,
+  inside: row.inside,
+  state: row.state,
+  moot: row.moot,
+  verdict: row.verdict && {
+    verdict: row.verdict.verdict,
+    by: row.verdict.by,
+    at: row.verdict.at,
+    reason: row.verdict.reason,
+    ...(row.verdict.severity ? { severity: row.verdict.severity } : {}),
+  },
+  signals: row.signals,
+  tier: row.tier,
+});
+
 const status = (project: string, json: boolean): string => {
   const { inventory, rows, orphans } = load(project);
   const todo = queue(rows);
-  if (json) return todo.map(r => `${JSON.stringify(r)}\n`).join('');
+  if (json) return todo.map(r => `${JSON.stringify(output(r))}\n`).join('');
   const count = (state: Row['state']) => rows.filter(r => r.state === state).length;
   const out = [
     `${inventory.stack} · ${inventory.coverage} · ${inventory.endpoints.length} endpoints (${rows.length} rows, HEAD shown with its GET)`,

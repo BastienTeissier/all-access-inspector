@@ -60,7 +60,9 @@ test('status --json prints one row per queued endpoint, in queue order', () => {
   const rows = review(['status', project, '--json']).stdout.trimEnd().split('\n').map(l => JSON.parse(l) as { method: string; path: string; tier: number });
   const text = readFileSync(GOLDEN, 'utf8');
   expect(rows).toHaveLength(Number(/Review Queue: (\d+) rows/.exec(text)![1]));
-  expect(rows[0]).toMatchObject({ method: 'ANY', path: '/pages/v1/old/', tier: 1 });
+  expect(rows[0]).toMatchObject({ method: 'ANY', path: '/pages/v1/old/', tier: 1, verdict: { verdict: 'finding', severity: 'high' } });
+  expect(Object.keys(rows[0]!)).toEqual(['key', 'method', 'head', 'path', 'handler', 'authentication', 'authorization', 'dimensions', 'unknown_reason', 'inside', 'state', 'moot', 'verdict', 'signals', 'tier']);
+  expect(Object.keys((rows[0] as unknown as { verdict: object }).verdict)).not.toContain('seen');
   const listed = text.split('\n').filter(l => l.startsWith('  ') && !text.slice(text.indexOf('Orphaned')).includes(l));
   expect(rows.map(r => r.path)).toEqual(listed.map(l => l.trim().split(/\s+/)[1]));
 });
