@@ -27,6 +27,17 @@ PRD: [prd.md](./prd.md). Vocabulary: [CONTEXT.md](../../../CONTEXT.md). Decision
 - Update mode: rule whose evidence vanished ⇒ removed + named in summary; moved ⇒ evidence updated.
 - security-audit on stale inventory ⇒ warn + proceed.
 
+**Review (Phases 5c–5f, UF12–UF15)** — terms in CONTEXT.md § Review, ADR 0004:
+- **CAN** record human Verdicts per endpoint in an append-only Review Log `tools/access-inspector/reviews.jsonl`, committed by the reviewer; replay it against the Committed Inventory into valid / outdated / moot / orphaned; rank the Review Queue in 11 fixed tiers; raise agent Signals through Triage; review in a local app, one by one or in bulk.
+- **CANNOT** change the inventory, the Adapted Script or the Base Scripts; let the Agent give a Verdict; let a Verdict cover an endpoint by selector; run git from the CLI or the app; listen beyond localhost.
+- Review Key = (method, path, handler with trailing `:<digits>` stripped). Latest `reviewed` event per key wins: `at`, then line order.
+- Outdated: endpoint inside its zone's `expected_access` (or no expectation) ⇒ authentication or authorization `value` ≠ seen; outside ⇒ any of `value`, `layer`, `raw`, `rule` ≠ seen on either axis; `accepted` with `until` < today. Moot: seen classification was outside, current is inside ⇒ still valid; outdated wins, so moot is reached only when `expected_access` changed and the values did not (a fixed `finding` goes outdated). Orphaned: key not in inventory.
+- Tiers (highest wins, then path, method): 1 open `finding` · 2 outdated · 3 outside expected · 4 any axis `unknown` (Acknowledged or not) · 5 sibling inconsistency · 6 anonymous|optional × unsafe method (`POST PUT PATCH DELETE ANY`) · 7 open agent Signal · 8 required × authz none × path has `{` · 9 anonymous|optional × safe method · 10 other authz none · 11 authz `rule`. Endpoint with a valid `safe`/`accepted` Verdict ⇒ out of queue. Valid `finding` ⇒ in queue, tier 1.
+- Sibling inconsistency: two endpoints sharing a project handler (`file:line`; a dotted framework handler such as `RedirectView` serves unrelated paths and groups nothing), or on the same path (trailing `/` ignored), or whose paths differ only by one trailing `{param}/` segment (parent and child; two peer `{param}` paths under one parent are not related), with different authentication or authorization `value`, unless both axes' `rule` are equal. `OPTIONS` rows and `unknown` endpoints are never compared. (Found on moi in 5c: grouping by every handler and comparing `OPTIONS` put 77 rows in tier 5, all noise.)
+- HEAD with the same classification as its GET ⇒ one row; a Verdict on GET also appends one on HEAD.
+- Agent events (`signal_raised`, `triaged`) carry `seen`; they go outdated by the same rule; a valid human Verdict supersedes them in the queue.
+- Bulk review: one event per endpoint selected at save time, shared `batch`; selection containing an open `finding` needs explicit confirmation.
+
 **Visual Design**: inventory contract + project/toolkit layouts in [prd.md § Visual](./prd.md#visual).
 
 ---
@@ -57,13 +68,38 @@ No database. The "data model" is the inventory JSON contract, `schema/inventory.
   - `unknown_reason`: string|null; non-null ⇒ Acknowledged Unknown
 - **Serialisation rule** (identical in Python/TypeScript/Java/PHP; reference bytes: `schema/samples/canonical.json`): UTF-8, `\n`, 2-space indent; each root key on its own line with its value compact; `endpoints` one compact object per line at 4-space indent, `"endpoints": []` when empty; compact = separators `", "` and `": "`, non-ASCII unescaped, `/` unescaped; keys in schema order (`project_dimensions` keys and value lists in declared order); endpoints sorted by (`path`, `method`, `handler`) by code point; no trailing whitespace; file ends with `\n`.
 
+- **Review Event** (Phases 5c–5f; one line of `tools/access-inspector/reviews.jsonl`; contract `schema/review-event.schema.json`, draft 2020-12). Keys in this order:
+  - `v`: `1`; a higher `v` ⇒ CLI exits 2 "written by a newer toolkit, line N"
+  - `at`: UTC `YYYY-MM-DDTHH:MM:SSZ`
+  - `by`: `git config user.email` (human) | `agent:<model id>` (`--agent`); human with no git email ⇒ refused
+  - `event`: `reviewed|signal_raised|triaged`
+  - `batch`: string|null — `b-` + 8 lowercase hex for a bulk or a triage run, null for a single Verdict
+  - `endpoint`: `[method, path, handler_key]`, handler_key = handler with trailing `:<digits>` stripped
+  - `seen`: `{handler, authentication: {value, layer, raw, rule}, authorization: {value, layer, raw, rule}, inside: bool|null}` — copied from the inventory at append time; `inside` = within `expected_access` for the endpoint's zones, null when no expectation applies
+  - then per `event`:
+    - `reviewed`: `verdict` `safe|accepted|finding`; `reason` non-empty, ≤ 2000 chars; `severity` `low|medium|high` (required iff `finding`); `ticket` `https?://…` (optional, `finding` only); `until` `YYYY-MM-DD` (optional, `accepted` only)
+    - `signal_raised`: `reason` non-empty, ≤ 500 chars; `evidence` `relative/path:line`
+    - `triaged`: nothing more
+- **Review Log serialisation**: UTF-8, one compact JSON object per line (separators `,` `:`, no spaces), keys in the order above, absent optional keys omitted (never null except `batch`, `inside`), `\n`-terminated; append-only, never reordered or rewritten. Append = open `O_APPEND`, write whole lines, one `write` per call (bulk = one write of N lines).
+- **`tools/access-inspector/.gitattributes`**: `reviews.jsonl merge=union`; created by the first `append` if absent (inside `tools/access-inspector/`, so no change outside it).
+- **Zone** (derived, not stored): an endpoint is inside when, for every dimension with an `expected_access` entry for its value, both axis values are listed; outside if any dimension says no; no expectation at all, or an axis `unknown`, ⇒ `inside: null` (as the viewer's `zoneCheck`: unknown is never "outside"), treated as inside for outdated rules.
+- **App projection** (`node:sqlite`, `~/.cache/all-access-inspector/<sha256(abs project path)[:16]>.sqlite`, never committed, deleted and rebuilt whenever the inventory or log's size or mtime differ from `meta`):
+  - `meta(key TEXT PK, value TEXT)` — `inventory_size`, `inventory_mtime`, `log_size`, `log_mtime`, `toolkit_version`
+  - `endpoint(key TEXT PK, method, path, handler, row JSON, tier INT, signals JSON, state TEXT, verdict JSON NULL)` — `key` = JSON of the Review Key; `state` `none|valid|outdated`; one row per inventory endpoint, HEAD folded rows excluded
+  - `event(line INT PK, at, by, event, batch, key, payload JSON)`
+  - `orphan(key TEXT PK, verdict JSON)`
+  - Filled only by replaying through the review package; the app never computes tiers itself.
+
 ### Modification of Existing Entities
 
+- Inventory schema: unchanged; the review package reads `schema_version` `"1"` only and exits 2 on any other.
+- Viewer: tab label Triage → Overview (Phase 5d); no data change.
 - security-audit skill: `references/django-access-inspector.md` + `scripts/parse_django_access_inspector.sh` removed, replaced by `references/access-inspector.md` + `scripts/parse_access_inspector.sh` (UF6).
 
 ### Relationships
 
 - 1 Inventory ↔ 1 Adapted Script ↔ 1 bootable app. `endpoints[].dimensions` keys ⊆ `project_dimensions` keys (schema-enforced via `additionalProperties`-free check in script, not expressible in JSON Schema alone → runtime check in each Base Script).
+- Review Event → Endpoint by Review Key (n:1, 0 when orphaned); Review Events never reference each other; current state = replay.
 - `authorization.rule` names a rule in `rules.py` (Django) / `rules.ts` / `Rules.java` / `rules.php`; `unknown_reason` names an Acknowledged Unknown in the same file.
 
 ---
@@ -228,6 +264,73 @@ TypeScript (ESM), run by the project's own test runner so it inherits the projec
 
 #### AJ. `references/django-access-inspector.md` 🔵 removed, `scripts/parse_django_access_inspector.sh` 🔵 removed, `references/scan.md` 🔵 lists `access-inspector.md`, `SKILL.md` 🔵 step 4 parse list updated.
 
+### Review package — `review/` (Phases 5c–5f; ships with the skill, never vendored into projects)
+
+TypeScript run directly by Node ≥ 24 (type stripping): erasable syntax only (no `enum`, no parameter properties, no namespaces), relative imports with `.ts` extension, no runtime dependency, no build. Pure functional core (`inventory.ts`, `replay.ts`, `signals.ts`, `tiers.ts`) + I/O shell (`log.ts`, `cli.ts`). Reads git only through `git config user.email` and `git status --porcelain -- <log>`; never writes through git.
+
+#### BA. `review/package.json`, `tsconfig.json`, `vitest.config.ts` 🟢
+**Changes**: ⚪ mirror `base-scripts/nestjs/` tooling: private, `"type": "module"`, devDependencies only (`typescript`, `vitest`, `@types/node`, `ajv` for the schema test); `engines.node >=24`; tsconfig as nestjs minus decorators, plus `allowImportingTsExtensions`, `erasableSyntaxOnly`.
+**Why**: same toolchain as the NestJS Base Script; zero install to run the CLI from an installed skill.
+
+#### BB. `schema/review-event.schema.json` 🟢
+**Changes**: §2 Review Event as JSON Schema 2020-12; `oneOf` per `event`; `severity` required iff `verdict == finding`; `ticket` only on `finding`, `until` only on `accepted`.
+**Why**: contract beside `inventory.schema.json`; the CLI validates by hand, a test keeps both in agreement.
+
+#### BC. `review/src/inventory.ts` 🟢
+**Changes**: `loadInventory(path)` ⇒ throws on missing file or `schema_version != "1"`; `reviewKey(e)` (strip `/:\d+$/` from handler); `foldHead(endpoints)` (⚪ viewer `fold`: HEAD folded into the GET with the same path, handler, both axes, dimensions, `unknown_reason`, `acknowledged`; kept as `head` on the GET row); `inside(e, expected_access)` ⇒ `true|false|null` per §2 Zone; `seenOf(e)`.
+
+#### BD. `review/src/log.ts` 🟢
+**Changes**: `readLog(project)` ⇒ events + `{line, message}` errors (bad JSON, schema, unknown `v`); missing file ⇒ empty; `serialize(event)` (§2 key order, compact); `append(project, events)` ⇒ validates all, then one `O_APPEND` write, creates `tools/access-inspector/.gitattributes` when absent; `newBatch()` ⇒ `b-` + 8 hex (`crypto.randomBytes`).
+
+#### BE. `review/src/replay.ts` 🟢
+**Changes**: pure `replay(inventory, events, today)` ⇒ `{rows: Row[], orphans: Orphan[]}`. Per key: latest `reviewed` (by `at`, then line) ⇒ `state` `valid|outdated` per §1 rules, `moot` flag; agent events: latest per key, dropped when outdated or when a valid Verdict exists. `Row` = folded endpoint + `key`, `inside`, `verdict`, `state`, `moot`, `agent` (`signal_raised`|`triaged`|null), `signals`, `tier`.
+
+#### BF. `review/src/signals.ts`, `review/src/tiers.ts` 🟢
+**Changes**: `signals(row, siblings)` ⇒ ordered list of `{id, text}`: `outside_expected`, `unknown`, `sibling` (names the sibling), `open_write`, `agent`, `id_without_authz`, `open_read`; `siblingIndex(rows)` per §1 (by handler key, and by path with last `{param}/` segment removed). `tierOf(row)` ⇒ 1–11 per §1; `queue(rows)` ⇒ rows without valid `safe`/`accepted`, sorted tier, path, method (code point).
+**Why**: single implementation for CLI, app, skill.
+
+#### BG. `review/src/cli.ts` 🟢 — `node <skill>/review/src/cli.ts <command> <project dir>` (project dir = the app root holding `tools/access-inspector/`)
+**Changes**:
+- `status [--json]`: header (stack, coverage, endpoints, valid/outdated/orphaned counts), queue grouped by tier with signals, then orphans; `--json` = one JSON `Row` per line (used by Triage). Exit 0; 2 on missing inventory ("fit the project first"), bad inventory, or bad log line ("reviews.jsonl line N: …").
+- `append --verdict safe|accepted|finding --reason <text> [--severity] [--ticket] [--until] [--handler <key>] <METHOD> <path>`: resolve endpoint (method+path; `--handler` required when ambiguous); folded HEAD appended too; `by` = git email (none ⇒ exit 2). Refusals exit 2, nothing written.
+- `append --agent --model <id>`: stdin JSON lines `{method, path, handler?, event: signal_raised|triaged, reason?, evidence?}`; one batch; `--verdict` with `--agent` ⇒ exit 2.
+- `app`: starts `apps/review` when the CLI runs from a toolkit checkout (`../../../../apps/review` relative to `cli.ts` exists), else exit 2 "the review app runs from a checkout of all-access-inspector".
+
+### Review app — `apps/review/` (Phases 5e–5f; repo root, not shipped with the skill)
+
+Next.js App Router, server components + server actions, no client data fetching library, no auth. Started by `review app <project>` ⇒ `next start -H 127.0.0.1 -p 4377` (first free port from 4377) with `REVIEW_PROJECT=<abs path>`; built on first run. Imports the review package by relative path (`turbopack.root` = repo root). Styling: plain CSS with the viewer's tokens (system fonts, light/dark) ⚪ `viewer/inventory-viewer.html`.
+
+#### BH. `apps/review/lib/projection.ts` 🟢
+**Changes**: `node:sqlite` per §2; `load()` on every request: compare `meta` with `stat` of inventory and log ⇒ rebuild (delete file, `replay`, insert) or reuse; `queue(filters)`, `row(key)`, `history()`, `orphans()` query it. `uncommitted()` ⇒ new lines from `git diff --numstat` + untracked.
+**Why**: per-request staleness check gives "reflects external changes" without a file watcher.
+
+#### BI. `apps/review/app/page.tsx` (Queue) 🟢
+**Changes**: header (project, stack, coverage, counts, "N events not committed"); filters as search params (`zone`, `tier`, `signal`, `state`, `q`, `view=reviewed`); rows grouped by tier; zone column/filter hidden without dimensions; row click ⇒ `?e=<key>` opens the panel.
+
+#### BJ. `apps/review/app/endpoint-panel.tsx` 🟢
+**Changes**: per axis value/layer/raw/rule/evidence; siblings; signals with reasons; event history of the key; links `vscode://file/<abs>/<file>:<line>` for handler and evidence; outdated ⇒ seen vs current side by side, previous reason prefilled; orphan candidates (same path or same handler file) with "copy reason" (Phase 5f).
+
+#### BK. `apps/review/app/actions.ts` 🟢
+**Changes**: `saveVerdict(key, form)` and `saveBulk(filters, form, confirmFinding)` ⇒ validate (missing reason / severity ⇒ field errors, nothing written), recompute selection server-side from the same filters, refuse when it contains an open `finding` and `confirmFinding` is false, `append()` from BD, `revalidatePath('/')`. Next unreviewed row of the same tier selected after a single save.
+
+#### BL. `apps/review/app/history/page.tsx` 🟢 (Phase 5f)
+**Changes**: events grouped by `batch` (null batch = own group), newest first: by, at, event/verdict, reason, count, expandable endpoints; agent batches labelled with the model; orphans list.
+
+#### BM. `apps/review/package.json`, `next.config.ts`, `tsconfig.json` 🟢 — `next`, `react`, `react-dom`; devDependencies `typescript`, `vitest`, `@playwright/test`.
+
+### Skill and viewer (Phase 5d)
+
+#### BN. `SKILL.md` 🔵
+**Changes**: description adds triage; new `## Triage` section: precondition Committed Inventory (else "fit first"); run `status --json`; scope = rows with no valid Verdict, tier ≠ 11, `agent` null (or as the user names: endpoints, prefix); read each handler per the stack reference's checklist; one `append --agent --model <own id>` call with all lines; never a Verdict, never edit outside `reviews.jsonl`, never commit; summary: read / raised (reasons) / skipped (why). Hard rules: Triage writes only through the CLI. Update mode and a Base Script refresh never touch `reviews.jsonl` or `.gitattributes` (not vendored files; a refresh leaves them, and the regenerated inventory makes Verdicts outdated through replay).
+
+#### BO. `references/django.md`, `references/nestjs.md` 🔵 — `## Triage checklist`: handler name/verb vs guard; body checks the inventory cannot see (Django: `request.user`, `PermissionDenied`, `get_queryset` filter, `get_object`; NestJS: `@Req() user` use, service-level checks); bulk or export responses; anonymous writes; third-party handler ⇒ read the mounting line or skip.
+
+#### BP. `viewer/inventory-viewer.html` 🔵 — tab label Triage → Overview (text and ids only).
+
+#### BQ. `Makefile` 🔵, `.github/workflows/ci.yml` 🔵
+**Changes**: `install-review` (pnpm in `review/` and `apps/review/`), `test-review` (vitest in both, then Playwright e2e), `typecheck-review`; `test`, `check-all` include them; CI job `review` on Node 24 + pnpm, mirror of the `nestjs` job.
+
+
 ---
 ## 4. Test Plan
 
@@ -265,6 +368,24 @@ Cross-language:
 - `schema/samples/canonical.json` + `schema/samples/canonical.input.json` (neutral input): the four canonical tests consume the same input and must produce the same bytes. Any divergence fails exactly one language's test, pointing at its serialiser.
 - `test_schema_samples_valid` (Python, `jsonschema`): every `fixtures/*/expected/inventory.json` and `schema/samples/canonical.json` validate; a mutated sample with `authentication.value: "sso"` fails.
 
+Review package (`review/tests/`, vitest, inventories and events built in the test; `today` injected):
+- `test_review_key_strips_line`: `moi/api/x/view.py:27` → `moi/api/x/view.py`; dotted name unchanged; `a.py:12:3`-like oddities only strip the last `:\d+`.
+- `test_fold_head`: HEAD with GET's classification folded into the GET row; HEAD differing in authorization kept as its own row.
+- `test_inside`: zone with expectation, both axes listed → true; one axis not listed → false; two dimensions, one says no → false; no `expected_access` entry → null.
+- `test_log_serialize_bytes`: each event type serialises to its committed sample line in `review/tests/samples/*.jsonl` (key order, compact, omitted optionals).
+- `test_log_read_errors`: merge marker line → `{line: 3, message}`; `v: 2` → "newer toolkit"; `finding` without `severity` → error; missing file → empty, no error.
+- `test_schema_agrees`: every sample line validates against `schema/review-event.schema.json` (ajv); every invalid sample is rejected by both ajv and `readLog`.
+- `test_latest_wins`: two `reviewed` on one key, the later `at` wins; equal `at` → later line wins.
+- `test_outdated_inside_value_change`: inside, seen required/none, now required/rule → outdated; now raw `LoginRequiredMixin` with same values → valid.
+- `test_outdated_outside_any_change`: outside, seen raw `A`, now raw `B` same values → outdated; evidence or handler line change only → valid.
+- `test_moot`: seen `inside: false`, now inside → valid + `moot`.
+- `test_accepted_until`: `until` yesterday → outdated; today → valid.
+- `test_orphan`: key not in inventory → in `orphans`, not in `rows`; handler moved file → orphan + new row in queue.
+- `test_agent_events`: `signal_raised` valid → tier ≤ 7 signal `agent`; classification changed since → dropped; valid human Verdict on key → no agent signal; `triaged` → no signal, `agent: triaged`.
+- `test_sibling`: `POST /observations/` rule vs `PUT /observations/{id}/` none → both get `sibling` naming the other; same handler, GET optional + POST required both `builtin:IsAuthenticatedOrReadOnly` → no sibling.
+- `test_tiers`: one row per tier 1–11 built to match only that tier; a row matching tiers 6 and 8 → 6; `ANY` counts as unsafe.
+- `test_queue_order_and_exit`: valid `safe`/`accepted` out of queue; valid `finding` tier 1; order tier, path, method by code point.
+
 ### Integration Tests
 
 Golden files (one per fixture; run the vendored `tools/access-inspector/` inside the fixture, compare bytes with `expected/inventory.json`):
@@ -287,6 +408,31 @@ Golden files (one per fixture; run the vendored `tools/access-inspector/` inside
 - `test_symfony_golden` (`fixtures/symfony-demo`, `vendor/bin/phpunit`): `access_control` `^/admin` → `required`+`rule`/`global`; firewall `security: false` → `anonymous`/`global`; `#[IsGranted]` → `rule`/`method`; API Platform resource-level security inherited by operations, override on one operation; `denyAccessUnlessGranted` → `unknown` + reason; `api_doc`/`api_entrypoint` ordinary endpoints; route without methods → `ANY`; metadata factory removed → API Platform endpoints `unknown` with reason, exit 0.
 - `test_symfony_check_drift`: mirror.
 - `test_parse_access_inspector` (`../skills/security-audit`, bash + jq on `fixtures/django-demo/expected/inventory.json`): summary counts match; `=== ANONYMOUS ===` lists expected paths; acknowledged vs unexplained separated.
+
+Review CLI (`review/tests/cli.spec.ts`; copy `fixtures/django-demo` into a tmp dir with `tools/access-inspector/inventory.json` = its `expected/inventory.json`; `GIT_CONFIG_GLOBAL` pointing to a tmp gitconfig with an email):
+- `test_review_status_golden`: with `review/tests/samples/django-demo.reviews.jsonl` (one of each state: valid, outdated, moot, orphan, finding, agent signal, triaged) → stdout equals `review/tests/expected/django-demo.status.txt`; run twice and from another cwd → identical.
+- `test_review_status_json`: `--json` → one parseable `Row` per queued endpoint, same order as text.
+- `test_review_status_missing_inventory`: exit 2, "fit the project first".
+- `test_review_status_bad_log`: line 2 = `<<<<<<< HEAD` → exit 2, "reviews.jsonl line 2".
+- `test_review_append_verdict`: `append --verdict safe --reason r GET /api/orders/` → one line appended (two with folded HEAD), previous bytes untouched, `.gitattributes` created with `reviews.jsonl merge=union`, `by` = the tmp email.
+- `test_review_append_refusals`: unknown path; no `--reason`; `finding` without `--severity`; `--ticket` on `safe`; no git email; `--agent` with `--verdict` → each exit 2, file bytes unchanged.
+- `test_review_append_ambiguous`: two endpoints same method+path, different handlers → exit 2 asking for `--handler`; with it → ok.
+- `test_review_append_agent_batch`: stdin 3 lines (2 `signal_raised`, 1 `triaged`) → 3 lines, one shared `batch`, `by` = `agent:<model>`.
+- `test_review_union_merge`: two git branches each append a Verdict on one key, merge → no conflict, both lines kept, `status` shows the later.
+- `test_review_inventory_untouched`: after every CLI test, inventory bytes equal the fixture's.
+
+Review app (`apps/review/tests/e2e/`, Playwright against `review app` on a tmp copy of `fixtures/django-demo` + sample log):
+- `test_queue_matches_status`: rows and tiers on `/` equal `status --json` for the same files.
+- `test_save_verdict`: open a tier-8 row, save `safe` with a reason → row leaves the queue, next tier-8 row selected, "1 event not committed", log has the line.
+- `test_save_finding_requires_severity`: save `finding` without severity → field error, log unchanged.
+- `test_outdated_panel`: outdated row shows seen vs current and the previous reason prefilled.
+- `test_external_change_reflected`: append a line with the CLI while the app runs, reload → row gone without restart.
+- `test_bulk_review` (5f): filter tier 11, review selection → one line per selected endpoint, one batch in History.
+- `test_bulk_open_finding_confirm` (5f): selection holding a `finding` → named, nothing written until confirmed.
+- `test_orphan_copy_reason` (5f): renamed endpoint shows the orphan candidate; copy + save → new key reviewed, orphan still in History.
+- `test_localhost_only`: server bound to `127.0.0.1`.
+
+Triage (not automated, like the Agent): manual run on `fixtures/django-demo` then moi; acceptance in Phase 5d Verify.
 
 Agent (not automated in v1, PRD decision): acceptance = first real Django project fitted and merged; for NestJS, `~/Theodo/bootstrap-test` fitted. Manual checklist in `assets/summary-template.md` (every rule has evidence that exists, `--unknowns` empty, `--check` green, no pipeline file touched, branch created).
 
@@ -407,6 +553,38 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 - [x] **Write tests**: unit tests for evidence, acknowledged and `EXPECTED` validation in both stacks; goldens; canonical bytes.
 - [x] **Verify**: `make check-all`, `make test`; open the viewer on `fixtures/nestjs-demo/expected/inventory.json` and `fixtures/django-demo/expected/inventory.json`.
 
+### Phase 5c — UF12 Track reviews from the command line
+
+- [x] **Tooling**: `review/{package.json,tsconfig.json,vitest.config.ts}` (BA); `Makefile` `install-review`, `test-review`, `typecheck-review` wired into `test`/`check-all`; CI job `review` (BQ).
+- [x] **Contract**: `schema/review-event.schema.json` (BB) + `review/tests/samples/*.jsonl` (valid + invalid lines).
+- [x] **Core**: `review/src/{inventory,replay,signals,tiers}.ts` (BC, BE, BF).
+- [x] **Shell**: `review/src/{log,cli}.ts` (BD, BG): `status [--json]`, `append --verdict`, `append --agent`; `app` stub exiting 2 until 5e.
+- [x] **Docs**: README section "Review the inventory" (CLI usage, commit `reviews.jsonl` with the code); `SKILL.md` step 7 mentions `review status` after a fit.
+- [x] **Write tests**: §4 review package unit tests; review CLI tests.
+- [x] **Verify**: `make check-all`, `make test`; on moi (scratch copy, never committed there): `status` shows 514 endpoints, tiers 1–2 empty, tier 11 = the `rule` endpoints; one `append` then `status` → out of queue.
+
+### Phase 5d — UF13 Triage the inventory with the Agent
+
+- [ ] **Skill**: `SKILL.md` `## Triage` + description + hard rule (BN); `references/{django,nestjs}.md` `## Triage checklist` (BO).
+- [ ] **Viewer**: Triage tab → Overview (BP); README and UF11 wording.
+- [ ] **Write tests**: none new beyond 5c's `append --agent` tests (Triage is Agent work, manual acceptance).
+- [ ] **Verify (manual)**: triage `fixtures/django-demo` copy → signals on its anonymous write and `IsOwner` handlers, `triaged` on the rest of the scope, one batch; second run reads nothing; edit one handler's guard, rerun → only it is read. Then moi scratch copy: ≈136 handlers read, summary lists raised signals; nothing changed outside `reviews.jsonl`.
+
+### Phase 5e — UF14 Review endpoints in the app
+
+- [ ] **App scaffold**: `apps/review/{package.json,next.config.ts,tsconfig.json}` (BM); `review app` in `cli.ts` builds on first run and starts on `127.0.0.1` (BG).
+- [ ] **Projection**: `apps/review/lib/projection.ts` (BH).
+- [ ] **Queue + panel + verdict**: `app/page.tsx`, `app/endpoint-panel.tsx`, `app/actions.ts` `saveVerdict` (BI, BJ, BK); viewer CSS tokens.
+- [ ] **Write tests**: §4 app tests not marked 5f.
+- [ ] **Verify**: `make check-all`, `make test`; on the moi scratch copy, review ten tier-8 endpoints, `git diff` shows ten appended lines (plus folded HEADs); delete the cache file, restart → same state.
+
+### Phase 5f — UF15 Review in bulk and read the history
+
+- [ ] **Bulk**: `saveBulk` in `app/actions.ts` + selection dialog (count, sample, open-finding confirmation) (BK).
+- [ ] **History + orphans**: `app/history/page.tsx` (BL); orphan candidates and "copy reason" in the panel (BJ).
+- [ ] **Write tests**: §4 app tests marked 5f.
+- [ ] **Verify**: on the moi scratch copy, bulk-review zone `user` tier 11 → 1 batch, one line per endpoint; rename one URL in a scratch branch, regenerate the inventory → orphan shown, reason copied onto the new endpoint.
+
 ### Phase 6 — UF7 Inventory a Spring project
 
 - [ ] **Runner + boot + discovery**
@@ -469,6 +647,13 @@ Docs only (`CONTEXT.md`, `docs/adr/`, `docs/features/`), APM config (`apm.yml`, 
 - Current behavior: SKILL.md orchestrates one subagent per scanner reference (`references/*.md`), parses JSON via `scripts/parse_*.sh` (jq, summary section + JSON lines), baseline file, report template.
 - Current limitations: Django-specific access scanner only (`references/django-access-inspector.md`), must boot the app via `manage.py`; no notion of coverage/mode.
 
+### moi (`~/Theodo/perenco/moi`, Phase 5c–5f acceptance target; never committed to or pushed from here)
+- Django, fitted on branch `chore/all-access-inspector` (Base Script 0.3.0): 514 endpoints, 40 anonymous/none, 96 required/none, 378 required/rule, 0 unknown; `access_tier` public 40 / user 466 / superuser 8, none outside expected.
+- Review-relevant: `/perseus/api/*` DRF views `IsAuthenticated` only, checks (if any) in querysets → tier 8 bulk; admin views via `admin_site` + project path-prefix rules → tier 11; handlers `moi/...py:<line>` (line stripped in the Review Key).
+
+### Viewer (`viewer/inventory-viewer.html`, Phase 5b)
+- Self-contained HTML; `fold` (HEAD into GET), `zoneCheck` (inside/outside per dimension, unknown never outside), buckets in the Triage tab, CSS tokens light/dark. Reused as the reference for BC and the app's look; only its tab label changes.
+
 ### Key Files
 | File | Purpose |
 |------|---------|
@@ -484,6 +669,11 @@ Docs only (`CONTEXT.md`, `docs/adr/`, `docs/features/`), APM config (`apm.yml`, 
 | `../accent/src/AccessControl/RouteAccessControlFactory.php` | API Platform metadata lookup to salvage |
 | `../skills/security-audit/scripts/parse_django_access_inspector.sh` | Parse-script pattern for UF6 |
 | `../skills/security-audit/references/django-access-inspector.md` | Reference-file pattern for UF6 (to be replaced) |
+| `CONTEXT.md` § Review, `docs/adr/0004-review-state-is-an-event-log.md` | Review terms and the event-log decision |
+| `docs/features/all-access-inspector/uf12..uf15` | Review requirements |
+| `skills/all-access-inspector/viewer/inventory-viewer.html` | `fold`, `zoneCheck`, tokens to mirror |
+| `skills/all-access-inspector/base-scripts/nestjs/{package.json,tsconfig.json,vitest.config.ts}` | TypeScript toolchain to mirror in `review/` |
+| `skills/all-access-inspector/base-scripts/nestjs/access_inspector/inventory.ts` | `Inventory`/`Endpoint`/`Axis`/`ExpectedAccess` types to mirror |
 
 ---
 
@@ -499,6 +689,12 @@ Docs only (`CONTEXT.md`, `docs/adr/`, `docs/features/`), APM config (`apm.yml`, 
 - **Spring sample controllers** — `../spring-access-inspector/sample/microservice-example/src/main/java/com/theodo/ms/controller/{Cars,Another,Houses,Trees}Controller.java`: `@RolesAllowed`, `@Secured`, `@PreAuthorize` with `isAuthenticated()`/`permitAll()`, class-level `@PreAuthorize`; seed for the Spring fixture.
 - **Scanner reference + parse script pattern** — `../skills/security-audit/references/semgrep.md` + `scripts/parse_semgrep.sh`: sections `=== X SUMMARY ===` then JSON lines; `jq -c` per finding; `set -euo pipefail`, jq presence check; replicate for `parse_access_inspector.sh`.
 - **Skill structure** — `../skills/security-audit/SKILL.md`: numbered workflow, `references/` discovery, `assets/` templates, AskUserQuestion at decision points; model for `SKILL.md` here.
+- **Inventory types and canonical writer (TS)** — `base-scripts/nestjs/access_inspector/inventory.ts`: `Axis`, `Endpoint`, `Inventory`, `ExpectedAccess` types and the hand-rolled per-line `JSON.stringify`; copy the types into `review/src/inventory.ts` (the review package may not import vendored code), mirror the writer style in `log.ts serialize`.
+- **Test helpers (TS)** — `base-scripts/nestjs/tests/samples.ts` `endpoint(method, path, handler)` builder: same shape for review unit tests.
+- **Golden CLI test with tmp copy (TS)** — `fixtures/nestjs-demo/tests/golden.spec.ts`: `mkdtempSync` + `cpSync` fixture, `spawnSync` the script, `edit()` helper, exit-code + stdout assertions; template for `review/tests/cli.spec.ts`.
+- **HEAD folding + zone check** — `viewer/inventory-viewer.html` `fold()` and `zoneCheck()`: port to `inventory.ts` `foldHead`/`inside` with the same rules so the viewer and the app agree.
+- **Visual tokens** — `viewer/inventory-viewer.html` `:root` + dark-mode blocks: copy into `apps/review/app/globals.css`.
+- **Skill section style** — `SKILL.md` § Update mode: numbered steps, hard rules restated; model for § Triage.
 
 ---
 
@@ -524,3 +720,6 @@ None.
 - Fixtures on latest framework versions (Spring Boot 3.x, Symfony 7.x, API Platform 4.x).
 - Kotlin controller in the Spring fixture: deferred.
 - Agent branch naming: project convention, inferred from recent branches.
+- Review package location (2026-10-15): `skills/all-access-inspector/review/`, so Triage works from an APM-installed skill; zero-dependency TypeScript run by Node 24. The Next.js app stays at `apps/review/` and runs from a toolkit checkout.
+- Review projection (2026-10-15): `node:sqlite` (built into Node 24), not `better-sqlite3` (native build); disposable, rebuilt on file change.
+- Review phases ship before Spring as 5c–5f, so open phases keep their numbers.

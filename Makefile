@@ -5,10 +5,11 @@ UV_DJANGO_FIXTURE := uv run --locked --directory $(DJANGO_FIXTURE)
 NESTJS := skills/all-access-inspector/base-scripts/nestjs
 NESTJS_FIXTURE := fixtures/nestjs-demo
 NESTJS_JEST_FIXTURE := fixtures/nestjs-jest-smoke
+REVIEW := skills/all-access-inspector/review
 
-.PHONY: test test-django test-nestjs install-nestjs lint typecheck typecheck-nestjs deps check-all format
+.PHONY: test test-django test-nestjs test-review install-nestjs install-review lint typecheck typecheck-nestjs typecheck-review deps check-all format
 
-test: test-django test-nestjs
+test: test-django test-nestjs test-review
 
 test-django:
 	$(UV_DJANGO) pytest --cov
@@ -24,6 +25,12 @@ test-nestjs:
 	pnpm --dir $(NESTJS_FIXTURE) exec vitest run
 	pnpm --dir $(NESTJS_JEST_FIXTURE) run test:golden
 
+install-review:
+	pnpm install --frozen-lockfile --dir $(REVIEW)
+
+test-review:
+	pnpm --dir $(REVIEW) exec vitest run
+
 lint:
 	$(UV_DJANGO) ruff check . $(CURDIR)/$(DJANGO_FIXTURE)
 	$(UV_DJANGO) ruff format --check . $(CURDIR)/$(DJANGO_FIXTURE)
@@ -36,10 +43,13 @@ typecheck-nestjs:
 	pnpm --dir $(NESTJS_FIXTURE) exec tsc --noEmit -p tsconfig.json
 	pnpm --dir $(NESTJS_JEST_FIXTURE) exec tsc --noEmit -p tsconfig.json
 
+typecheck-review:
+	pnpm --dir $(REVIEW) exec tsc --noEmit -p tsconfig.json
+
 deps:
 	$(UV_DJANGO) deptry .
 
-check-all: lint typecheck deps typecheck-nestjs
+check-all: lint typecheck deps typecheck-nestjs typecheck-review
 
 format:
 	$(UV_DJANGO) ruff check --select I --fix . $(CURDIR)/$(DJANGO_FIXTURE)
