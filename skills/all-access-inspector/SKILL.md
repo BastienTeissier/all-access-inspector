@@ -1,6 +1,6 @@
 ---
 name: all-access-inspector
-description: Fit the All Access Inspector to a project, so it can regenerate and CI-check the inventory of every HTTP endpoint with its authentication and authorization, deterministically and without an LLM. Use when asked to inventory endpoints or access control, to fit or update tools/access-inspector/, or to resolve its unknowns.
+description: Fit the All Access Inspector to a project, so it can regenerate and CI-check the inventory of every HTTP endpoint with its authentication and authorization, deterministically and without an LLM. Use when asked to inventory endpoints or access control, to fit or update tools/access-inspector/, to resolve its unknowns, or to triage the inventory: read the handlers the review queue has not cleared and point at the ones a human should look at first.
 ---
 
 # All Access Inspector
@@ -33,6 +33,7 @@ Paths below are relative to this skill's base directory (`<skill>/`) or to the a
 - Never remove or rename a Core Classification field or value. Project-specific code goes only in the project section of the boot, rules and dimensions files. Everything else stays byte-identical to the Base Script, so a later refresh can replace it.
 - Change nothing outside `tools/access-inspector/` except one entry per linter or type checker the project runs, excluding `tools/access-inspector/` from it. The vendored files follow the toolkit's style, not the project's.
 - Never commit on the current branch, and never push.
+- Write to the Review Log (`tools/access-inspector/reviews.jsonl`) only through `review append --agent`, and never give a Verdict: only a human does.
 
 ## Workflow
 
@@ -100,7 +101,7 @@ Exit 2 naming an endpoint means a rule misses it. Extend the rules; never add a 
 ### 8. Branch, commit, summary
 
 1. Infer the branch convention from recent branches (`git branch -a --sort=-committerdate | head -20`, e.g. `feat/…`, `chore/…`). Fall back to `access-inspector/fit`. Create the branch from the current HEAD.
-2. Stage `tools/access-inspector/` (excluding caches) and the linter exclusions from step 7. Verify with `git status --short` that no other file changed.
+2. Stage `tools/access-inspector/` (excluding caches and `reviews.jsonl`, which the reviewers commit) and the linter exclusions from step 7. Verify with `git status --short` that no other file changed.
 3. Commit following the project's commit convention. The body lists every boot decision, Recognition Rule and Acknowledged Unknown.
 4. Print the summary from `<skill>/assets/summary-template.md`.
 
@@ -115,4 +116,30 @@ A project already has `tools/access-inspector/`. Keep what the team decided and 
    - Exit 2 from a missing dimension: extend the dimensions file, asking for any new value.
 4. Run `--unknowns` and resolve only the new ones, as in step 5.
 5. Refresh the Base Script only when the user asks. Replace each vendored file with the current Base Script file, keeping the project's project section, and update `VERSION`. When the new Base Script's project section declares something the kept one lacks (e.g. a new `ENVIRON` list, or `EXPECTED`), add that declaration with the Base Script's empty default, then offer to fill `EXPECTED` as in step 6. Then regenerate `inventory.json` before running `--check`: an inventory written by an older Base Script may not load. The inventory diff shows any endpoint whose classification the toolkit change moved; list those endpoints in the summary.
-6. Regenerate `inventory.json` and run `--check`. If neither `tools/access-inspector/` nor `inventory.json` changed, say "no change" and do not commit. Otherwise do step 8, with a summary limited to what changed.
+6. Leave `reviews.jsonl` and `tools/access-inspector/.gitattributes` as they are: they are not vendored files, and a refresh neither replaces nor deletes them. A regenerated inventory makes the affected Verdicts outdated on its own, through replay.
+7. Regenerate `inventory.json` and run `--check`. If neither `tools/access-inspector/` nor `inventory.json` changed, say "no change" and do not commit. Otherwise do step 8, with a summary limited to what changed.
+
+## Triage
+
+The user asks you to triage the inventory. The deterministic tiers see only the inventory's facts; you read the handlers and point at what they cannot see. Your output only reorders the Review Queue: it never clears an endpoint.
+
+`<review>` below is `node <skill>/review/src/cli.ts` (Node 24.2 or later), and `<project>` is the app root.
+
+1. Check that `tools/access-inspector/inventory.json` is committed (`git ls-files`). If it is not, tell the user to fit the project first and stop.
+2. Run `<review> status <project> --json`. Each line is one queued row.
+3. Pick the scope: rows with `tier` not 11 and `agent` null. A row whose agent event is still valid for its current classification was already read. If the user named endpoints or a path prefix, keep only those.
+4. For each row in scope, open its `handler` (`file:line`) and read it with the stack reference's "Triage checklist". A handler that is a dotted name with no project file is third-party: read the project line that mounts it, or skip the row and say why.
+5. Decide one event per row:
+   - `signal_raised`, when something in the handler needs a human: a one-line `reason` (at most 500 characters) and the `evidence` you read, as `relative/path:line`;
+   - `triaged`, when you found nothing.
+6. Append all of them in one call, so they share one batch:
+   ```bash
+   <review> append <project> --agent --model <your model id> <<'EOF'
+   {"event":"signal_raised","method":"POST","path":"/api/orders/{pk}/refund/","reason":"…","evidence":"shop/api.py:24"}
+   {"event":"triaged","method":"GET","path":"/catalog/status"}
+   EOF
+   ```
+   Add `"handler"` to a line when the method and path have several handlers. A refusal (exit 2) writes nothing: fix the line it names and run the call again.
+7. Print a summary: the endpoints you read, every Signal you raised with its reason, and every row you skipped with why. Tell the user to run `<review> status <project>`: Signals land in tier 7, "suggested by the agent".
+
+Never give a Verdict, never edit the inventory or the Adapted Script, and never commit: `reviews.jsonl` is the only file that changes, and the user commits it.
