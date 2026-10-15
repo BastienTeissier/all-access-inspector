@@ -17,10 +17,12 @@ test('the queue matches review status', async ({ page }) => {
   const shown = await page.locator('section.tier').evaluateAll(sections =>
     sections.flatMap(s => {
       const tier = Number(/Tier (\d+)/.exec(s.querySelector('h2')!.textContent!)![1]);
-      return [...s.querySelectorAll('tr[data-key]')].map(tr => [tr.getAttribute('data-key'), tier]);
+      return [...s.querySelectorAll('tr[data-key]')].map(tr => [tr.getAttribute('data-key'), tier, tr.lastElementChild!.textContent]);
     }),
   );
-  expect(shown).toEqual(status().map(r => [keyOf(r), r.tier]));
+  // the last cell is the state: blank with no Verdict, the Verdict when it is valid (an open finding), else the state
+  const state = (r: ReturnType<typeof status>[number]) => (r.state === 'none' ? '' : r.state === 'valid' ? r.verdict!.verdict : r.state);
+  expect(shown).toEqual(status().map(r => [keyOf(r), r.tier, state(r)]));
 });
 
 test('saving a verdict appends it and opens the next row of the tier', async ({ page }) => {
