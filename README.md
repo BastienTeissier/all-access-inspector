@@ -241,7 +241,7 @@ When several checks apply, the strictest wins per axis.
 
 [`skills/all-access-inspector/viewer/inventory-viewer.html`](skills/all-access-inspector/viewer/inventory-viewer.html) is a single standalone file. Open it in a browser, then pick or drag-and-drop `tools/access-inspector/inventory.json`. The file is read locally and never sent anywhere, and nothing is copied into your project.
 
-- **Triage**: endpoints bucketed by who can reach them, worst first: can't tell, acknowledged, open to anyone, sign-in optional, role required, sign-in required. Each row says in one sentence why it got its bucket.
+- **Overview**: endpoints bucketed by who can reach them, worst first: can't tell, acknowledged, open to anyone, sign-in optional, role required, sign-in required. Each row says in one sentence why it got its bucket.
 - **Zones**: endpoints grouped by Project Dimension value, under that value's expected access. An endpoint **outside its zone** is outlined and counted, e.g. a `staff` endpoint that only requires sign-in.
 - **Details**: click an endpoint for the chain of layers (request → global → class → method → handler), the check and rule at each layer, and the evidence.
 

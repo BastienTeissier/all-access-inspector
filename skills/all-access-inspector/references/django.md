@@ -96,6 +96,19 @@ Use them when the decision is data-dependent or out of scope, with a reason the 
 - Mounted non-Django apps (ASGI sub-apps, `django-ninja` routers outside the resolver) appear as one unknown endpoint naming the callable.
 - Several URL patterns resolving to one endpoint with different checks are unknown: the first matching pattern wins at runtime.
 
+## Triage checklist
+
+Read each handler in the Triage scope (`SKILL.md` § Triage) for what the inventory cannot see. Raise a Signal on the first item that holds; otherwise mark it `triaged`.
+
+- **Name and verb against the guard.** A handler named `delete_*`, `approve`, `export`, `impersonate`, `refund` or `admin_*` with `required/none` or an `anonymous` write is a Signal. So is a `PUT` or `PATCH` that any signed-in user reaches on a model whose `POST` is restricted to staff: raise it on the open handler, since the guarded one is not in scope.
+- **Checks in the body.** `request.user` compared to the object, `raise PermissionDenied`, `raise Http404` on a foreign object, `user_passes_test` called inline: say whether they cover every method the endpoint serves.
+- **The queryset.** A `get_queryset` that does not filter by `request.user` (or the tenant), or a `get_object` that skips `check_object_permissions`, on a `{pk}` path, is a Signal: any signed-in user reads any row.
+- **Bulk and export.** A response that streams many rows (CSV, XLSX, `StreamingHttpResponse`, a `?page_size=` with no ceiling) on an `anonymous` or `required/none` endpoint is a Signal.
+- **Anonymous writes.** Name what an anonymous `POST`/`PUT`/`DELETE` changes. Login, signup, password reset, language switch and webhooks verified by signature are expected: mark them `triaged`.
+- **Third-party handler** (a dotted name such as `django.views.generic.base.RedirectView`, `allauth…`): read the `urls.py` line that mounts it for a wrapper (`login_required(...)`, `staff_member_required`) the inventory missed; otherwise skip it.
+
+Evidence is the line that shows the problem (`shop/api.py:52`), not the handler's first line.
+
 ## Candidate dimensions
 
 Propose from what the fitting found, never from naming alone:
