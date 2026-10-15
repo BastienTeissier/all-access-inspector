@@ -1,5 +1,9 @@
 // UF14 in the browser: the queue as `review status` has it, a Verdict saved from the panel, and the files as the truth.
 
+import { request as get } from 'node:http';
+import { type Socket, connect } from 'node:net';
+import { networkInterfaces } from 'node:os';
+
 import { expect, test } from '@playwright/test';
 
 import { log, reset, review, status } from './project.ts';
@@ -77,4 +81,30 @@ test('a line appended outside the app shows on reload, without a restart', async
   review('append', '.', '--verdict', 'safe', '--reason', 'from the CLI', row!.method, row!.path);
   await page.reload();
   await expect(page.locator(`tr[data-key='${keyOf(row!)}']`)).toHaveCount(0);
+});
+
+test('the app listens on 127.0.0.1 only and answers no other host name', async () => {
+  const url = new URL(process.env.REVIEW_URL!);
+  expect(url.hostname).toBe('127.0.0.1');
+  const status = await new Promise<number | undefined>((done, fail) =>
+    get({ host: url.hostname, port: url.port, path: '/', headers: { host: `rebound.example:${url.port}` } }, r => done(r.statusCode))
+      .on('error', fail)
+      .end(),
+  );
+  expect(status).toBe(403);
+  const outside = Object.values(networkInterfaces()).flat().find(i => i && !i.internal && i.family === 'IPv4');
+  test.skip(!outside, 'no network interface besides loopback');
+  const refused = await new Promise<boolean>(done =>
+    connect({ host: outside!.address, port: Number(url.port), timeout: 2000 })
+      .once('connect', function (this: Socket) {
+        this.destroy();
+        done(false);
+      })
+      .once('timeout', function (this: Socket) {
+        this.destroy();
+        done(true);
+      })
+      .once('error', () => done(true)),
+  );
+  expect(refused).toBe(true);
 });

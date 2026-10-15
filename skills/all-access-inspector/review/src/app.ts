@@ -10,7 +10,7 @@ import { loadInventory, toolsDir } from './inventory.ts';
 import { Refused } from './project.ts';
 
 export const APP_DIR = join(import.meta.dirname, '..', '..', '..', '..', 'apps', 'review');
-const SOURCES = [join(APP_DIR, 'app'), join(APP_DIR, 'lib'), join(APP_DIR, 'next.config.ts'), join(APP_DIR, 'package.json'), import.meta.dirname];
+const SOURCES = [join(APP_DIR, 'app'), join(APP_DIR, 'lib'), join(APP_DIR, 'next.config.ts'), join(APP_DIR, 'proxy.ts'), join(APP_DIR, 'package.json'), import.meta.dirname];
 const FIRST_PORT = 4377;
 
 export interface App {
