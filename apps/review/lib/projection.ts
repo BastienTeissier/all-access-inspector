@@ -82,35 +82,40 @@ const build = (path: string, meta: Record<string, string>, inventory: Inventory,
   const temp = `${path}.${process.pid}.tmp`;
   rmSync(temp, { force: true });
   const db = new DatabaseSync(temp);
-  db.exec(SCHEMA);
-  db.exec('BEGIN');
-  const insertMeta = db.prepare('INSERT INTO meta VALUES (?, ?)');
-  for (const [k, v] of Object.entries(meta)) insertMeta.run(k, v);
-  const related = siblings(rows);
-  // the package decides what is queued and in what order: the app only filters it
-  const position = new Map(reviewQueue(rows).map((r, i) => [r, i]));
-  const insertRow = db.prepare('INSERT INTO endpoint VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-  for (const r of rows) {
-    const keys = (related.get(r) ?? []).map(s => s.key);
-    insertRow.run(keyText(r.key), r.method, r.path, r.handler, JSON.stringify(r), r.tier, JSON.stringify(r.signals), r.state, r.verdict && JSON.stringify(r.verdict), JSON.stringify(keys), position.get(r) ?? null);
+  try {
+    db.exec(SCHEMA);
+    db.exec('BEGIN');
+    const insertMeta = db.prepare('INSERT INTO meta VALUES (?, ?)');
+    for (const [k, v] of Object.entries(meta)) insertMeta.run(k, v);
+    const related = siblings(rows);
+    // the package decides what is queued and in what order: the app only filters it
+    const position = new Map(reviewQueue(rows).map((r, i) => [r, i]));
+    const insertRow = db.prepare('INSERT INTO endpoint VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    for (const r of rows) {
+      const keys = (related.get(r) ?? []).map(s => s.key);
+      insertRow.run(keyText(r.key), r.method, r.path, r.handler, JSON.stringify(r), r.tier, JSON.stringify(r.signals), r.state, r.verdict && JSON.stringify(r.verdict), JSON.stringify(keys), position.get(r) ?? null);
+    }
+    const insertEvent = db.prepare('INSERT INTO event VALUES (?, ?, ?, ?, ?, ?, ?)');
+    for (const e of events) insertEvent.run(e.line, e.at, e.by, e.event, e.batch, keyText(e.endpoint), JSON.stringify(e));
+    const insertOrphan = db.prepare('INSERT INTO orphan VALUES (?, ?)');
+    for (const o of orphans) insertOrphan.run(keyText(o.key), JSON.stringify(o.verdict));
+    const header: Header = {
+      stack: inventory.stack,
+      coverage: inventory.coverage,
+      endpoints: inventory.endpoints.length,
+      dimensions: rows.some(r => Object.keys(r.dimensions).length > 0),
+      valid: rows.filter(r => r.state === 'valid').length,
+      outdated: rows.filter(r => r.state === 'outdated').length,
+      orphaned: orphans.length,
+    };
+    db.prepare('INSERT INTO header VALUES (?)').run(JSON.stringify(header));
+    db.exec('COMMIT');
+    db.close();
+    renameSync(temp, path);
+  } finally {
+    if (db.isOpen) db.close();
+    rmSync(temp, { force: true });
   }
-  const insertEvent = db.prepare('INSERT INTO event VALUES (?, ?, ?, ?, ?, ?, ?)');
-  for (const e of events) insertEvent.run(e.line, e.at, e.by, e.event, e.batch, keyText(e.endpoint), JSON.stringify(e));
-  const insertOrphan = db.prepare('INSERT INTO orphan VALUES (?, ?)');
-  for (const o of orphans) insertOrphan.run(keyText(o.key), JSON.stringify(o.verdict));
-  const header: Header = {
-    stack: inventory.stack,
-    coverage: inventory.coverage,
-    endpoints: inventory.endpoints.length,
-    dimensions: rows.some(r => Object.keys(r.dimensions).length > 0),
-    valid: rows.filter(r => r.state === 'valid').length,
-    outdated: rows.filter(r => r.state === 'outdated').length,
-    orphaned: orphans.length,
-  };
-  db.prepare('INSERT INTO header VALUES (?)').run(JSON.stringify(header));
-  db.exec('COMMIT');
-  db.close();
-  renameSync(temp, path);
 };
 
 let open: { path: string; db: DatabaseSync } | null = null;
@@ -140,9 +145,10 @@ export const project = (dir: string): Projection => {
     const { inventory, rows, orphans } = load(abs);
     const { events } = readLog(abs);
     mkdirSync(join(path, '..'), { recursive: true });
+    build(path, meta, inventory, rows, orphans, events);
+    // only now: until the new file is in place, the open handle is the last good state
     open?.db.close();
     open = null;
-    build(path, meta, inventory, rows, orphans, events);
     db = connect(path);
     return { project: abs, error: null, db };
   } catch (error) {

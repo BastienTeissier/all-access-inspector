@@ -1,7 +1,7 @@
 // The projection against the review package: same queue as `review status --json`, a cache that can be deleted, the last
 // good state kept when a file breaks.
 
-import { appendFileSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -82,4 +82,19 @@ test('a broken log is named and the last good state stays', () => {
   const broken = project(dir);
   expect(broken.error).toMatch(/reviews\.jsonl line \d+: not valid JSON/);
   expect(keys(queue(broken.db!, {}))).toEqual(before);
+});
+
+test('a cache that cannot be rebuilt keeps the last good state', () => {
+  const before = keys(queue(project(dir).db!, {}));
+  const cache = join(cachePath(dir), '..');
+  chmodSync(cache, 0o500);
+  try {
+    writeFileSync(tools('reviews.jsonl'), '');
+    const failed = project(dir);
+    expect(failed.error).not.toBeNull();
+    expect(header(failed.db!).endpoints).toBeGreaterThan(0);
+    expect(keys(queue(failed.db!, {}))).toEqual(before);
+  } finally {
+    chmodSync(cache, 0o700);
+  }
 });
