@@ -11,10 +11,10 @@ The command line works for a few verdicts, not for working down a queue of hundr
 AAU (developer or security reviewer), I run `review app <project>` from a checkout of the toolkit and open the local address it prints. I see:
 - a header with the project, stack, coverage, valid/outdated/orphaned counts, and "N events not committed" when `reviews.jsonl` has changes git does not have
 - **Queue**: the Review Queue by tier, as in UF12; each row shows method, path, zone, authentication/authorization, Signal badges (deterministic and agent), and its Verdict state (none, outdated); filters by zone, tier, Signal and Verdict state, and a path search; a "reviewed" view lists endpoints with a valid Verdict
-- on click, an **endpoint panel**: the full classification per axis (value, layer, raw, rule, evidence), the endpoint's siblings with their classifications, its Signals with reasons, its event history, and links opening the handler and the evidence at their line in the editor
+- on click, an **endpoint panel**: the full classification per axis (value, layer, raw, rule, evidence), the endpoint's siblings whose access differs, with their classifications, its Signals with reasons, its event history, and links opening the handler and the evidence at their line in the editor
 - a **Verdict form** in the panel: `safe`, `accepted` or `finding`; a reason, required; severity, required for `finding`, and a ticket URL, optional; an expiry date, optional for `accepted`; saving appends one `reviewed` event, as `append` does, and the endpoint leaves the queue or moves to tier 1
 
-The app reflects changes to `inventory.json` or `reviews.jsonl` made outside it (a regeneration, a git pull) without restarting. It never runs git.
+The app reflects changes to `inventory.json` or `reviews.jsonl` made outside it (a regeneration, a git pull) without restarting. It never writes through git: it only reads it, to count the events not committed yet.
 
 ## Success Scenario
 

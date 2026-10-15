@@ -84,11 +84,12 @@ No database. The "data model" is the inventory JSON contract, `schema/inventory.
 - **`tools/access-inspector/.gitattributes`**: `reviews.jsonl merge=union`; created by the first `append` if absent (inside `tools/access-inspector/`, so no change outside it).
 - **Zone** (derived, not stored): an endpoint is inside when, for every dimension with an `expected_access` entry for its value, both axis values are listed; outside if any dimension says no; no expectation at all, or an axis `unknown`, ⇒ `inside: null` (as the viewer's `zoneCheck`: unknown is never "outside"), treated as inside for outdated rules.
 - **App projection** (`node:sqlite`, `~/.cache/all-access-inspector/<sha256(abs project path)[:16]>.sqlite`, never committed, deleted and rebuilt whenever the inventory or log's size or mtime differ from `meta`):
-  - `meta(key TEXT PK, value TEXT)` — `inventory_size`, `inventory_mtime`, `log_size`, `log_mtime`, `toolkit_version`
-  - `endpoint(key TEXT PK, method, path, handler, row JSON, tier INT, signals JSON, state TEXT, verdict JSON NULL)` — `key` = JSON of the Review Key; `state` `none|valid|outdated`; one row per inventory endpoint, HEAD folded rows excluded
+  - `meta(key TEXT PK, value TEXT)` — `inventory_size`, `inventory_mtime`, `log_size`, `log_mtime`, `toolkit_version`, `projection` (the table shape), `today` (an `accepted` Verdict expires on a new day)
+  - `endpoint(key TEXT PK, method, path, handler, row JSON, tier INT, signals JSON, state TEXT, verdict JSON NULL, siblings JSON, position INT NULL)` — `key` = JSON of the Review Key; `state` `none|valid|outdated`; `siblings` the keys of its siblings with a different access; `position` its index in the package's `queue(rows)`, null when not queued; one row per inventory endpoint, HEAD folded rows excluded
   - `event(line INT PK, at, by, event, batch, key, payload JSON)`
   - `orphan(key TEXT PK, verdict JSON)`
-  - Filled only by replaying through the review package; the app never computes tiers itself.
+  - `header(value JSON)` — one row: stack, coverage, endpoint count, whether there are dimensions, valid/outdated/orphaned counts
+  - Filled only by replaying through the review package; the app never computes tiers, queue membership or queue order itself.
 
 ### Modification of Existing Entities
 
@@ -308,7 +309,7 @@ Next.js App Router, server components + server actions, no client data fetching 
 **Changes**: header (project, stack, coverage, counts, "N events not committed"); filters as search params (`zone`, `tier`, `signal`, `state`, `q`, `view=reviewed`); rows grouped by tier; zone column/filter hidden without dimensions; row click ⇒ `?e=<key>` opens the panel.
 
 #### BJ. `apps/review/app/endpoint-panel.tsx` 🟢
-**Changes**: per axis value/layer/raw/rule/evidence; siblings; signals with reasons; event history of the key; links `vscode://file/<abs>/<file>:<line>` for handler and evidence; outdated ⇒ seen vs current side by side, previous reason prefilled; orphan candidates (same path or same handler file) with "copy reason" (Phase 5f).
+**Changes**: per axis value/layer/raw/rule/evidence; siblings with a different access (those behind the `sibling` Signal: one with the same access says nothing to review); signals with reasons; event history of the key; links `vscode://file/<abs>/<file>:<line>` for handler and evidence; outdated ⇒ seen vs current side by side, previous reason prefilled; orphan candidates (same path or same handler file) with "copy reason" (Phase 5f).
 
 #### BK. `apps/review/app/actions.ts` 🟢
 **Changes**: `saveVerdict(key, form)` and `saveBulk(filters, form, confirmFinding)` ⇒ validate (missing reason / severity ⇒ field errors, nothing written), recompute selection server-side from the same filters, refuse when it contains an open `finding` and `confirmFinding` is false, `append()` from BD, `revalidatePath('/')`. Next unreviewed row of the same tier selected after a single save.
@@ -573,7 +574,7 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 ### Phase 5e — UF14 Review endpoints in the app
 
 - [x] **App scaffold**: `apps/review/{package.json,next.config.ts,tsconfig.json}` (BM); `review app` in `cli.ts` builds on first run and starts on `127.0.0.1` (BG). `review/src/app.ts` also rebuilds when a source is newer than `.next/BUILD_ID`, and refuses outside a toolkit checkout or before `make install-review`.
-- [x] **Projection**: `apps/review/lib/projection.ts` (BH). `meta` also keys on `today`, so an `accepted` Verdict expires without a log change; `endpoint.siblings` holds the sibling keys; `orphans()` left to 5f.
+- [x] **Projection**: `apps/review/lib/projection.ts` (BH). `meta` also keys on `today`, so an `accepted` Verdict expires without a log change; `endpoint.siblings` holds the sibling keys, `endpoint.position` the package's queue order, `header` the header counts; `orphans()` left to 5f. `proxy.ts` answers 403 to any Host but 127.0.0.1 and localhost (DNS rebinding).
 - [x] **Queue + panel + verdict**: `app/page.tsx`, `app/endpoint-panel.tsx`, `app/actions.ts` `saveVerdict` (BI, BJ, BK); viewer CSS tokens. The form submits in a transition (`onSubmit`), not as a form action: React resets a form after its action, which lost the checked Verdict on a refusal.
 - [x] **Write tests**: §4 app tests not marked 5f (`tests/projection.spec.ts`, `tests/e2e/review.spec.ts`, Playwright in `make test` and CI).
 - [x] **Verify**: `make check-all`, `make test`; on the moi scratch copy, ten tier-8 endpoints reviewed in the app → `git diff` shows 12 appended lines (10 + 2 folded HEADs); cache file deleted, restart → same header and the same 473 queue rows.
