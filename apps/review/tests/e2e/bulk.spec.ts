@@ -2,7 +2,7 @@
 
 import { expect, test } from '@playwright/test';
 
-import { log, reset, status } from './project.ts';
+import { log, orphans, reset, status } from './project.ts';
 
 test.beforeEach(reset);
 
@@ -26,6 +26,20 @@ test('a Review selection writes one event per selected endpoint, in one batch', 
   expect(events[0].batch).toMatch(/^b-[0-9a-f]{8}$/);
   const keys = new Set(events.map(e => JSON.stringify(e.endpoint)));
   for (const r of selected) expect(keys).toContain(JSON.stringify(r.key));
+  await page.getByRole('link', { name: 'History' }).click();
+  const newest = page.getByRole('region', { name: 'Batches' }).locator('summary').first();
+  await expect(newest).toContainText('reviewer@example.com');
+  await expect(newest).toContainText(`safe ×${events.length} · ${events.length} endpoints · one rule guards them all`);
+});
+
+test('History shows agent runs by their model and the orphaned Verdicts', async ({ page }) => {
+  const orphaned = orphans();
+  expect(orphaned.length).toBeGreaterThan(0);
+  await page.goto('/history');
+  await expect(page.getByRole('region', { name: 'Batches' }).locator('summary', { hasText: 'agent · claude-opus-5-5' })).toContainText('2 endpoints');
+  const listed = page.getByRole('region', { name: 'Orphaned verdicts' });
+  await expect(listed.getByRole('heading')).toHaveText(`Orphaned verdicts (${orphaned.length})`);
+  for (const o of orphaned) await expect(listed.getByRole('row', { name: new RegExp(o.path) })).toContainText(o.reason);
 });
 
 test('a selection holding an open finding names it and writes nothing until confirmed', async ({ page }) => {

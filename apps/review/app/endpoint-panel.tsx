@@ -36,7 +36,7 @@ const AxisTable = ({ title, axis, project }: { title: string; axis: Axis; projec
 
 const seenText = (a: SeenAxis) => [a.value, a.layer, a.raw, a.rule].map(v => v ?? '—').join(' · ');
 
-const eventText = (e: Logged): string =>
+export const eventText = (e: Logged): string =>
   e.event === 'reviewed'
     ? `${e.verdict}${e.severity ? ` (${e.severity})` : ''}: ${e.reason}`
     : e.event === 'signal_raised'

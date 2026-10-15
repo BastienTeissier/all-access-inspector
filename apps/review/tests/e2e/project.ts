@@ -31,3 +31,19 @@ export const status = (): { key: string[]; tier: number; state: string; method: 
     .trimEnd()
     .split('\n')
     .map(l => JSON.parse(l));
+
+/** The orphaned Verdicts as `review status` lists them, after its queue. */
+export const orphans = (): { method: string; path: string; reason: string }[] => {
+  const text = review('status', dir());
+  const at = text.indexOf('\nOrphaned verdicts (');
+  if (at < 0) return [];
+  return text
+    .slice(at + 1)
+    .trimEnd()
+    .split('\n')
+    .slice(1)
+    .map(l => {
+      const [, method, path, reason] = /^ {2}\S+\s+(\S+) (\S+) \(.*?\) {2}(.*)$/.exec(l)!;
+      return { method: method!, path: path!, reason: reason! };
+    });
+};

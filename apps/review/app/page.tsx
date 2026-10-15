@@ -69,6 +69,9 @@ export default async function Queue({ searchParams }: { searchParams: Promise<Re
               <b>{pending}</b> {pending === 1 ? 'event' : 'events'} not committed
             </span>
           ) : null}
+          <a className="btn" href="/history">
+            History
+          </a>
         </div>
       </header>
       {error && (

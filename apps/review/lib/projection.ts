@@ -194,6 +194,17 @@ export const row = (db: DatabaseSync, key: string): Projected | null => {
 export const history = (db: DatabaseSync, key: string): Logged[] =>
   (db.prepare('SELECT payload FROM event WHERE key = ? ORDER BY at DESC, line DESC').all(key) as { payload: string }[]).map(e => JSON.parse(e.payload) as Logged);
 
+/** Every event of the log, newest first. */
+export const events = (db: DatabaseSync): Logged[] =>
+  (db.prepare('SELECT payload FROM event ORDER BY at DESC, line DESC').all() as { payload: string }[]).map(e => JSON.parse(e.payload) as Logged);
+
+/** The Verdicts on keys the inventory no longer has. */
+export const orphans = (db: DatabaseSync): Orphan[] =>
+  (db.prepare('SELECT key, verdict FROM orphan ORDER BY key').all() as { key: string; verdict: string }[]).map(o => ({
+    key: JSON.parse(o.key) as Key,
+    verdict: JSON.parse(o.verdict) as Orphan['verdict'],
+  }));
+
 /** Every `<dimension>=<value>` zone present, for the zone filter. */
 export const zones = (db: DatabaseSync): string[] =>
   (db.prepare("SELECT DISTINCT d.key || '=' || d.value AS zone FROM endpoint, json_each(endpoint.row, '$.dimensions') AS d ORDER BY zone").all() as { zone: string }[]).map(z => z.zone);
