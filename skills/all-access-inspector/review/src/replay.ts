@@ -10,6 +10,7 @@ export interface Row extends Folded {
   inside: boolean | null;
   verdict: Reviewed | null;
   state: 'none' | 'valid' | 'outdated';
+  expired: boolean; // outdated because an `accepted` Verdict's `until` has passed
   moot: boolean; // reviewed while outside its expected access, inside now
   agent: SignalRaised | Triaged | null;
   signals: Signal[];
@@ -57,6 +58,7 @@ export const replay = (inventory: Inventory, events: Logged[], today: string): {
       inside: now,
       verdict,
       state,
+      expired,
       moot: state === 'valid' && verdict?.seen.inside === false && now === true,
       agent: raised && state !== 'valid' && !changed(raised.seen, e, now) ? raised : null,
       signals: [],

@@ -3,11 +3,11 @@ Verdicts: 3 valid (1 moot), 2 outdated, 1 orphaned
 Review Queue: 63 rows
 
 Tier 1 · open finding (1)
-  ANY      /pages/v1/old/  public  anonymous/none  finding high: Legacy page renders any order by id to anonymous users
+  ANY      /pages/v1/old/  public  anonymous/none  finding high: Legacy page renders any order by id to anonymous users; open_write: anonymous ANY
 
 Tier 2 · outdated verdict (2)
-  ANY      /health/  public  anonymous/none  accepted by reviewer@example.com outdated: until 2026-01-01 has passed
-  GET,HEAD /reports/{slug}  customer  required/none  safe by reviewer@example.com outdated: was required/rule, now required/none
+  ANY      /health/  public  anonymous/none  accepted by reviewer@example.com outdated: until 2026-01-01 has passed; open_write: anonymous ANY
+  GET,HEAD /reports/{slug}  customer  required/none  safe by reviewer@example.com outdated: was required/rule, now required/none; id_without_authz: path parameter, no authorization rule
 
 Tier 3 · outside its expected access (14)
   ANY      /admin/login/  staff  anonymous/none  outside_expected: authentication anonymous, staff expects required; authorization none, staff expects rule; open_write: anonymous ANY

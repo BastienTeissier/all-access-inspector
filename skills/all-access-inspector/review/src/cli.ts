@@ -7,7 +7,7 @@ import { parseArgs } from 'node:util';
 
 import { type Endpoint, type Inventory, InventoryError, classification, keyOf, loadInventory, seenOf } from './inventory.ts';
 import { type Event, type Reviewed, SEVERITIES, VERDICTS, VERSION, append, newBatch, now, problem, readLog } from './log.ts';
-import { type Row, changed, replay } from './replay.ts';
+import { type Row, replay } from './replay.ts';
 import { TIERS, queue } from './tiers.ts';
 
 const USAGE = `usage:
@@ -33,15 +33,20 @@ const zones = (row: Row) => Object.values(row.dimensions).join(',');
 
 const methods = (row: Row) => (row.head ? `${row.method},HEAD` : row.method);
 
+/** Why the row is where it is: its Verdict when it has one, then every Signal it carries. */
 const detail = (row: Row): string => {
-  if (row.state === 'outdated' && row.verdict) {
-    const was = row.verdict.seen;
-    if (!changed(was, row, row.inside)) return `${row.verdict.verdict} by ${row.verdict.by} outdated: until ${row.verdict.until} has passed`;
-    const what = classification(was) === classification(row) ? `${was.authentication.raw ?? '-'} ${was.authorization.raw ?? '-'} → ${row.authentication.raw ?? '-'} ${row.authorization.raw ?? '-'}` : `was ${classification(was)}, now ${classification(row)}`;
-    return `${row.verdict.verdict} by ${row.verdict.by} outdated: ${what}`;
-  }
-  if (row.tier === 1 && row.verdict) return `finding ${row.verdict.severity}: ${row.verdict.reason}`;
-  const notes = row.signals.map(s => `${s.id}: ${s.text}`);
+  const notes: string[] = [];
+  const verdict = row.verdict;
+  if (verdict && row.state === 'outdated') {
+    const was = verdict.seen;
+    const what = row.expired
+      ? `until ${verdict.until} has passed`
+      : classification(was) === classification(row)
+        ? `${was.authentication.raw ?? '-'} ${was.authorization.raw ?? '-'} → ${row.authentication.raw ?? '-'} ${row.authorization.raw ?? '-'}`
+        : `was ${classification(was)}, now ${classification(row)}`;
+    notes.push(`${verdict.verdict} by ${verdict.by} outdated: ${what}`);
+  } else if (verdict?.verdict === 'finding') notes.push(`finding ${verdict.severity}: ${verdict.reason}`);
+  notes.push(...row.signals.map(s => `${s.id}: ${s.text}`));
   if (row.agent?.event === 'triaged') notes.push('agent: no signal');
   return notes.join('; ');
 };
