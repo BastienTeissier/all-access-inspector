@@ -1,50 +1,15 @@
 // The review CLI run as a user runs it, inside a temporary project holding the django-demo inventory.
 
-import { execFileSync, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { afterEach, beforeEach, expect, test } from 'vitest';
+import { expect, test } from 'vitest';
 
-const CLI = join(import.meta.dirname, '..', 'src', 'cli.ts');
-const INVENTORY = join(import.meta.dirname, '..', '..', '..', '..', 'fixtures', 'django-demo', 'expected', 'inventory.json');
-const SAMPLE_LOG = join(import.meta.dirname, 'samples', 'django-demo.reviews.jsonl');
-const GOLDEN = join(import.meta.dirname, 'expected', 'django-demo.status.txt');
+import { GOLDEN, INVENTORY, SAMPLE_LOG, events, git, gitconfig, log, project, review, tools, useProject } from './project.ts';
 
-let project: string;
-let gitconfig: string;
-
-const tools = (...parts: string[]) => join(project, 'tools', 'access-inspector', ...parts);
-const log = () => (existsSync(tools('reviews.jsonl')) ? readFileSync(tools('reviews.jsonl'), 'utf8') : '');
-
-beforeEach(() => {
-  const root = mkdtempSync(join(tmpdir(), 'review-'));
-  project = join(root, 'django-demo');
-  mkdirSync(join(project, 'tools', 'access-inspector'), { recursive: true });
-  copyFileSync(INVENTORY, tools('inventory.json'));
-  gitconfig = join(root, 'gitconfig');
-  writeFileSync(gitconfig, '[user]\n\temail = reviewer@example.com\n\tname = Reviewer\n[init]\n\tdefaultBranch = main\n');
-});
-
-afterEach(() => {
-  expect(readFileSync(tools('inventory.json'), 'utf8')).toBe(readFileSync(INVENTORY, 'utf8'));
-});
-
-const env = () => ({ ...process.env, GIT_CONFIG_GLOBAL: gitconfig, GIT_CONFIG_NOSYSTEM: '1' });
-
-const review = (args: string[], options: { cwd?: string; input?: string } = {}) => {
-  const result = spawnSync(process.execPath, [CLI, ...args], { cwd: options.cwd ?? project, env: env(), input: options.input, encoding: 'utf8' });
-  return { status: result.status, stdout: result.stdout, stderr: result.stderr };
-};
-
-const git = (...args: string[]) => execFileSync('git', args, { cwd: project, env: env(), encoding: 'utf8' });
-
-const events = () =>
-  log()
-    .split('\n')
-    .filter(Boolean)
-    .map(l => JSON.parse(l) as Record<string, unknown>);
+useProject();
 
 test('status prints the golden queue, the same from any cwd', () => {
   copyFileSync(SAMPLE_LOG, tools('reviews.jsonl'));
@@ -53,24 +18,6 @@ test('status prints the golden queue, the same from any cwd', () => {
   expect(first.stdout).toBe(readFileSync(GOLDEN, 'utf8'));
   expect(review(['status', '.']).stdout).toBe(first.stdout);
   expect(review(['status', project], { cwd: tmpdir() }).stdout).toBe(first.stdout);
-});
-
-test('status --json prints one row per queued endpoint, in queue order', () => {
-  copyFileSync(SAMPLE_LOG, tools('reviews.jsonl'));
-  const rows = review(['status', project, '--json']).stdout.trimEnd().split('\n').map(l => JSON.parse(l) as { method: string; path: string; tier: number });
-  const text = readFileSync(GOLDEN, 'utf8');
-  expect(rows).toHaveLength(Number(/Review Queue: (\d+) rows/.exec(text)![1]));
-  expect(rows[0]).toMatchObject({ method: 'ANY', path: '/pages/v1/old/', tier: 1, verdict: { verdict: 'finding', severity: 'high' } });
-  expect(Object.keys(rows[0]!)).toEqual(['key', 'method', 'head', 'path', 'handler', 'authentication', 'authorization', 'dimensions', 'unknown_reason', 'inside', 'state', 'moot', 'verdict', 'agent', 'signals', 'tier']);
-  expect(Object.keys((rows[0] as unknown as { verdict: object }).verdict)).not.toContain('seen');
-  // Triage reads `agent` to skip what it already read for the current classification
-  const agents = rows.filter(r => (r as unknown as { agent: unknown }).agent).map(r => [r.path, (r as unknown as { agent: { event: string } }).agent.event]);
-  expect(agents).toEqual([
-    ['/api/orders/{pk}/refund/', 'signal_raised'],
-    ['/api/invoices/', 'triaged'],
-  ]);
-  const listed = text.split('\n').filter(l => l.startsWith('  ') && !text.slice(text.indexOf('Orphaned')).includes(l));
-  expect(rows.map(r => r.path)).toEqual(listed.map(l => l.trim().split(/\s+/)[1]));
 });
 
 test('status without an inventory asks for a fit', () => {
