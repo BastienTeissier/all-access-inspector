@@ -1,8 +1,17 @@
 // The Review Log as History shows it: one group per batch, a single event (no batch) as a group of its own; and the
 // orphaned Verdicts an unreviewed endpoint may have been.
 
+import { handlerFile } from '../../../skills/all-access-inspector/review/src/inventory.ts';
 import type { Logged } from '../../../skills/all-access-inspector/review/src/log.ts';
 import type { Orphan, Row } from '../../../skills/all-access-inspector/review/src/replay.ts';
+
+/** One event in a line: the Verdict and its reason, or the Agent's read. */
+export const eventText = (e: Logged): string =>
+  e.event === 'reviewed'
+    ? `${e.verdict}${e.severity ? ` (${e.severity})` : ''}: ${e.reason}`
+    : e.event === 'signal_raised'
+      ? `signal: ${e.reason} (${e.evidence})`
+      : 'triaged: no signal';
 
 export interface Group {
   batch: string | null;
@@ -52,15 +61,12 @@ export const reason = (group: Group): string | null => {
   return reasons.size === 1 && only ? only : null;
 };
 
-/** The file of a project handler (`file:line`), or null for a framework handler, which serves unrelated paths. */
-const file = (handler: string): string | null => (/:\d+$/.test(handler) ? handler.replace(/:\d+$/, '') : null);
-
 /**
  * The orphans an endpoint without a valid Verdict may have been, renamed or moved: same path or same handler file. Only
  * proposed: copying a reason writes a new Verdict on the endpoint, the orphan stays as it is.
  */
 export const candidates = (row: Row, lost: Orphan[]): Orphan[] => {
   if (row.state === 'valid') return [];
-  const here = file(row.handler);
-  return lost.filter(o => o.key[1] === row.path || (here !== null && file(o.verdict.seen.handler) === here));
+  const here = handlerFile(row.handler);
+  return lost.filter(o => o.key[1] === row.path || (here !== null && handlerFile(o.verdict.seen.handler) === here));
 };

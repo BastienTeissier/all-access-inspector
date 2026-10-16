@@ -4,6 +4,7 @@ import { type Axis, type SeenAxis, classification, keyText } from '../../../skil
 import type { Logged } from '../../../skills/all-access-inspector/review/src/log.ts';
 import type { Orphan } from '../../../skills/all-access-inspector/review/src/replay.ts';
 import type { Projected } from '../lib/projection.ts';
+import { eventText } from '../lib/history.ts';
 import { saveVerdict } from './actions.ts';
 import { VerdictForm } from './verdict-form.tsx';
 
@@ -36,13 +37,6 @@ const AxisTable = ({ title, axis, project }: { title: string; axis: Axis; projec
 );
 
 const seenText = (a: SeenAxis) => [a.value, a.layer, a.raw, a.rule].map(v => v ?? '—').join(' · ');
-
-export const eventText = (e: Logged): string =>
-  e.event === 'reviewed'
-    ? `${e.verdict}${e.severity ? ` (${e.severity})` : ''}: ${e.reason}`
-    : e.event === 'signal_raised'
-      ? `signal: ${e.reason} (${e.evidence})`
-      : 'triaged: no signal';
 
 export const EndpointPanel = ({
   row,

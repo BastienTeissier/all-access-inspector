@@ -3,9 +3,8 @@
 import { basename } from 'node:path';
 
 import { projectDir } from '../../lib/filters.ts';
-import { type Group, endpoints, groups, kinds, reason } from '../../lib/history.ts';
+import { type Group, endpoints, eventText, groups, kinds, reason } from '../../lib/history.ts';
 import { events, orphans, project } from '../../lib/projection.ts';
-import { eventText } from '../endpoint-panel.tsx';
 
 export const dynamic = 'force-dynamic';
 
