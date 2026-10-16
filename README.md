@@ -289,6 +289,8 @@ node skills/all-access-inspector/review/src/cli.ts app <project>
 
 It builds the app the first time and serves it on `http://127.0.0.1:4377`, or on the next free port. It is never reachable from another machine. The page shows the queue by tier, with the same filters as `status`. Click a row to see both axes, the Signals, the siblings and the endpoint's history, then give a Verdict. The app writes through the same `append` as the CLI, and the header counts the events you have not committed yet. A change to the inventory or the log shows on the next reload. The app's cache under `~/.cache/all-access-inspector/` can be deleted at any time.
 
+To review many endpoints at once, filter the queue, then click **Review selection**. It gives one Verdict to every endpoint the filters select, written as one batch, and asks you to confirm before it replaces an open finding. **History** shows the log by batch, newest first, and the orphaned Verdicts, whose endpoint is no longer in the inventory. When an endpoint without a Verdict shares its path or its handler file with an orphan, as a renamed URL does, its panel proposes the orphan: **Copy reason** puts the orphan's reason in the form. The orphan itself stays in the log.
+
 ## Wire it into CI
 
 The Agent writes `tools/access-inspector/ci-snippet.yml` (GitHub Actions or GitLab CI) or `ci-snippet.sh` (anything else), filled from your existing test job. Paste it into your pipeline yourself. A GitHub Actions job looks like:

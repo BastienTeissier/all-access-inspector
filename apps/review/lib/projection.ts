@@ -40,6 +40,23 @@ export interface Filters {
 /** A projected row: the replayed Row, plus the keys of its siblings. */
 export type Projected = Row & { siblings: Key[] };
 
+/** A row whose valid Verdict is a finding: replacing it takes a confirmation. */
+export const openFinding = (r: Row): boolean => r.state === 'valid' && r.verdict?.verdict === 'finding';
+
+/** A row as the reviewer reads it: its methods, HEAD folded, and its path. */
+export const endpointName = (r: Row): string => `${r.head ? `${r.method},HEAD` : r.method} ${r.path}`;
+
+/**
+ * What saving the selection must be confirmed against: the open findings it would replace, named, and their keys as the
+ * checkbox posts them. A confirmation counts only for the findings it named, so one appearing since is never replaced unseen.
+ */
+export const confirmation = (selection: Row[]): { label: string; value: string } | null => {
+  const findings = selection.filter(openFinding);
+  if (!findings.length) return null;
+  const label = `Replace the open finding${findings.length === 1 ? '' : 's'} on ${findings.map(endpointName).join(', ')}`;
+  return { label, value: JSON.stringify(findings.map(r => r.key)) };
+};
+
 export interface Projection {
   project: string;
   /** What could not be read, shown above the last good state. */
@@ -190,6 +207,17 @@ export const row = (db: DatabaseSync, key: string): Projected | null => {
 /** The events of one Review Key, newest first. */
 export const history = (db: DatabaseSync, key: string): Logged[] =>
   (db.prepare('SELECT payload FROM event WHERE key = ? ORDER BY at DESC, line DESC').all(key) as { payload: string }[]).map(e => JSON.parse(e.payload) as Logged);
+
+/** Every event of the log, newest first. */
+export const events = (db: DatabaseSync): Logged[] =>
+  (db.prepare('SELECT payload FROM event ORDER BY at DESC, line DESC').all() as { payload: string }[]).map(e => JSON.parse(e.payload) as Logged);
+
+/** The Verdicts on keys the inventory no longer has. */
+export const orphans = (db: DatabaseSync): Orphan[] =>
+  (db.prepare('SELECT key, verdict FROM orphan ORDER BY key').all() as { key: string; verdict: string }[]).map(o => ({
+    key: JSON.parse(o.key) as Key,
+    verdict: JSON.parse(o.verdict) as Orphan['verdict'],
+  }));
 
 /** Every `<dimension>=<value>` zone present, for the zone filter. */
 export const zones = (db: DatabaseSync): string[] =>

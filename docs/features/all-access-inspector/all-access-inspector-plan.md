@@ -581,10 +581,10 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 
 ### Phase 5f — UF15 Review in bulk and read the history
 
-- [ ] **Bulk**: `saveBulk` in `app/actions.ts` + selection dialog (count, sample, open-finding confirmation) (BK).
-- [ ] **History + orphans**: `app/history/page.tsx` (BL); orphan candidates and "copy reason" in the panel (BJ).
-- [ ] **Write tests**: §4 app tests marked 5f.
-- [ ] **Verify**: on the moi scratch copy, bulk-review zone `user` tier 11 → 1 batch, one line per endpoint; rename one URL in a scratch branch, regenerate the inventory → orphan shown, reason copied onto the new endpoint.
+- [x] **Bulk**: `saveBulk` in `app/actions.ts` + selection dialog (count, sample, open-finding confirmation) (BK). The package's `appendBulk` writes the batch (folded HEADs included, one `append`); the dialog is a side panel (`?bulk=1`) sharing `VerdictForm` with the endpoint panel. The count is repeated on the submit button ("Review all N endpoints") at every size, not in a separate confirmation above 50. History counts endpoints as the panel does: a HEAD reviewed with its GET is not one more.
+- [x] **History + orphans**: `app/history/page.tsx` (BL); orphan candidates and "copy reason" in the panel (BJ). Candidates only for a row without a valid Verdict; "same handler file" compares project handlers (`file:line`) only, a framework handler serves unrelated paths.
+- [x] **Write tests**: §4 app tests marked 5f (`tests/e2e/bulk.spec.ts`, `tests/history.spec.ts`, package `tests/bulk.spec.ts`).
+- [x] **Verify**: on the moi scratch copy, bulk-review zone `user` tier 11 → 1 batch, 375 lines (373 rows + 2 folded HEADs); one URL renamed in the scratch inventory JSON (the scratch copy holds only `tools/`, so no regeneration) → orphan shown, reason copied onto the new endpoint, orphan still in History.
 
 ### Phase 6 — UF7 Inventory a Spring project
 

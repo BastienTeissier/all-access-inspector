@@ -1,18 +1,20 @@
 'use server';
 
-// Saving a Verdict: the same checks and the same append as `review append`, then the next row of the same tier.
+// Saving a Verdict, on one row or on the Review selection: the same checks and the same append as `review append`.
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-import { appendVerdict } from '../../../skills/all-access-inspector/review/src/append.ts';
+import { appendBulk, appendVerdict } from '../../../skills/all-access-inspector/review/src/append.ts';
 import { InventoryError, type Key, keyText } from '../../../skills/all-access-inspector/review/src/inventory.ts';
 import { Refused } from '../../../skills/all-access-inspector/review/src/project.ts';
 import { filtersOf, href, projectDir } from '../lib/filters.ts';
-import { project, queue } from '../lib/projection.ts';
+import { confirmation, endpointName, openFinding, project, queue } from '../lib/projection.ts';
 
 export interface FormState {
-  errors: { verdict?: string; reason?: string; severity?: string; form?: string };
+  errors: { verdict?: string; reason?: string; severity?: string; confirm?: string; form?: string };
+  /** The confirmation the selection needs at save time, which the form shows in place of the one it rendered with. */
+  confirm?: { label: string; value: string };
 }
 
 const text = (form: FormData, name: string): string | undefined => {
@@ -30,40 +32,75 @@ const keyOf = (value: FormDataEntryValue | null): Key | null => {
   }
 };
 
-export const saveVerdict = async (_previous: FormState, form: FormData): Promise<FormState> => {
-  const key = keyOf(form.get('key'));
-  if (!key) return { errors: { form: 'This endpoint is not in the inventory: reload the page.' } };
-  const filters = filtersOf(new URLSearchParams(String(form.get('filters') ?? '')));
-  const verdict = text(form, 'verdict');
-  const reason = text(form, 'reason');
-  const severity = text(form, 'severity');
+/** What is missing from the Verdict fields, or null; nothing is written while anything is. */
+const fieldErrors = (form: FormData): FormState['errors'] | null => {
   const errors: FormState['errors'] = {};
-  if (!verdict) errors.verdict = 'Pick a verdict.';
-  if (!reason) errors.reason = 'A reason is required.';
-  if (verdict === 'finding' && !severity) errors.severity = 'A finding needs a severity.';
-  if (Object.keys(errors).length) return { errors };
+  if (!text(form, 'verdict')) errors.verdict = 'Pick a verdict.';
+  if (!text(form, 'reason')) errors.reason = 'A reason is required.';
+  if (text(form, 'verdict') === 'finding' && !text(form, 'severity')) errors.severity = 'A finding needs a severity.';
+  return Object.keys(errors).length ? errors : null;
+};
 
-  const dir = projectDir();
-  const { db } = project(dir);
-  const rows = db ? queue(db, filters) : [];
-  const at = rows.findIndex(r => keyText(r.key) === keyText(key));
-  const next = at < 0 ? undefined : rows.slice(at + 1).find(r => r.tier === rows[at]!.tier);
+/** The Verdict as `review append` takes it: severity and ticket only on a finding, until only on accepted. */
+const values = (form: FormData) => {
+  const verdict = text(form, 'verdict');
+  return {
+    verdict,
+    reason: text(form, 'reason'),
+    ...(verdict === 'finding' ? { severity: text(form, 'severity'), ticket: text(form, 'ticket') } : {}),
+    ...(verdict === 'accepted' ? { until: text(form, 'until') } : {}),
+  };
+};
+
+const filtersFrom = (form: FormData) => filtersOf(new URLSearchParams(String(form.get('filters') ?? '')));
+
+/** Runs an append; a refusal is the form's error, anything else is a bug. */
+const appended = (write: () => unknown): FormState | null => {
   try {
-    appendVerdict(
-      dir,
-      {
-        verdict,
-        reason,
-        handler: key[2],
-        ...(verdict === 'finding' ? { severity, ticket: text(form, 'ticket') } : {}),
-        ...(verdict === 'accepted' ? { until: text(form, 'until') } : {}),
-      },
-      [key[0], key[1]],
-    );
+    write();
+    return null;
   } catch (error) {
     if (error instanceof Refused || error instanceof InventoryError) return { errors: { form: error.message } };
     throw error;
   }
+};
+
+export const saveVerdict = async (_previous: FormState, form: FormData): Promise<FormState> => {
+  const key = keyOf(form.get('key'));
+  if (!key) return { errors: { form: 'This endpoint is not in the inventory: reload the page.' } };
+  const filters = filtersFrom(form);
+  const errors = fieldErrors(form);
+  if (errors) return { errors };
+  const dir = projectDir();
+  const { db } = project(dir);
+  const rows = db ? queue(db, filters) : [];
+  const at = rows.findIndex(r => keyText(r.key) === keyText(key));
+  const tier = rows[at]?.tier;
+  const next = at < 0 ? undefined : rows.slice(at + 1).find(r => r.tier === tier);
+  const refused = appended(() => appendVerdict(dir, { ...values(form), handler: key[2] }, [key[0], key[1]]));
+  if (refused) return refused;
   revalidatePath('/');
   redirect(href(filters, next && keyText(next.key)));
+};
+
+/**
+ * The Review selection: one Verdict on every row the filters select when it is saved, recomputed here rather than taken
+ * from the page. A selection holding an open finding is written only once the reviewer confirmed replacing it.
+ */
+export const saveBulk = async (_previous: FormState, form: FormData): Promise<FormState> => {
+  const filters = filtersFrom(form);
+  const errors = fieldErrors(form);
+  if (errors) return { errors };
+  const dir = projectDir();
+  const { db } = project(dir);
+  const selection = db ? queue(db, filters) : [];
+  const needed = confirmation(selection);
+  if (needed && form.get('confirmFinding') !== needed.value) {
+    const names = selection.filter(openFinding).map(endpointName).join(', ');
+    return { errors: { confirm: `Confirm to replace the open finding on ${names}.` }, confirm: needed };
+  }
+  const refused = appended(() => appendBulk(dir, values(form), selection.map(r => r.key)));
+  if (refused) return refused;
+  revalidatePath('/');
+  redirect(href(filters));
 };
