@@ -85,8 +85,9 @@ export const appendBulk = (project: string, values: Values, keys: Key[]): { even
   checkVerdict(values);
   if (!keys.length) throw new Refused('the selection is empty');
   const { inventory, rows } = load(project);
+  const known = new Set(rows.map(r => keyText(r.key)));
   const endpoints = keys.flatMap(key => {
-    if (!rows.some(r => keyText(r.key) === keyText(key))) throw new Refused(`${key[0]} ${key[1]} is no longer in the inventory: reload the selection`);
+    if (!known.has(keyText(key))) throw new Refused(`${key[0]} ${key[1]} is no longer in the inventory: reload the selection`);
     return resolve(inventory, rows, key[0], key[1], key[2]);
   });
   const batch = newBatch();
