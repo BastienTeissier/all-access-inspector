@@ -3,7 +3,7 @@
 import { basename } from 'node:path';
 
 import { projectDir } from '../../lib/filters.ts';
-import { type Group, endpoints, eventText, groups, kinds, reason } from '../../lib/history.ts';
+import { type Group, endpoints, eventText, groups, kinds, page, reason } from '../../lib/history.ts';
 import { events, orphans, project } from '../../lib/projection.ts';
 
 export const dynamic = 'force-dynamic';
@@ -35,7 +35,8 @@ const GroupItem = ({ group }: { group: Group }) => {
   );
 };
 
-export default function History() {
+export default async function History({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const given = (await searchParams).page;
   const dir = projectDir();
   const { db, error, project: abs } = project(dir);
   if (!db)
@@ -46,6 +47,7 @@ export default function History() {
       </main>
     );
   const lost = orphans(db);
+  const shown = page(groups(events(db)), typeof given === 'string' ? given : null);
   return (
     <main className="wrap">
       <header className="top">
@@ -67,10 +69,24 @@ export default function History() {
       <section aria-label="Batches">
         <h2>Events</h2>
         <ol className="groups">
-          {groups(events(db)).map(g => (
+          {shown.groups.map(g => (
             <GroupItem key={g.batch ?? `line-${g.events[0]!.line}`} group={g} />
           ))}
         </ol>
+        {(shown.n > 0 || shown.older) && (
+          <nav className="pages" aria-label="Pages">
+            {shown.n > 0 && (
+              <a className="btn" href={shown.n === 1 ? '/history' : `/history?page=${shown.n - 1}`}>
+                Newer
+              </a>
+            )}
+            {shown.older && (
+              <a className="btn" href={`/history?page=${shown.n + 1}`}>
+                Older
+              </a>
+            )}
+          </nav>
+        )}
       </section>
       <section aria-label="Orphaned verdicts">
         <h2>Orphaned verdicts ({lost.length})</h2>

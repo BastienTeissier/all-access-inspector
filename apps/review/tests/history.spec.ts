@@ -3,7 +3,7 @@
 import { expect, test } from 'vitest';
 
 import { parseLog } from '../../../skills/all-access-inspector/review/src/log.ts';
-import { candidates, endpoints, groups, kinds, reason } from '../lib/history.ts';
+import { PAGE, candidates, endpoints, groups, kinds, page, reason } from '../lib/history.ts';
 
 const line = (at: string, batch: string | null, event: string, extra: Record<string, string>) =>
   JSON.stringify({
@@ -66,4 +66,13 @@ test('a HEAD reviewed with its GET is counted with it, a HEAD alone or of anothe
     ['HEAD', '/a/', 'b.py'],
   ]);
   expect(kinds(group)).toBe('safe ×3');
+});
+
+test('History shows the newest groups a page at a time, a page that is not a number as the first', () => {
+  const all = Array.from({ length: PAGE + 3 }, (_, i) => ({ batch: `b-${i}`, by: 'r@example.com', at: '', events: [] }));
+  expect(page(all, null)).toMatchObject({ n: 0, older: true });
+  expect(page(all, null).groups.map(g => g.batch)).toEqual(all.slice(0, PAGE).map(g => g.batch));
+  expect(page(all, '1')).toMatchObject({ n: 1, older: false, groups: all.slice(PAGE) });
+  expect(page(all, '-1').n).toBe(0);
+  expect(page(all, 'x').n).toBe(0);
 });

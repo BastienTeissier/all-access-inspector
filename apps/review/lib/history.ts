@@ -44,6 +44,15 @@ export const endpoints = (group: Group): Logged[] => {
   return group.events.filter(e => e.endpoint[0] !== 'HEAD' || !gets.has(`${e.endpoint[1]} ${e.endpoint[2]}`));
 };
 
+/** Groups shown on one page of History: the log only grows, a round of Triage or a bulk review adds a group. */
+export const PAGE = 20;
+
+/** Page `n` of the groups, 0 the newest; any other value (missing, negative, not a number) is 0. */
+export const page = (all: Group[], given: string | null): { n: number; groups: Group[]; older: boolean } => {
+  const n = /^\d+$/.test(given ?? '') ? Number(given) : 0;
+  return { n, groups: all.slice(n * PAGE, (n + 1) * PAGE), older: (n + 1) * PAGE < all.length };
+};
+
 /** What a group did, an endpoint at a time, e.g. `safe ×378` or `signal_raised ×2 · triaged ×5`. */
 export const kinds = (group: Group): string => {
   const counts = new Map<string, number>();
