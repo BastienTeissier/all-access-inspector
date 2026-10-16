@@ -2,7 +2,7 @@
 
 import { expect, test } from '@playwright/test';
 
-import { log, orphans, reset, status } from './project.ts';
+import { log, orphans, reset, review, status } from './project.ts';
 
 test.beforeEach(reset);
 
@@ -58,6 +58,24 @@ test('a selection holding an open finding names it and writes nothing until conf
   await panel.getByRole('button', { name: /^Review all/ }).click();
   await expect(page.getByRole('button', { name: 'Review selection' })).toBeDisabled();
   expect(added(before).map(e => [e.verdict, e.endpoint[1]])).toContainEqual(['accepted', finding.path]);
+});
+
+test('a finding raised after the selection was shown is named and confirmed before it is replaced', async ({ page }) => {
+  const row = status().find(r => r.tier === 9 && r.state === 'none' && r.method === 'GET')!;
+  await page.goto(`/?q=${encodeURIComponent(row.path)}&bulk=1`);
+  const panel = page.getByRole('complementary', { name: 'Review selection' });
+  await expect(panel.getByRole('checkbox')).toHaveCount(0);
+  review('append', '.', '--verdict', 'finding', '--severity', 'high', '--reason', 'raised from the CLI meanwhile', row.method, row.path);
+  const before = log();
+  await panel.getByRole('radio', { name: 'safe' }).check();
+  await panel.getByLabel('Reason').fill('reviewed as a whole');
+  await panel.getByRole('button', { name: /^Review all/ }).click();
+  await expect(panel.getByText(/^Confirm to replace the open finding on/)).toContainText(row.path);
+  expect(log()).toBe(before);
+  await panel.getByRole('checkbox', { name: new RegExp(`Replace the open finding.*${row.path.replace(/[{}]/g, '\\$&')}`) }).check();
+  await panel.getByRole('button', { name: /^Review all/ }).click();
+  await expect(page.getByRole('complementary', { name: 'Review selection' })).toHaveCount(0);
+  expect(added(before).map(e => [e.verdict, e.endpoint[1]])).toContainEqual(['safe', row.path]);
 });
 
 test('a renamed endpoint proposes the orphan from its handler file, and copying its reason leaves the orphan in History', async ({ page }) => {

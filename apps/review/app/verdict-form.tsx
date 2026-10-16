@@ -23,8 +23,8 @@ export const VerdictForm = ({
   reason?: string;
   /** Orphaned Verdicts whose reason the reviewer may copy: the orphan itself is left as it is. */
   candidates?: { endpoint: string; verdict: string; reason: string }[];
-  /** Shown as a checkbox the reviewer ticks before saving, when the save replaces an open finding. */
-  confirm?: string;
+  /** Shown as a checkbox the reviewer ticks before saving, when the save replaces an open finding; it posts `value`. */
+  confirm?: { label: string; value: string };
 }) => {
   const [state, action, pending] = useActionState<FormState, FormData>(save, { errors: {} });
   const [fields, setFields] = useState({ verdict: '', reason: reason ?? '', severity: '', ticket: '', until: '' });
@@ -35,6 +35,8 @@ export const VerdictForm = ({
   });
   const verdict = fields.verdict;
   const { errors } = state;
+  // the save may need a confirmation the page did not render: the selection changed since
+  const confirmed = state.confirm ?? confirm;
   return (
     <form
       className="verdict-form"
@@ -101,9 +103,10 @@ export const VerdictForm = ({
           <input type="date" {...field('until')} />
         </label>
       )}
-      {confirm && (
+      {confirmed && (
         <label className="choice">
-          <input type="checkbox" name="confirmFinding" value="yes" aria-invalid={Boolean(errors.confirm)} /> {confirm}
+          <input key={confirmed.value} type="checkbox" name="confirmFinding" value={confirmed.value} aria-invalid={Boolean(errors.confirm)} />{' '}
+          {confirmed.label}
         </label>
       )}
       {errors.confirm && <p className="field-error">{errors.confirm}</p>}

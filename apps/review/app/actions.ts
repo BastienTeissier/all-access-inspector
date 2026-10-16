@@ -9,10 +9,12 @@ import { appendBulk, appendVerdict } from '../../../skills/all-access-inspector/
 import { InventoryError, type Key, keyText } from '../../../skills/all-access-inspector/review/src/inventory.ts';
 import { Refused } from '../../../skills/all-access-inspector/review/src/project.ts';
 import { filtersOf, href, projectDir } from '../lib/filters.ts';
-import { openFinding, project, queue } from '../lib/projection.ts';
+import { confirmation, endpointName, openFinding, project, queue } from '../lib/projection.ts';
 
 export interface FormState {
   errors: { verdict?: string; reason?: string; severity?: string; confirm?: string; form?: string };
+  /** The confirmation the selection needs at save time, which the form shows in place of the one it rendered with. */
+  confirm?: { label: string; value: string };
 }
 
 const text = (form: FormData, name: string): string | undefined => {
@@ -92,9 +94,11 @@ export const saveBulk = async (_previous: FormState, form: FormData): Promise<Fo
   const dir = projectDir();
   const { db } = project(dir);
   const selection = db ? queue(db, filters) : [];
-  const findings = selection.filter(openFinding);
-  if (findings.length && form.get('confirmFinding') !== 'yes')
-    return { errors: { confirm: `Confirm to replace the open finding on ${findings.map(r => `${r.method} ${r.path}`).join(', ')}.` } };
+  const needed = confirmation(selection);
+  if (needed && form.get('confirmFinding') !== needed.value) {
+    const names = selection.filter(openFinding).map(endpointName).join(', ');
+    return { errors: { confirm: `Confirm to replace the open finding on ${names}.` }, confirm: needed };
+  }
   const refused = appended(() => appendBulk(dir, values(form), selection.map(r => r.key)));
   if (refused) return refused;
   revalidatePath('/');
