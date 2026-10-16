@@ -4,6 +4,8 @@ import { execFileSync } from 'node:child_process';
 import { copyFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { load } from '../../../../skills/all-access-inspector/review/src/project.ts';
+
 const REPO = join(import.meta.dirname, '..', '..', '..', '..');
 export const CLI = join(REPO, 'skills', 'all-access-inspector', 'review', 'src', 'cli.ts');
 export const INVENTORY = join(REPO, 'fixtures', 'django-demo', 'expected', 'inventory.json');
@@ -32,18 +34,6 @@ export const status = (): { key: string[]; tier: number; state: string; method: 
     .split('\n')
     .map(l => JSON.parse(l));
 
-/** The orphaned Verdicts as `review status` lists them, after its queue. */
-export const orphans = (): { method: string; path: string; reason: string }[] => {
-  const text = review('status', dir());
-  const at = text.indexOf('\nOrphaned verdicts (');
-  if (at < 0) return [];
-  return text
-    .slice(at + 1)
-    .trimEnd()
-    .split('\n')
-    .slice(1)
-    .map(l => {
-      const [, method, path, reason] = /^ {2}\S+\s+(\S+) (\S+) \(.*?\) {2}(.*)$/.exec(l)!;
-      return { method: method!, path: path!, reason: reason! };
-    });
-};
+/** The orphaned Verdicts, read as the CLI reads them. */
+export const orphans = (): { method: string; path: string; reason: string }[] =>
+  load(dir()).orphans.map(o => ({ method: o.key[0], path: o.key[1], reason: o.verdict.reason }));
