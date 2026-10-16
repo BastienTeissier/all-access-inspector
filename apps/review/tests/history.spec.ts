@@ -3,7 +3,7 @@
 import { expect, test } from 'vitest';
 
 import { parseLog } from '../../../skills/all-access-inspector/review/src/log.ts';
-import { candidates, groups, kinds, reason } from '../lib/history.ts';
+import { candidates, endpoints, groups, kinds, reason } from '../lib/history.ts';
 
 const line = (at: string, batch: string | null, event: string, extra: Record<string, string>) =>
   JSON.stringify({
@@ -50,4 +50,20 @@ test('an orphan is proposed to an unreviewed endpoint on its path or in its proj
   expect(reasons(row('/b/', 'django.views.RedirectView'))).toEqual(['/b/']);
   expect(reasons(row('/y/', 'django.views.RedirectView'))).toEqual([]);
   expect(reasons(row('/a/', 'shop/api.py:40', 'valid'))).toEqual([]);
+});
+
+test('a HEAD reviewed with its GET is counted with it, a HEAD alone or of another handler on its own', () => {
+  const event = (method: string, path: string, handler: string) => ({ event: 'reviewed', verdict: 'safe', endpoint: [method, path, handler] }) as never;
+  const group = {
+    batch: 'b-1',
+    by: 'r@example.com',
+    at: '2026-01-01T00:00:00Z',
+    events: [event('GET', '/a/', 'a.py'), event('HEAD', '/a/', 'a.py'), event('HEAD', '/b/', 'a.py'), event('HEAD', '/a/', 'b.py')],
+  };
+  expect(endpoints(group).map(e => (e as { endpoint: string[] }).endpoint)).toEqual([
+    ['GET', '/a/', 'a.py'],
+    ['HEAD', '/b/', 'a.py'],
+    ['HEAD', '/a/', 'b.py'],
+  ]);
+  expect(kinds(group)).toBe('safe ×3');
 });

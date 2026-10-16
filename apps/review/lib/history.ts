@@ -29,10 +29,16 @@ export const groups = (events: Logged[]): Group[] => {
   return out;
 };
 
-/** What a group did, e.g. `safe ×378` or `signal_raised ×2 · triaged ×5`. */
+/** The group's events an endpoint at a time, as the queue counts them: a HEAD reviewed with its GET is not one more. */
+export const endpoints = (group: Group): Logged[] => {
+  const gets = new Set(group.events.filter(e => e.endpoint[0] === 'GET').map(e => `${e.endpoint[1]} ${e.endpoint[2]}`));
+  return group.events.filter(e => e.endpoint[0] !== 'HEAD' || !gets.has(`${e.endpoint[1]} ${e.endpoint[2]}`));
+};
+
+/** What a group did, an endpoint at a time, e.g. `safe ×378` or `signal_raised ×2 · triaged ×5`. */
 export const kinds = (group: Group): string => {
   const counts = new Map<string, number>();
-  for (const e of group.events) {
+  for (const e of endpoints(group)) {
     const kind = e.event === 'reviewed' ? e.verdict : e.event;
     counts.set(kind, (counts.get(kind) ?? 0) + 1);
   }

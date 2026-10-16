@@ -29,7 +29,7 @@ test('a Review selection writes one event per selected endpoint, in one batch', 
   await page.getByRole('link', { name: 'History' }).click();
   const newest = page.getByRole('region', { name: 'Batches' }).locator('summary').first();
   await expect(newest).toContainText('reviewer@example.com');
-  await expect(newest).toContainText(`safe ×${events.length} · ${events.length} endpoints · one rule guards them all`);
+  await expect(newest).toContainText(`safe ×${selected.length} · ${selected.length} endpoints · one rule guards them all`);
 });
 
 test('History shows agent runs by their model and the orphaned Verdicts', async ({ page }) => {

@@ -3,7 +3,7 @@
 import { basename } from 'node:path';
 
 import { projectDir } from '../../lib/filters.ts';
-import { type Group, groups, kinds, reason } from '../../lib/history.ts';
+import { type Group, endpoints, groups, kinds, reason } from '../../lib/history.ts';
 import { events, orphans, project } from '../../lib/projection.ts';
 import { eventText } from '../endpoint-panel.tsx';
 
@@ -14,7 +14,8 @@ const author = (by: string) => (by.startsWith('agent:') ? `agent · ${by.slice('
 
 const GroupItem = ({ group }: { group: Group }) => {
   const shared = reason(group);
-  const count = `${group.events.length} endpoint${group.events.length === 1 ? '' : 's'}`;
+  const n = endpoints(group).length;
+  const count = `${n} endpoint${n === 1 ? '' : 's'}`;
   return (
     <li className="group">
       <details>
