@@ -87,6 +87,11 @@ class Boot {
     return stubs;
   }
 
+  /** Refuses, before the boot, a stub of an access-shaping bean or one without a reason. */
+  static void checkStubs() {
+    stubs();
+  }
+
   static void checkPins(List<Pin> pins) {
     var settings = new HashSet<String>();
     for (Pin pin : pins) {

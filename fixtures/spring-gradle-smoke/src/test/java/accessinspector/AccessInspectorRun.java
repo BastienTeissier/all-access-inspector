@@ -66,7 +66,7 @@ class AccessInspectorRun {
   /** Boot the application as production runs it, through the test context so @MockitoBean stubs apply. */
   static ApplicationContext boot() {
     Boot.checkPins(Boot.PINNED);
-    Boot.stubs();
+    Boot.checkStubs();
     var booted = new Boot();
     try {
       new TestContextManager(Boot.class).prepareTestInstance(booted);
