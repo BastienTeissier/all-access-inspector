@@ -65,7 +65,7 @@ final class FilterChainResolver {
       try {
         return decide(chain, request);
       } catch (ReflectiveOperationException | RuntimeException e) {
-        String reason = INTERNALS_CHANGED + ": " + e.getMessage();
+        String reason = INTERNALS_CHANGED + ": " + e.getClass().getSimpleName() + ": " + e.getMessage();
         return new Finding("spring-security", "global", chain.bean() + ": " + describe(chain.chain()), null, reason);
       }
     }

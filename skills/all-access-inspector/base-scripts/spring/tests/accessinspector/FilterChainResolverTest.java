@@ -86,7 +86,7 @@ class FilterChainResolverTest {
     var finding = resolver("renamedMappings").resolve("GET", "/open/x");
     assertThat(finding.builtin()).isNull();
     assertThat(finding.layer()).isEqualTo("global");
-    assertThat(finding.reason()).startsWith(FilterChainResolver.INTERNALS_CHANGED);
+    assertThat(finding.reason()).startsWith(FilterChainResolver.INTERNALS_CHANGED + ": NoSuchFieldException: ");
     var resolved = Rules.resolveAccess(java.util.List.of(finding), "GET", "/open/x");
     assertThat(resolved.authentication().value()).isEqualTo("unknown");
     assertThat(resolved.reason()).startsWith("Spring Security internals changed");

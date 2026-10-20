@@ -91,7 +91,7 @@ A SpEL expression is a Built-in Rule only when it is one such call with quoted l
 - Spring Security on the classpath is required; a project securing endpoints only with a servlet filter or interceptor reads `no_chain` everywhere until `pathPrefix` rules name them.
 - Checks inside handlers or services (`if (!user.isAdmin()) throw new AccessDeniedException(…)`) are invisible. Grep handlers flagged `anonymous` or `none` for `AccessDeniedException`, `ResponseStatusException(FORBIDDEN`, `SecurityContextHolder`, `@AuthenticationPrincipal`.
 - `inspect.sh` builds one module. In a multi-module build, run it from each application module.
-- The script reads Spring Security's internals by reflection (the `RequestMatcherDelegatingAuthorizationManager` entries and the managers' fields). When a version moves them, the endpoints show `unknown` with `Spring Security internals changed: …`: report it, never write rules around it.
+- The script reads Spring Security's internals by reflection (the `RequestMatcherDelegatingAuthorizationManager` entries and the managers' fields). When a version moves them, the endpoints show `unknown` with `Spring Security internals changed: <exception>: …`: report it to the toolkit, never write rules around it. A `NoSuchFieldException` or `InternalsChanged` is a moved internal; any other exception there may be a bug in the script itself.
 
 ## Triage checklist
 
