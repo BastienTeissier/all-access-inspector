@@ -97,7 +97,7 @@ class RulesPrecedenceTest {
   }
 
   @Test
-  void rulesAreCheckedBeforeTheBoot() {
+  void aMalformedRuleOrEvidenceOutsideTheProjectIsRefused() {
     Path root = Path.of("").toAbsolutePath();
     Rules.checkRules(List.of(Rule.construct("ok", EVIDENCE, "x", "required", "none")), root);
     assertThatThrownBy(() -> Rules.checkRules(List.of(new Rule("both", EVIDENCE, "x", "/a", "global", "required", "none", null, null, null)), root))
