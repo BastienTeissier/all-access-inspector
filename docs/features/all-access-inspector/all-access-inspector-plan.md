@@ -55,7 +55,7 @@ No database. The "data model" is the inventory JSON contract, `schema/inventory.
   - `coverage`: `complete|best-effort`
   - `coverage_note`: string|null (required non-null when `best-effort`: static reason or "improvised from <stack> Base Script")
   - `base_script`: `{stack: string, version: string}` (toolkit version vendored)
-  - `boot_environment`: `{entry: string, environ: [{name, value, reason}], stubs: [{target, reason}], pinned: [{setting, value, reason}]}` — `entry` = settings module / NestJS root module / Spring profile / Symfony env
+  - `boot_environment`: `{entry: string, environ: [{name, value, reason}], stubs: [{target, reason}], pinned: [{setting, value, reason}]}` — `entry` = settings module / NestJS root module / Spring application class (the profile pinned as `spring.profiles.active`) / Symfony env
   - `project_dimensions`: object `{<dimension>: [values...]}`, may be `{}`; each value list non-empty, no duplicates
   - `endpoints`: array of **Endpoint**, sorted by (`path`, `method`, `handler`)
 - **Endpoint** (keys in this order):
@@ -605,6 +605,7 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 - [x] **Write tests**: `InventoryCanonicalTest`, `CheckDiffTest`, `RulesPrecedenceTest`, `FilterChainResolverTest` in the Base Script (`./mvnw test`, `-Werror`); `fixtures/spring-demo/tests/golden.sh` (golden, classifications, unknowns, table, determinism, check clean/drift/missing/unreadable, missing dimension, boot failure, usage, vendored copy); `fixtures/spring-gradle-smoke/tests/golden.sh`.
 - [x] **Toolkit tooling**: `Makefile` `test-spring` in `test`, Java run in `eclipse-temurin:21-jdk` through `SPRING_RUN` (nothing installed on the host); CI job `spring` with `setup-java` 21 and `SPRING_RUN=`.
 - [x] **Verify**: `make test-spring` green; reflection access to authorization mappings guarded: on failure → every endpoint global layer `unknown` with reason "Spring Security internals changed", not a crash (`FilterChainResolverTest`).
+- **Deviations** (PR #12 review): Spring `entry` is the application class, the profile goes to `pinned` as `spring.profiles.active` (§2); Spring Security is required, a project without it fails to compile the vendored script (UF7 edge case amended, `spring.md` blind spot); URL-mapped handlers and an enabled method security family without its interceptor are reported (`best-effort` note, `unknown`) rather than dropped.
 
 ### Phase 7 — UF8 Inventory a Symfony project
 
