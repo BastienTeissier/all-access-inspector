@@ -43,10 +43,12 @@ class AccessInspectorRun {
       for (String method : Rules.methods(findings, mapped.method(), mapped.path(), Rules.RECOGNITION)) {
         // an ANY kept whole classifies the same for every method
         var resolved = Rules.resolveAccess(findings.apply(method.equals("ANY") ? "GET" : method), method, mapped.path());
-        var endpoint = new Endpoint(method, mapped.path(), mapped.handler(), resolved.authentication(), resolved.authorization(), Map.of(), resolved.reason(), resolved.acknowledged());
-        endpoints.add(endpoint.withDimensions(Dimensions.assign(endpoint)));
+        endpoints.add(new Endpoint(method, mapped.path(), mapped.handler(), resolved.authentication(), resolved.authorization(), Map.of(), resolved.reason(), resolved.acknowledged()));
       }
     }
+    // in inventory order, so a missing dimension names the same endpoint on every run
+    endpoints.sort(Inventory.ORDER);
+    endpoints.replaceAll(endpoint -> endpoint.withDimensions(Dimensions.assign(endpoint)));
     String version = Files.readString(ROOT.resolve(HERE).resolve("VERSION")).strip();
     return new Inventory(
         Inventory.SCHEMA_VERSION,
@@ -58,7 +60,7 @@ class AccessInspectorRun {
         Boot.environment(context),
         Dimensions.DIMENSIONS,
         Dimensions.EXPECTED,
-        endpoints.stream().sorted(Inventory.ORDER).toList());
+        endpoints);
   }
 
   /** Boot the application as production runs it, through the test context so @MockitoBean stubs apply. */
