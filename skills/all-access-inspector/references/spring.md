@@ -24,7 +24,7 @@ The project must have `spring-boot-starter-test` (JUnit 5, Mockito, the Spring t
 
 The chain is decided as Spring Security decides it: chains in their `@Order`, the first whose `securityMatcher` matches the sample request (every path variable filled with `1`), then its first matching entry. No entry matching is `denyAll`. A chain without `authorizeHttpRequests` is `builtin:no_authorization` (anonymous). `raw` reads `<chain bean>: <matcher> -> <check>`, e.g. `api: PathPattern [GET /api/catalog/**] -> permitAll`.
 
-Method security is read per family, as Spring's interceptors apply them: the method's annotation of a family wins over the class's, and every active family applies. `@PreAuthorize` and `@PostAuthorize` count only with `@EnableMethodSecurity`, `@Secured` with `securedEnabled = true`, the JSR-250 annotations with `jsr250Enabled = true`; an annotation whose family is off is ignored, as at runtime.
+Method security is read per family, as Spring's interceptors apply them: the method's annotation of a family wins over the class's, and every active family applies. `@PreAuthorize` and `@PostAuthorize` count only with `@EnableMethodSecurity`, `@Secured` with `securedEnabled = true`, the JSR-250 annotations with `jsr250Enabled = true`; an annotation whose family is off is ignored, as at runtime. A family `@EnableMethodSecurity` turns on whose interceptor bean is missing reads `unknown` with `Spring Security internals changed`, never ignored.
 
 Handlers are named `<fully.qualified.Class>.<method>`, not `file:line`: the class is what the context holds.
 
