@@ -75,7 +75,7 @@ class CheckDiffTest {
 
   @Test
   void aMalformedCommittedInventoryThrowsBeforeAnyDiff() {
-    assertThatThrownBy(() -> Inventory.fromJson("{\"schema_version\": \"1\"}")).hasMessage("missing key");
+    assertThatThrownBy(() -> Inventory.fromJson("{\"schema_version\": \"1\"}")).hasMessage("missing key boot_environment");
     assertThatThrownBy(() -> Inventory.fromJson("<<<<<<< HEAD\n")).hasMessageContaining("invalid JSON");
   }
 }

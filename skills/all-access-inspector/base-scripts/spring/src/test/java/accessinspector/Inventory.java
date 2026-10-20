@@ -193,7 +193,7 @@ record Inventory(
 
   private static Object get(Object map, String key) {
     if (!(map instanceof Map<?, ?> m)) throw new IllegalArgumentException("expected an object holding " + key);
-    if (!m.containsKey(key)) throw new IllegalArgumentException("missing key");
+    if (!m.containsKey(key)) throw new IllegalArgumentException("missing key " + key);
     return m.get(key);
   }
 
