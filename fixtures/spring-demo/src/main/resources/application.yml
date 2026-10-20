@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: microservice-example
+payments:
+  url: https://payments.internal.example
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,env
