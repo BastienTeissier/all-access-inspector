@@ -5,13 +5,17 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import org.springframework.context.ApplicationContext;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.servlet.function.support.RouterFunctionMapping;
 import org.springframework.web.servlet.handler.AbstractHandlerMethodMapping;
+import org.springframework.web.servlet.handler.AbstractUrlHandlerMapping;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
+import org.springframework.web.servlet.resource.DefaultServletHttpRequestHandler;
+import org.springframework.web.servlet.resource.ResourceHttpRequestHandler;
 
 /** Every request mapping the DispatcherServlet serves, actuator and /error included, as Spring resolved it. */
 final class Discovery {
@@ -27,9 +31,17 @@ final class Discovery {
     var found = new LinkedHashMap<List<String>, Mapped>();
     var implicitHead = new HashSet<List<String>>();
     var declaredHead = new HashSet<String>();
+    var unlisted = new TreeSet<String>();
     // by bean name, so the walk is the same on every run
     var mappings = new TreeMap<>(context.getBeansOfType(HandlerMapping.class));
     for (HandlerMapping mapping : mappings.values()) {
+      if (mapping instanceof AbstractUrlHandlerMapping urls) {
+        // view controllers, WebSocket and bean-named handlers are served but not listed; static assets and the welcome page are not endpoints
+        if (urls.getClass().getSimpleName().startsWith("WelcomePage")) continue;
+        urls.getHandlerMap().forEach((path, handler) -> {
+          if (!(handler instanceof ResourceHttpRequestHandler || handler instanceof DefaultServletHttpRequestHandler)) unlisted.add(path);
+        });
+      }
       if (!(mapping instanceof AbstractHandlerMethodMapping<?> methods)) continue;
       methods.getHandlerMethods().forEach((info, handlerMethod) -> {
         if (!(info instanceof RequestMappingInfo request)) return;
@@ -48,8 +60,12 @@ final class Discovery {
     }
     // a handler declaring HEAD outranks the GET handler's implicit one: Spring sends every HEAD there
     found.keySet().removeIf(key -> implicitHead.contains(key) && declaredHead.contains(key.get(1)));
-    boolean functional = context.getBeansOfType(RouterFunctionMapping.class).values().stream().anyMatch(m -> m.getRouterFunction() != null);
-    return new Discovered(new ArrayList<>(found.values()), functional ? "functional routes (RouterFunction beans) are not listed" : null);
+    var notes = new ArrayList<String>();
+    if (context.getBeansOfType(RouterFunctionMapping.class).values().stream().anyMatch(m -> m.getRouterFunction() != null)) {
+      notes.add("functional routes (RouterFunction beans) are not listed");
+    }
+    if (!unlisted.isEmpty()) notes.add("URL-mapped handlers are not listed: " + String.join(", ", unlisted));
+    return new Discovered(new ArrayList<>(found.values()), notes.isEmpty() ? null : String.join("; ", notes));
   }
 
   /** The declared methods, HEAD beside GET as Spring serves it; none declared is ANY. */

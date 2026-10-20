@@ -87,6 +87,7 @@ A SpEL expression is a Built-in Rule only when it is one such call with quoted l
 - The chain is decided for one sample request per endpoint, its variables filled with `1`. A matcher more specific than the mapping (`/api/users/1/**`, a regex, a `RequestHeaderRequestMatcher`, a dispatcher type) can decide other requests to the same endpoint differently. Read the chain's matchers when one is not a plain path pattern.
 - `server.servlet.context-path` is not part of the paths: they are what the application sees, as the matchers see them.
 - Functional routes (`RouterFunction` beans) are not listed: `coverage` is `best-effort` and `coverage_note` says so. WebFlux applications are not read at all.
+- URL-mapped handlers (view controllers, WebSocket endpoints, bean-named and `SimpleUrlHandlerMapping` handlers) are not listed: `coverage` is `best-effort` and `coverage_note` names their paths. Add each as a hand-checked endpoint in the triage.
 - Static resources (`/static/**`, `/webjars/**`) and the default servlet are not listed; check their chain entry by hand when they hold more than assets.
 - Spring Security on the classpath is required; a project securing endpoints only with a servlet filter or interceptor reads `no_chain` everywhere until `pathPrefix` rules name them.
 - Checks inside handlers or services (`if (!user.isAdmin()) throw new AccessDeniedException(…)`) are invisible. Grep handlers flagged `anonymous` or `none` for `AccessDeniedException`, `ResponseStatusException(FORBIDDEN`, `SecurityContextHolder`, `@AuthenticationPrincipal`.
