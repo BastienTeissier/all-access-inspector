@@ -18,6 +18,11 @@ public class HousesController {
         return "OK";
     }
 
+    @RequestMapping(value = "/houses/v1/house", method = RequestMethod.HEAD)
+    public String headSomething() {
+        return "";
+    }
+
     @DeleteMapping({ "/houses/v1/house" })
     @PreAuthorize("hasRole('ADMIN')")
     public String deleteSomething() {

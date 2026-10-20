@@ -1,6 +1,7 @@
 package accessinspector;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.TreeMap;
@@ -24,6 +25,8 @@ final class Discovery {
 
   static Discovered discover(ApplicationContext context) {
     var found = new LinkedHashMap<List<String>, Mapped>();
+    var implicitHead = new HashSet<List<String>>();
+    var declaredHead = new HashSet<String>();
     // by bean name, so the walk is the same on every run
     var mappings = new TreeMap<>(context.getBeansOfType(HandlerMapping.class));
     for (HandlerMapping mapping : mappings.values()) {
@@ -31,14 +34,20 @@ final class Discovery {
       methods.getHandlerMethods().forEach((info, handlerMethod) -> {
         if (!(info instanceof RequestMappingInfo request)) return;
         String handler = handlerMethod.getBeanType().getName() + "." + handlerMethod.getMethod().getName();
+        boolean declaresHead = request.getMethodsCondition().getMethods().contains(RequestMethod.HEAD);
         for (String pattern : request.getPatternValues()) {
+          if (declaresHead) declaredHead.add(path(pattern));
           for (String method : methods(request)) {
             var mapped = new Mapped(method, path(pattern), sample(pattern), handler, handlerMethod);
-            found.putIfAbsent(List.of(mapped.method(), mapped.path(), handler), mapped);
+            var key = List.of(mapped.method(), mapped.path(), handler);
+            found.putIfAbsent(key, mapped);
+            if (method.equals("HEAD") && !declaresHead) implicitHead.add(key);
           }
         }
       });
     }
+    // a handler declaring HEAD outranks the GET handler's implicit one: Spring sends every HEAD there
+    found.keySet().removeIf(key -> implicitHead.contains(key) && declaredHead.contains(key.get(1)));
     boolean functional = context.getBeansOfType(RouterFunctionMapping.class).values().stream().anyMatch(m -> m.getRouterFunction() != null);
     return new Discovered(new ArrayList<>(found.values()), functional ? "functional routes (RouterFunction beans) are not listed" : null);
   }

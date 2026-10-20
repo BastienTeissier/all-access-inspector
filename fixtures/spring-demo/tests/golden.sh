@@ -86,8 +86,11 @@ spring_golden_classifications() {
     # the mapping declared on an interface, the Recognition Rule on a bean call, the Acknowledged Unknown
     contains "$(endpoint GET /api/projects/{id} $api.ProjectsController.project)" '"authorization": {"value": "rule", "layer": "method", "raw": "@PreAuthorize(\"@permissionEvaluator.canRead(#id)\")", "rule": "recognition:can_read", "evidence": "src/main/java/com/theodo/ms/security/PermissionEvaluator.java:10"}' &&
     contains "$(endpoint ANY /legacy/export $api.LegacyController.export)" '"unknown_reason": "the export is reachable from the office network only, which the firewall enforces as well", "acknowledged": true' &&
-    # HEAD beside each GET
-    [ "$(grep -o '"method": "GET", "path": "[^"]*", "handler": "[^"]*"' "$EXPECTED" | sed 's/"GET"/"HEAD"/')" = "$(grep -o '"method": "HEAD", "path": "[^"]*", "handler": "[^"]*"' "$EXPECTED")" ] ||
+    # a handler declaring HEAD takes it from the GET handler beside it
+    [ "$(grep -c '"method": "HEAD", "path": "/houses/v1/house"' "$EXPECTED")" = 1 ] &&
+    line "$(endpoint HEAD /houses/v1/house $api.HousesController.headSomething)" &&
+    # HEAD beside every other GET
+    [ "$(grep -o '"method": "GET", "path": "[^"]*", "handler": "[^"]*"' "$EXPECTED" | grep -vF '"/houses/v1/house"' | sed 's/"GET"/"HEAD"/')" = "$(grep -o '"method": "HEAD", "path": "[^"]*", "handler": "[^"]*"' "$EXPECTED" | grep -vF '"/houses/v1/house"')" ] ||
     fail "a GET without its HEAD"
 }
 
