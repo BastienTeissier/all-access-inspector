@@ -73,7 +73,7 @@ class AccessInspectorRun {
     } catch (Exception e) {
       Throwable cause = e;
       while (cause.getCause() != null && cause.getCause() != cause) cause = cause.getCause();
-      throw new Boot.BootError("cannot boot " + Boot.target() + ": " + cause.getClass().getSimpleName() + ": " + cause.getMessage(), e);
+      throw new Boot.BootError("cannot boot " + Boot.target() + " with profile " + Boot.profile() + ": " + cause.getClass().getSimpleName() + ": " + cause.getMessage(), e);
     }
     return booted.context;
   }

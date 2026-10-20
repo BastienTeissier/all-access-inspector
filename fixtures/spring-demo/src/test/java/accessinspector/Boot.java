@@ -113,6 +113,12 @@ class Boot {
         : Arrays.stream(classes).map(Class::getName).collect(Collectors.joining(", "));
   }
 
+  /** The profile @ActiveProfiles names, for a boot that fails before there is a context. */
+  static String profile() {
+    var profiles = AnnotatedElementUtils.findMergedAnnotation(Boot.class, ActiveProfiles.class);
+    return profiles == null || profiles.profiles().length == 0 ? "default" : String.join(",", profiles.profiles());
+  }
+
   static BootEnvironment environment(ApplicationContext context) {
     String entry = Arrays.stream(context.getBeanNamesForAnnotation(SpringBootConfiguration.class))
         .map(name -> ClassUtils.getUserClass(context.getType(name)).getName())

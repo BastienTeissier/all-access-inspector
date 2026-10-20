@@ -155,7 +155,7 @@ spring_boot_failure() {
   edit src/test/java/accessinspector/Boot.java '  @MockitoBean @Reason("payment gateway reachable from production only") com.theodo.ms.payments.PaymentClient payments;' '' || return 1
   run
   expect_status 2 &&
-    contains "$stderr" 'access-inspector: cannot boot com.theodo.ms.SampleApplication: IllegalStateException: payment gateway https://payments.internal.example unreachable' &&
+    contains "$stderr" 'access-inspector: cannot boot com.theodo.ms.SampleApplication with profile prod: IllegalStateException: payment gateway https://payments.internal.example unreachable' &&
     [ ! -e "$OUTPUT" ] || fail "wrote $OUTPUT"
 }
 

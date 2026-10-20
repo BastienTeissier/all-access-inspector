@@ -42,7 +42,7 @@ The shell's environment is not cleared: an `APP_*` variable set on a developer's
 
 ## Boot failure → stub cookbook
 
-The script prints the deepest cause after `cannot boot <application class>:`.
+The script prints the deepest cause after `cannot boot <application class> with profile <profile>:`.
 
 | Symptom | Toward-production fix |
 |---|---|
