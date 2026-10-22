@@ -211,13 +211,13 @@ TypeScript (ESM), run by the project's own test runner so it inherits the projec
 
 ### Symfony Base Script — `base-scripts/symfony/`
 
-#### T. `tools/access-inspector/inspect.php` 🟢 — argv `--check|--table|--unknowns`; `require vendor/autoload.php`; `boot.php`; same flow.
+#### T. `tools/access-inspector/inspect.php` 🟢 — argv `--check|--table|--unknowns`; `require vendor/autoload.php`; `src/Boot.php`; same flow.
 
-#### U. `boot.php` 🟢 — `ENV='prod'`, `DEBUG=false`, stubs via env overrides / `$_SERVER`, pinned list; instantiates `App\Kernel`, `boot()`, returns container.
+#### U. `src/Boot.php` 🟢 — `KERNEL='App\Kernel'`, `ENV='prod'`, `APP_DEBUG=0`; `environ()` lists `Env` (name, production value, reason) set in `$_SERVER`/`$_ENV` before `.env` and `.env.<ENV>` load (never `*.local`); boots `InspectorKernel`, returns the container. No stubs, no pins: `boot_environment.stubs` and `pinned` are `[]`.
 
-#### V. `config/packages/access_inspector.yaml` 🟢 (dropped into the project)
-**Changes**: `services: { access_inspector.access_map: {alias: security.access_map, public: true}, access_inspector.firewall_map: {alias: security.firewall.map, public: true} }`.
-**Why**: only way to reach resolved `access_control` without a test container; owned by the Adapted Script.
+#### V. `src/Kernel.php` 🟢 (`InspectorKernel extends` the project's kernel; nothing dropped into `config/`)
+**Changes**: cache, build and log dirs in a fresh temp dir; a `TYPE_BEFORE_REMOVING` compiler pass aliases `access_inspector.access_map` → `security.access_map`, `access_inspector.firewall_map` → `security.firewall.map`, `access_inspector.resource_metadata` → API Platform's metadata factory, all public, and records whether SecurityBundle is registered and each controller service's class.
+**Why**: only way to reach resolved `access_control` without a test container, without touching the project's config or cache; the kernel must not be `final`.
 
 #### W. `src/Discovery.php` ⚪ from `accent/src/AccessControl/AccentReportFactory.php`
 **Changes**: `$container->get('router')->getRouteCollection()`; per route × `getMethods()` (empty ⇒ `ANY`); path from `getPath()` (already `{name}`); handler: resolve `_controller` (`Class::method` or invokable) → `ReflectionMethod` file relative + `getStartLine()`; API Platform routes → declaring resource class file + attribute line when resolvable, else dotted.
@@ -246,7 +246,7 @@ TypeScript (ESM), run by the project's own test runner so it inherits the projec
 
 #### AT. `fixtures/nestjs-jest-smoke/` 🟢 — minimal Nest app on jest, 2 endpoints, proves the jest path of `inspect.sh`.
 
-#### AE. `fixtures/symfony-demo/` 🟢 — latest Symfony skeleton (7.x) + security bundle + latest API Platform (4.x) + API Platform resource (resource-level security, one operation override), controllers with/without attributes, `access_control` rules, `denyAccessUnlessGranted` call, a firewall with `security: false`. Golden + vendored script.
+#### AE. `fixtures/symfony-demo/` 🟢 — latest Symfony skeleton (8.1) + security bundle + latest API Platform (5.0) + API Platform resource (resource-level security, one operation override), controllers with/without attributes, `access_control` rules, `denyAccessUnlessGranted` call, a firewall with `security: false`. Golden + vendored script.
 
 ### Agent skill
 
@@ -406,7 +406,7 @@ Golden files (one per fixture; run the vendored `tools/access-inspector/` inside
 - `test_spring_golden` (`fixtures/spring-demo`, `./mvnw test` in fixture): `permitAll` matcher → `anonymous`/`global`; `anyRequest().authenticated()` → `required`; second chain via `securityMatcher` → raw names that chain; `@PreAuthorize("hasRole('ADMIN')")` → `rule`/`method`; interface mapping → implementing class handler; `/actuator/health`, `/error` present; `@RolesAllowed` raw lists both; `@permissionEvaluator` → `unknown`; `@RequestMapping` without method → `ANY`.
 - `test_spring_check_drift`: same shape as Django via `inspect.sh --check` after editing one matcher.
 - `test_spring_gradle_smoke` (`fixtures/spring-gradle-smoke`): `inspect.sh` picks `gradlew`, writes an inventory with the 2 expected endpoints.
-- `test_symfony_golden` (`fixtures/symfony-demo`, `vendor/bin/phpunit`): `access_control` `^/admin` → `required`+`rule`/`global`; firewall `security: false` → `anonymous`/`global`; `#[IsGranted]` → `rule`/`method`; API Platform resource-level security inherited by operations, override on one operation; `denyAccessUnlessGranted` → `unknown` + reason; `api_doc`/`api_entrypoint` ordinary endpoints; route without methods → `ANY`; metadata factory removed → API Platform endpoints `unknown` with reason, exit 0.
+- `symfony_golden` (`fixtures/symfony-demo/tests/golden.sh`, bash like Spring): `access_control` `^/admin` → `required`+`rule`/`global`; firewall `security: false` → `anonymous`/`global`; `#[IsGranted]` → `rule`/`method`; API Platform resource-level security inherited by operations, override on one operation; `denyAccessUnlessGranted` → `unknown` + reason; `api_doc`/`api_entrypoint` ordinary endpoints; route without methods → `ANY`; metadata factory removed → API Platform endpoints `unknown` with reason, exit 0.
 - `test_symfony_check_drift`: mirror.
 - `test_parse_access_inspector` (`../skills/security-audit`, bash + jq on `fixtures/django-demo/expected/inventory.json`): summary counts match; `=== ANONYMOUS ===` lists expected paths; acknowledged vs unexplained separated.
 
@@ -619,7 +619,7 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
   - `access_control`: `path` + `methods` evaluated on the sample request; any other condition (`ips`, `host`…) or a custom request matcher ⇒ `unknown` with reason. Multi-role entry read with the default affirmative strategy. Reflection failure ⇒ `unknown` "Symfony Security internals changed".
   - `#[IsGranted]` (class then method, `methods:` filter) + Sensio `#[Security]` + `denyAccessUnlessGranted()` in the action body (one literal ⇒ builtin, else `unknown` "voter check in handler body"). API Platform `security` / `securityPostDenormalize`, handler = resource file at its single `new <Operation>(` line.
 - [x] **Inventory + check + table + dimensions**: `Inventory.php`, `Dimensions.php`, `Table.php`, `Json.php`, checked against the shared samples.
-- [x] **Fixture**: `fixtures/symfony-demo/`, Symfony 8.1 + API Platform 5.0 (the latest; §AE said 7.x / 4.x). `ips: '%env(TRUSTED_IPS)%'` entry pinned through `environ()` and acknowledged, `PROJECT_VIEW` voter with a Recognition Rule, `denyAccessUnlessGranted('EDIT', $post)` left the real unknown.
+- [x] **Fixture**: `fixtures/symfony-demo/`, Symfony 8.1 + API Platform 5.0 (the latest). `ips: '%env(TRUSTED_IPS)%'` entry pinned through `environ()` and acknowledged, `PROJECT_VIEW` voter with a Recognition Rule, `denyAccessUnlessGranted('EDIT', $post)` left the real unknown.
 - [x] **Reference**: `references/symfony.md` (kernel subclass, `.env` loading, `EnvNotFoundException` cookbook, blind spots: route dedup by path + method, sample request, `.{_format}`, `isGranted()` in bodies, branch-blind body check, affirmative strategy, custom matchers, shell env overrides `.env`, non-final kernel). `SKILL.md` stack row and terms column.
 - [x] **Write tests**: `InventoryCanonicalTest`, `CheckDiffTest`, `RulesPrecedenceTest`, `AccessControlResolverTest`, `AttributesTest`, `DiscoveryTest` (PHPUnit 12, fail on warning/deprecation); `fixtures/symfony-demo/tests/golden.sh` (bash, like Spring, not PHPUnit: golden, classifications, unknowns, table, determinism, check clean/drift/missing/unreadable, missing dimension, boot failure, environ refusal, API Platform metadata absent, usage, vendored copy).
 - [x] **Toolkit tooling**: `Makefile` `install-symfony`, `test-symfony` in `test`, PHP run in `composer:2` through `SYMFONY_RUN`; CI job `symfony` with `setup-php` 8.5 and `SYMFONY_RUN=`.
@@ -731,7 +731,7 @@ None.
 - Milestone target: `~/Theodo/perenco/action-tracking`.
 - NestJS (added 2026-10-12): Phase 5, before Spring; `~/Theodo/bootstrap-test` is the fit target only, the fixture is written from scratch; the script runs through the project's own test runner (vitest or jest); guard rules carry a metadata condition (`when_metadata`), first matching rule per construct wins.
 - Spring handlers: dotted names without lines, for all handlers.
-- Fixtures on latest framework versions (Spring Boot 3.x, Symfony 7.x, API Platform 4.x).
+- Fixtures on latest framework versions (as built: Spring Boot 4.1, Symfony 8.1, API Platform 5.0).
 - Kotlin controller in the Spring fixture: deferred.
 - Agent branch naming: project convention, inferred from recent branches.
 - Review package location (2026-10-15): `skills/all-access-inspector/review/`, so Triage works from an APM-installed skill; zero-dependency TypeScript run by Node 24. The Next.js app stays at `apps/review/` and runs from a toolkit checkout.
