@@ -24,7 +24,7 @@ Vocabulary used in this document is defined in [CONTEXT.md](../../../CONTEXT.md)
 ### Features
 
 - One shared inventory schema that every Base Script validates against.
-- Runtime Base Scripts for Django, Spring and Symfony, each with a fixture project and built-in rules for framework constructs.
+- Runtime Base Scripts for Django, NestJS, Spring and Symfony, each with a fixture project and built-in rules for framework constructs.
 - A Claude Code skill (the Agent) that detects the stack, vendors the Base Script, pins a production-like Boot Environment, resolves unknowns with evidence-cited Recognition Rules, proposes Project Dimensions, and commits on a branch.
 - `--check` mode and a proposed CI snippet so the Committed Inventory gates every PR.
 - An uncommitted table view rendered from the inventory for humans.
@@ -70,11 +70,11 @@ all-access-inspector/
   apm.yml               # APM package: users depend on it, pinned by tag
   skills/all-access-inspector/
     SKILL.md            # the Agent workflow
-    references/{django,spring,symfony}.md
+    references/{django,nestjs,spring,symfony}.md
     assets/             # CI snippets, summary template
-    base-scripts/{django,spring,symfony}/
+    base-scripts/{django,nestjs,spring,symfony}/
     schema/inventory.schema.json
-  fixtures/{django,spring,symfony}-demo/ + expected inventory.json
+  fixtures/{django,nestjs,spring,symfony}-demo/ + expected inventory.json
 ```
 
 ### Use cases / edge cases
@@ -108,6 +108,7 @@ Edge cases identified:
 - GraphQL or WebSocket transport: the route is in, authorization is an Acknowledged Unknown.
 - Spring `SecurityFilterChain` with overlapping matchers: the first matching rule wins, as in Spring; the raw matcher is kept.
 - Symfony `access_control` plus `#[IsGranted]` on the same endpoint: both recorded, global layer and method layer.
+- NestJS global guard skipped by `@Public()` metadata: classified per endpoint from the metadata, as the guard reads it.
 - CI fails on a new unknown: resolved by hand, by update mode, or by acknowledging with a reason.
 
 ### User Flows
@@ -123,6 +124,7 @@ Edge cases identified:
 | UF7 | Inventory a Spring project | [uf7-inventory-spring-project.md](./uf7-inventory-spring-project.md) |
 | UF8 | Inventory a Symfony project | [uf8-inventory-symfony-project.md](./uf8-inventory-symfony-project.md) |
 | UF9 | Fit an unsupported stack | [uf9-fit-unsupported-stack.md](./uf9-fit-unsupported-stack.md) |
+| UF10 | Inventory a NestJS project | [uf10-inventory-nestjs-project.md](./uf10-inventory-nestjs-project.md) |
 
 *(Each UF is documented in its own file. Notion integration was not requested.)*
 
@@ -149,14 +151,14 @@ Edge cases identified:
 - Merged inventories across several applications of one repository.
 - Automated Agent evals before the workflow stabilises.
 - Publishing Base Scripts as packages.
-- Stacks other than Django, Spring and Symfony as supported Base Scripts.
+- Stacks other than Django, NestJS, Spring and Symfony as supported Base Scripts.
 
 ## Technical Specification
 
 ### Architecture
 
 - **Schema** (`schema/inventory.schema.json`): the single shared artefact. Every Base Script validates its output against it; the table renderer and the security-audit parse script read only this.
-- **Base Scripts** (`base-scripts/<stack>/`): runtime discovery. Django walks the URL resolver after `django.setup()` with a pinned settings module; Spring boots a test-scoped context with a pinned profile and dumps `RequestMappingHandlerMapping` plus the `SecurityFilterChain` authorization rules and method-security annotations; Symfony boots the kernel with a pinned env and reads the router, `access_control`, controller attributes and API Platform metadata.
+- **Base Scripts** (`base-scripts/<stack>/`): runtime discovery. Django walks the URL resolver after `django.setup()` with a pinned settings module; NestJS boots the application module in a test-scoped harness without listening and reads the routes and guards Nest registered; Spring boots a test-scoped context with a pinned profile and dumps `RequestMappingHandlerMapping` plus the `SecurityFilterChain` authorization rules and method-security annotations; Symfony boots the kernel with a pinned env and reads the router, `access_control`, controller attributes and API Platform metadata.
 - **Agent** (`SKILL.md`): detect stack, vendor, pin boot, loop on unknowns, propose dimensions, commit. Reads `references/<stack>.md` for where auth lives on each stack and known blind spots.
 - **Adapted Script** (`tools/access-inspector/` in the project): entrypoint with `--check` and `--table`, boot module, rules module, dimensions module, Committed Inventory, CI snippet.
 - **security-audit skill**: new reference `access-inspector.md` and `parse_access_inspector.sh` reading the Committed Inventory; the Django-specific reference is retired.
@@ -164,6 +166,7 @@ Edge cases identified:
 ### Libraries & tools
 
 - Django Base Script: Python standard library plus the project's own Django; `jsonschema` for validation in tests only.
+- NestJS Base Script: TypeScript run by the project's own test runner (vitest or jest) and `@nestjs/testing`; no new dependency.
 - Spring Base Script: Spring Boot test support of the project; Jackson for output; no Spoon.
 - Symfony Base Script: Symfony console and routing of the project; API Platform metadata factory when present.
 - Table view: a single renderer per Base Script language reading the schema; no committed HTML.

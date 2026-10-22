@@ -4,7 +4,7 @@ PRD: [prd.md](./prd.md). Vocabulary: [CONTEXT.md](../../../CONTEXT.md). Decision
 
 ## 1. Feature Description
 
-**Objective**: toolkit = one shared inventory schema + one runtime Base Script per stack (Django, Spring, Symfony) + fixtures with golden inventories + a Claude Code skill (the Agent) that vendors a Base Script into a project, pins its boot, resolves unknowns with cited Recognition Rules, and commits on a branch. Afterwards the project regenerates / `--check`s its inventory with no LLM.
+**Objective**: toolkit = one shared inventory schema + one runtime Base Script per stack (Django, NestJS, Spring, Symfony) + fixtures with golden inventories + a Claude Code skill (the Agent) that vendors a Base Script into a project, pins its boot, resolves unknowns with cited Recognition Rules, and commits on a branch. Afterwards the project regenerates / `--check`s its inventory with no LLM.
 
 **Key Capabilities**:
 - **CAN** enumerate every endpoint the framework mounts (runtime), classify authn/authz per HTTP method into a closed vocabulary, keep raw expressions, emit `unknown` honestly.
@@ -18,7 +18,7 @@ PRD: [prd.md](./prd.md). Vocabulary: [CONTEXT.md](../../../CONTEXT.md). Decision
 - Endpoint identity = (method, path, handler). Method `ANY` when handler declares no restriction; per-method rules (`IsAuthenticatedOrReadOnly`) expand to explicit methods. Every served method is listed, implicit ones included: `HEAD` wherever `GET` exists, `OPTIONS` from `View.options` / `APIView.options`.
 - Several checks on one endpoint all apply (middleware, Recognition Rules, decorators, mixins, DRF, admin). Per axis the strictest wins (authentication `required > unknown > optional > anonymous`, authorization `unknown > rule > none`); the reported layer/raw/rule are those of the first check holding that value, in request order (path rules, global, decorators, view). Inside DRF, the layer that set the permission list is: `get_permissions()` override or `@action(permission_classes=)` (method) > class attribute (class) > `REST_FRAMEWORK` setting (global) > DRF default (framework-default).
 - Path: leading `/`, params as `{name}`, trailing slash as declared.
-- Handler: project code → `relative/path.py:line` (Django, Symfony); framework code → dotted name, no line. Spring: dotted name for all handlers (no line available at runtime).
+- Handler: project code → `relative/path.py:line` (Django, Symfony); framework code → dotted name, no line. Spring: dotted name for all handlers (no line available at runtime). NestJS: `ControllerClass.method` for all handlers (same reason).
 - Core Classification closed: authentication `anonymous|optional|required|unknown`, authorization `none|rule|unknown`, layer `global|class|method|framework-default`. Identity check alone = `required` + `none`. Custom construct without rule = `unknown`.
 - Inventory byte-stable: sorted by path, then method, then handler (code point), fixed key order, no timestamps, no absolute paths.
 - Fitting complete ⇔ every `unknown` has `unknown_reason`; every Recognition Rule cites existing `file:line`.
@@ -39,12 +39,12 @@ No database. The "data model" is the inventory JSON contract, `schema/inventory.
 
 - **Inventory** (root object, keys in this order):
   - `schema_version`: `"1"`
-  - `stack`: string (`django|spring|symfony`, or detected name when improvised)
+  - `stack`: string (`django|nestjs|spring|symfony`, or detected name when improvised)
   - `discovery_mode`: `runtime|static`
   - `coverage`: `complete|best-effort`
   - `coverage_note`: string|null (required non-null when `best-effort`: static reason or "improvised from <stack> Base Script")
   - `base_script`: `{stack: string, version: string}` (toolkit version vendored)
-  - `boot_environment`: `{entry: string, environ: [{name, value, reason}], stubs: [{target, reason}], pinned: [{setting, value, reason}]}` — `entry` = settings module / Spring profile / Symfony env
+  - `boot_environment`: `{entry: string, environ: [{name, value, reason}], stubs: [{target, reason}], pinned: [{setting, value, reason}]}` — `entry` = settings module / NestJS root module / Spring profile / Symfony env
   - `project_dimensions`: object `{<dimension>: [values...]}`, may be `{}`; each value list non-empty, no duplicates
   - `endpoints`: array of **Endpoint**, sorted by (`path`, `method`, `handler`)
 - **Endpoint** (keys in this order):
@@ -55,7 +55,7 @@ No database. The "data model" is the inventory JSON contract, `schema/inventory.
   - `authorization`: `{value: none|rule|unknown, layer: same enum|null, raw: string|null, rule: string|null}` — on both axes, `rule` = `builtin:<name>` or `recognition:<name>` that produced the value
   - `dimensions`: object `{<dimension>: value}`; keys must equal `project_dimensions` keys, values ∈ declared list
   - `unknown_reason`: string|null; non-null ⇒ Acknowledged Unknown
-- **Serialisation rule** (identical in Python/Java/PHP; reference bytes: `schema/samples/canonical.json`): UTF-8, `\n`, 2-space indent; each root key on its own line with its value compact; `endpoints` one compact object per line at 4-space indent, `"endpoints": []` when empty; compact = separators `", "` and `": "`, non-ASCII unescaped, `/` unescaped; keys in schema order (`project_dimensions` keys and value lists in declared order); endpoints sorted by (`path`, `method`, `handler`) by code point; no trailing whitespace; file ends with `\n`.
+- **Serialisation rule** (identical in Python/TypeScript/Java/PHP; reference bytes: `schema/samples/canonical.json`): UTF-8, `\n`, 2-space indent; each root key on its own line with its value compact; `endpoints` one compact object per line at 4-space indent, `"endpoints": []` when empty; compact = separators `", "` and `": "`, non-ASCII unescaped, `/` unescaped; keys in schema order (`project_dimensions` keys and value lists in declared order); endpoints sorted by (`path`, `method`, `handler`) by code point; no trailing whitespace; file ends with `\n`.
 
 ### Modification of Existing Entities
 
@@ -64,7 +64,7 @@ No database. The "data model" is the inventory JSON contract, `schema/inventory.
 ### Relationships
 
 - 1 Inventory ↔ 1 Adapted Script ↔ 1 bootable app. `endpoints[].dimensions` keys ⊆ `project_dimensions` keys (schema-enforced via `additionalProperties`-free check in script, not expressible in JSON Schema alone → runtime check in each Base Script).
-- `authorization.rule` names a rule in `rules.py` (Django) / `Rules.java` / `rules.php`; `unknown_reason` names an Acknowledged Unknown in the same file.
+- `authorization.rule` names a rule in `rules.py` (Django) / `rules.ts` / `Rules.java` / `rules.php`; `unknown_reason` names an Acknowledged Unknown in the same file.
 
 ---
 ## 3. Architecture
@@ -79,7 +79,7 @@ Legend: 🟢 new · ⚪ salvaged from a sibling repo (path given) · 🔵 modifi
 **Why**: every Base Script, fixture test and the parse script depend on it; written first.
 
 #### B. `Makefile` 🟢, `.github/workflows/ci.yml` 🟢
-**Changes**: targets `test-django` (uv + pytest), `test-spring` (`./mvnw` in fixture), `test-symfony` (composer + phpunit), `test` = all three, `lint`. CI: one job per stack, each installs only its toolchain.
+**Changes**: targets `test-django` (uv + pytest), `test-nestjs` (pnpm + vitest in `base-scripts/nestjs/`, then `inspect.sh` in each NestJS fixture), `test-spring` (`./mvnw` in fixture), `test-symfony` (composer + phpunit), `test` = all four, `lint`. CI: one job per stack, each installs only its toolchain.
 **Why**: per-stack toolchain decision.
 
 ### Django Base Script — `base-scripts/django/` (vendored as `tools/access-inspector/` in projects)
@@ -122,6 +122,33 @@ Stdlib only + the project's Django/DRF. Python ≥ 3.10. Modules live in the pac
 **Changes**: stdlib fixed-width table: method, path, authn, authz, layer, dimensions, `?` marker on unknown. Never writes files.
 
 #### L. `VERSION` 🟢 — toolkit version copied into `base_script.version`.
+
+### NestJS Base Script — `base-scripts/nestjs/` (vendored as `tools/access-inspector/` next to the app's `package.json`)
+
+TypeScript (ESM), run by the project's own test runner so it inherits the project's transform (decorator metadata) and tsconfig path aliases; no new dependency (`@nestjs/testing` is part of the Nest scaffold). Boots the root module without listening, reads the routes and guards Nest registered. Express adapter (Nest default) fully supported; Fastify: Nest routes only, so `coverage: best-effort` with a `coverage_note`. `package.json`, `tests/` and lockfile are toolkit development files and never leave this repo. Project sections marked `// --- project ---` in `boot.ts`, `rules.ts`, `dimensions.ts`.
+
+#### AK. `inspect.sh` 🟢
+**Changes**: args `--check | --table | --unknowns`; picks the project's runner from `package.json` devDependencies (`vitest` ⇒ `vitest run --config tools/access-inspector/vitest.config.ts`, `jest` ⇒ `jest --config tools/access-inspector/jest.config.cjs`, neither ⇒ exit 2 naming both) and the package manager from the lockfile (`pnpm exec` / `yarn` / `npx`); passes the mode and a temp dir in `ACCESS_INSPECTOR_MODE` / `ACCESS_INSPECTOR_OUT`; prints the harness's `stdout` file and exits with its `status` file (missing ⇒ 2: the boot crashed before writing it). Keeps the runner's own reporter output off stdout.
+**Why**: a test runner always exits 1 on failure; the status file restores the 0/1/2 contract.
+
+#### AL. `vitest.config.ts`, `jest.config.cjs` 🟢
+**Changes**: extend the project's own runner config (`mergeConfig` / spread of the project's jest config: transform, `moduleNameMapper`) and override only `include`/`testRegex` = `tools/access-inspector/run.spec.ts`, no `setupFiles` (the project's integration setup may need a database), no coverage, one worker.
+
+#### AM. `run.spec.ts` 🟢 — single test; flow `boot()` → `discover()` → `classify()` per endpoint → `assign()` dimensions → `validate()` → write / `check()` / table / unknowns; writes `status` and `stdout` to `ACCESS_INSPECTOR_OUT`; any throw ⇒ status 2 with the error.
+
+#### AN. `boot.ts` 🟢
+**Changes**: project section: `ENTRY` (`{module: '../../src/app.module.js', export: 'AppModule'}`), `CONFIGURE` (optional `{module, export}` of the project's HTTP setup function, e.g. `configureApp`, applied to the app as `main.ts` does: global prefix, versioning, `useGlobalGuards`), `ENVIRON: Env[]` (applied to `process.env` before the entry is imported, overriding the shell and any `.env` the config module reads), `STUBS: Stub[]` (`{token, reason, value}` → `overrideProvider(token).useValue(value)`). Boot = `Test.createTestingModule({imports: [Entry]})` + overrides → `createNestApplication({logger: false})` → `CONFIGURE(app)` → `app.init()`, never `listen`. Guards: `NODE_ENV` must be `production` (set it in `ENVIRON`, else `BootError("NODE_ENV must be production")`); a stub may not target a guard, a controller or the entry module (`BootError("access-shaping provider may not be stubbed")`); every `Env`/`Stub` needs a reason; `Env` names validated as in Django. Recorded in `boot_environment` (`pinned` always `[]`).
+
+#### AO. `discovery.ts` 🟢
+**Changes**: `DiscoveryService.getControllers()` × `MetadataScanner.getAllMethodNames(prototype)`; route from `PATH_METADATA`/`METHOD_METADATA` (`@nestjs/common/constants`); full path built with Nest's own `RoutePathFactory` + `ApplicationConfig` (global prefix and its `exclude`, versioning) + `RouterModule` module paths, so paths are Nest's; `RequestMethod.ALL` ⇒ `ANY`; `HEAD` added beside each `GET` (Express serves it through the GET handler, guards included); `:id` ⇒ `{id}`, wildcard ⇒ `{name}`. Express only: after `init()`, walk the adapter's router stack; a route no Nest endpoint accounts for ⇒ endpoint `unknown` on both axes, handler = the layer's name, reason "mounted on Express outside Nest". Handler = `ControllerClass.method`.
+
+#### AP. `classify.ts` 🟢
+**Changes**: guards in request order: global (`ApplicationConfig.getGlobalGuards()` + `APP_GUARD` request guards) ⇒ `global`, controller `GUARDS_METADATA` ⇒ `class`, handler `GUARDS_METADATA` ⇒ `method`; each guard ⇒ finding `{construct: guard class name, layer, raw, metadata}` where `metadata` = every custom metadata key on handler and class, merged with `Reflector.getAllAndOverride` semantics (handler wins). No guard at all ⇒ `builtin:no_check` `anonymous`/`none` at `framework-default`.
+
+#### AQ. `rules.ts` 🟢
+**Changes**: builtins: `@nestjs/passport` `AuthGuard(type)` (memoized mixin, detected by identity against `AuthGuard(type)` itself) ⇒ `required`/`none`, raw `AuthGuard('jwt')`; a project subclass of it is a project guard and needs a rule; `NEUTRAL` = guards that are not access control (`ThrottlerGuard` built in; project section adds more, each with evidence) ⇒ no finding. Project section `RECOGNITION: Rule[]`, `ACKNOWLEDGED: Ack[]`, same fields as Django (`construct` | `path_prefix`+`layer`, `authn`, `authz`, `safe_authn`/`safe_authz`, `evidence`) plus `when_metadata` (`{isPublic: true}`: matches only when every listed key equals the endpoint's metadata) and `raw_metadata` (`'roles'`: appended to raw); for one construct the first matching rule in declaration order wins, so the conditional rule precedes the default one. Strictest-wins precedence and per-method expansion identical to Django.
+
+#### AR. `dimensions.ts`, `inventory.ts`, `paths.ts`, `table.ts` 🟢 — mirror H/I/J/K; `inventory.ts` hand-rolled per-line `JSON.stringify` to honour the serialisation rule byte for byte.
 
 ### Spring Base Script — `base-scripts/spring/`
 
@@ -178,15 +205,19 @@ Stdlib only + the project's Django/DRF. Python ≥ 3.10. Modules live in the pac
 
 #### AD. `fixtures/spring-gradle-smoke/` 🟢 — minimal Gradle app, 2 endpoints, proves `inspect.sh` Gradle path.
 
+#### AS. `fixtures/nestjs-demo/` 🟢 — latest NestJS + Express, vitest, written from scratch: `APP_GUARD` token guard with `@Public()` metadata, `@UseGuards` on a controller and on a handler, `@nestjs/passport` `AuthGuard('jwt')`, `@Roles` (`SetMetadata` + `RolesGuard`), `ThrottlerGuard`, an unguarded controller, `@All()`, `CONFIGURE` setting a global prefix with an exclusion and URI versioning, a `RouterModule` path, an Express router mounted outside Nest, a middleware guarding `/api/partner` (recognition rule), a guard reading the body (Acknowledged Unknown), dimension `access_tier`. Golden + vendored script.
+
+#### AT. `fixtures/nestjs-jest-smoke/` 🟢 — minimal Nest app on jest, 2 endpoints, proves the jest path of `inspect.sh`.
+
 #### AE. `fixtures/symfony-demo/` 🟢 — latest Symfony skeleton (7.x) + security bundle + latest API Platform (4.x) + API Platform resource (resource-level security, one operation override), controllers with/without attributes, `access_control` rules, `denyAccessUnlessGranted` call, a firewall with `security: false`. Golden + vendored script.
 
 ### Agent skill
 
 #### AF. `SKILL.md` 🟢
-**Changes**: workflow: (1) detect stack (`manage.py`/`pyproject` django dep; `pom.xml`/`build.gradle` + spring-boot; `composer.json` symfony/framework-bundle) → else closest-stack rule (`references/unsupported.md`); (2) existing `tools/access-inspector/` ⇒ update mode; (3) copy `base-scripts/<stack>/`; (4) boot: find production entry, run, on failure read traceback, stub per toward-production rule, record in `boot.*`; (5) loop: `--unknowns` → for each, read handler/construct source → Recognition Rule with evidence or Acknowledged Unknown; ask user only when source does not settle it; rerun until `--unknowns` empty; (6) dimensions: propose from prefixes/middleware/roles → AskUserQuestion confirm/rename/reject → write; (7) `inspect --table` for the user, write inventory, pick `assets/ci-snippets/<ci>.yml`; (8) `git checkout -b access-inspector/fit`, commit, print summary from `assets/summary-template.md`. Hard rules list (never edit pipeline, never stub settings module, never claim complete when improvised, never remove core fields).
+**Changes**: workflow: (1) detect stack (`manage.py`/`pyproject` django dep; `package.json` with `@nestjs/core`; `pom.xml`/`build.gradle` + spring-boot; `composer.json` symfony/framework-bundle) → else closest-stack rule (`references/unsupported.md`); (2) existing `tools/access-inspector/` ⇒ update mode; (3) copy `base-scripts/<stack>/`; (4) boot: find production entry, run, on failure read traceback, stub per toward-production rule, record in `boot.*`; (5) loop: `--unknowns` → for each, read handler/construct source → Recognition Rule with evidence or Acknowledged Unknown; ask user only when source does not settle it; rerun until `--unknowns` empty; (6) dimensions: propose from prefixes/middleware/roles → AskUserQuestion confirm/rename/reject → write; (7) `inspect --table` for the user, write inventory, pick `assets/ci-snippets/<ci>.yml`; (8) `git checkout -b access-inspector/fit`, commit, print summary from `assets/summary-template.md`. Hard rules list (never edit pipeline, never stub settings module, never claim complete when improvised, never remove core fields).
 
-#### AG. `references/django.md`, `references/spring.md`, `references/symfony.md`, `references/unsupported.md` 🟢
-**Changes**: per stack: where authn/authz lives by layer, how to find the production entry, common boot failures and their toward-production stubs, built-in rule table, known blind spots. `unsupported.md`: closest-stack table (FastAPI/Flask→django; Micronaut/Quarkus→spring; Laravel→symfony), route-registry hints per framework.
+#### AG. `references/django.md`, `references/nestjs.md`, `references/spring.md`, `references/symfony.md`, `references/unsupported.md` 🟢
+**Changes**: per stack: where authn/authz lives by layer, how to find the production entry, common boot failures and their toward-production stubs, built-in rule table, known blind spots. `unsupported.md`: closest-stack table (FastAPI/Flask→django; Express/Fastify without Nest→nestjs; Micronaut/Quarkus→spring; Laravel→symfony), route-registry hints per framework.
 
 #### AH. `assets/ci-snippets/{github-actions,gitlab-ci,generic}.yml` 🟢, `assets/summary-template.md` 🟢.
 
@@ -215,6 +246,13 @@ Django (`base-scripts/django/tests/`, pytest, no Django boot):
 - `test_dimensions_assign_missing`: no matching rule → `MissingDimension` naming the endpoint; two matching → first (most specific) wins.
 - `test_boot_stub_rules`: a `Stub` whose target is a settings module path → `BootError("settings module may not be stubbed")`; `Pin("DEBUG", True)` → `BootError("pin must move toward production")` (allow-list: `DEBUG=False`, `ALLOWED_HOSTS`, flags listed with reason).
 
+NestJS (`base-scripts/nestjs/tests/`, vitest, no boot):
+- `inventory.canonical.spec.ts`: `schema/samples/canonical.json` byte for byte.
+- `check.spec.ts`: same three-way diff as Django.
+- `rules.spec.ts`: `when_metadata` rule before the default rule ⇒ public route `anonymous`, others `required`; `raw_metadata` appends the roles; passport `AuthGuard('jwt')` ⇒ `required`; `ThrottlerGuard` ⇒ no finding; custom guard without rule ⇒ `unknown`.
+- `boot.spec.ts`: `NODE_ENV` not `production` ⇒ `BootError`; stub on a guard ⇒ `BootError`; reasons required.
+- `paths.spec.ts`: `:id` ⇒ `{id}`, wildcard ⇒ `{name}`, prefix joins.
+
 Spring (`base-scripts/spring/src/test/java/accessinspector/` plain JUnit, no context):
 - `InventoryCanonicalTest`: same `schema/samples/canonical.json` byte for byte via Jackson writer.
 - `CheckDiffTest`: same three-way diff as Django.
@@ -224,7 +262,7 @@ Symfony (`base-scripts/symfony/tests/`, PHPUnit, no kernel):
 - `InventoryCanonicalTest`, `CheckDiffTest`, `RulesPrecedenceTest`: mirrors. Attribute parsing: `#[IsGranted('ROLE_ADMIN')]` → `required` + `rule`; expression attribute → `unknown`.
 
 Cross-language:
-- `schema/samples/canonical.json` + `schema/samples/canonical.input.json` (neutral input): the three `InventoryCanonicalTest`s consume the same input and must produce the same bytes. Any divergence fails exactly one language's test, pointing at its serialiser.
+- `schema/samples/canonical.json` + `schema/samples/canonical.input.json` (neutral input): the four canonical tests consume the same input and must produce the same bytes. Any divergence fails exactly one language's test, pointing at its serialiser.
 - `test_schema_samples_valid` (Python, `jsonschema`): every `fixtures/*/expected/inventory.json` and `schema/samples/canonical.json` validate; a mutated sample with `authentication.value: "sso"` fails.
 
 ### Integration Tests
@@ -239,6 +277,10 @@ Golden files (one per fixture; run the vendored `tools/access-inspector/` inside
 - `test_django_unknowns_output`: `--unknowns` → JSON lines containing exactly the `/graphql/`, `IsOwner` (one per served method) and non-Django callable endpoints, each with its `unknown_reason`.
 - `test_django_table_no_write`: `--table` prints ≥ 1 row per endpoint, mtime of `inventory.json` unchanged.
 - `test_django_determinism`: run twice, byte-equal; run from another cwd, byte-equal.
+- `test_nestjs_golden` (`fixtures/nestjs-demo`, `inspect.sh`): public route ⇒ `anonymous`/`global` `recognition:`; others `required`/`global`; `@Roles` ⇒ `rule` at the layer `RolesGuard` is attached (`class` in the fixture), raw with roles; passport guard ⇒ `builtin:`; `ThrottlerGuard` absent from raws; unguarded controller ⇒ `builtin:no_check`; `@All()` ⇒ `ANY`; `HEAD` beside each `GET`; global prefix applied except on the excluded path; versioned path; `RouterModule` path; Express router ⇒ `unknown` with reason; middleware rule ⇒ `/api/partner/*` `required`; body-reading guard ⇒ acknowledged.
+- `test_nestjs_check_drift`: copy fixture, drop `@Roles('admin')` from one handler ⇒ exit 1, diff `authorization.value: rule -> none`.
+- `test_nestjs_boot_failure`: missing required env var ⇒ exit 2 naming the entry module, no file written.
+- `test_nestjs_jest_smoke` (`fixtures/nestjs-jest-smoke`): `inspect.sh` picks jest, writes the 2 expected endpoints.
 - `test_spring_golden` (`fixtures/spring-demo`, `./mvnw test` in fixture): `permitAll` matcher → `anonymous`/`global`; `anyRequest().authenticated()` → `required`; second chain via `securityMatcher` → raw names that chain; `@PreAuthorize("hasRole('ADMIN')")` → `rule`/`method`; interface mapping → implementing class handler; `/actuator/health`, `/error` present; `@RolesAllowed` raw lists both; `@permissionEvaluator` → `unknown`; `@RequestMapping` without method → `ANY`.
 - `test_spring_check_drift`: same shape as Django via `inspect.sh --check` after editing one matcher.
 - `test_spring_gradle_smoke` (`fixtures/spring-gradle-smoke`): `inspect.sh` picks `gradlew`, writes an inventory with the 2 expected endpoints.
@@ -246,12 +288,12 @@ Golden files (one per fixture; run the vendored `tools/access-inspector/` inside
 - `test_symfony_check_drift`: mirror.
 - `test_parse_access_inspector` (`../skills/security-audit`, bash + jq on `fixtures/django-demo/expected/inventory.json`): summary counts match; `=== ANONYMOUS ===` lists expected paths; acknowledged vs unexplained separated.
 
-Agent (not automated in v1, PRD decision): acceptance = first real Django project fitted and merged. Manual checklist in `assets/summary-template.md` (every rule has evidence that exists, `--unknowns` empty, `--check` green, no pipeline file touched, branch created).
+Agent (not automated in v1, PRD decision): acceptance = first real Django project fitted and merged; for NestJS, `~/Theodo/bootstrap-test` fitted. Manual checklist in `assets/summary-template.md` (every rule has evidence that exists, `--unknowns` empty, `--check` green, no pipeline file touched, branch created).
 
 ---
 ## 5. To Do List
 
-Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phases 1–3 (Django) deliver the first milestone; 4–6 can run in parallel after it.
+Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phases 1–3 (Django) deliver the first milestone; 4–7 can run in parallel after it.
 
 ### Phase 0 — Contract (prerequisite for all UFs)
 
@@ -339,7 +381,21 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
   - File: `../skills/security-audit/scripts/tests/test_parse_access_inspector.sh` (bats or plain bash) on `fixtures/django-demo/expected/inventory.json`.
 - [x] **Verify**: run the security-audit skill on `fixtures/django-demo` → report has mode/coverage header, anonymous list, acknowledged vs unexplained sections.
 
-### Phase 5 — UF7 Inventory a Spring project
+### Phase 5 — UF10 Inventory a NestJS project
+
+- [x] **Runner + boot + discovery**
+  - Files: `base-scripts/nestjs/{inspect.sh,vitest.config.ts,jest.config.cjs,run.spec.ts,boot.ts,discovery.ts,paths.ts}`
+- [x] **Guards + rules**
+  - Files: `classify.ts`, `rules.ts` (builtins, `NEUTRAL`, `whenMetadata`, `rawMetadata`: camelCase in TypeScript; a `null` value matches an absent key)
+- [x] **Inventory + check + table + dimensions**
+  - Files: `inventory.ts`, `dimensions.ts`, `table.ts`
+- [x] **Toolkit tooling**: `base-scripts/nestjs/package.json` (dev only: typescript, vitest, `@nestjs/*`), `Makefile` `test-nestjs`, CI job with Node only. `make check-all` adds `typecheck-nestjs`; CI's Django job runs `lint typecheck deps`.
+- [x] **Fixtures**: `fixtures/nestjs-demo/` per §3 AS, `fixtures/nestjs-jest-smoke/` per §3 AT. The demo's global `APP_GUARD` covers every Nest route, so `builtin:no_check` is exercised by the jest smoke fixture.
+- [x] **Reference**: `references/nestjs.md` (production entry = the module and setup function `main.ts` uses; `.env` files read by `ConfigModule` vs `ENVIRON`; stub cookbook for providers connecting at init; built-in table; metadata rules; blind spots: middleware, checks inside handlers or services, Fastify routes outside Nest, guards reading metadata with `get`/`getAllAndMerge`; Nest version tested). `SKILL.md` step 1 adds the NestJS row; vendoring copies `base-scripts/nestjs/` minus toolkit files; linter exclusions cover eslint, prettier, tsc and dependency-cruiser.
+- [x] **Write tests**: §4 NestJS unit tests, `test_nestjs_golden`, `test_nestjs_check_drift`, `test_nestjs_boot_failure`, `test_nestjs_jest_smoke`, canonical bytes shared with Python.
+- [x] **Verify**: `make test-nestjs` green; fit `~/Theodo/bootstrap-test` (`apps/backend`, `ENTRY` `AppModule`, `CONFIGURE` `configureApp`, `ENVIRON` `NODE_ENV=production` + placeholders for `DATABASE_URL`, `JWT_SECRET`, `ALLOWED_ORIGIN`): `AuthGuard` rules on `isPublic` (anonymous) and default (required), `RolesGuard` rule with `raw_metadata: roles`; expected 14 endpoints, `/auth/login`, `/auth/logout`, `/auth/refresh`, `POST /users`, `/health/*` anonymous, `/users/me` required/none, `GET /users` and `PATCH /users/{id}` required/rule; no Swagger route (`NODE_ENV=production`); `--unknowns` empty, `--check` green.
+
+### Phase 6 — UF7 Inventory a Spring project
 
 - [ ] **Runner + boot + discovery**
   - Files: `base-scripts/spring/tools/access-inspector/inspect.sh`, `src/test/java/accessinspector/{AccessInspectorRun,Boot,Discovery}.java`
@@ -353,7 +409,7 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 - [ ] **Write tests**: `InventoryCanonicalTest`, `CheckDiffTest`, `RulesPrecedenceTest`, golden via `./mvnw test` in fixture, `test_spring_check_drift`, `test_spring_gradle_smoke` (driven from `Makefile`).
 - [ ] **Verify**: `make test-spring` green; reflection access to authorization mappings guarded: on failure → every endpoint global layer `unknown` with reason "Spring Security internals changed", not a crash.
 
-### Phase 6 — UF8 Inventory a Symfony project
+### Phase 7 — UF8 Inventory a Symfony project
 
 - [ ] **Entry + boot + dropped config**
   - Files: `base-scripts/symfony/tools/access-inspector/inspect.php`, `boot.php`, `config/packages/access_inspector.yaml`
@@ -365,7 +421,7 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 - [ ] **Write tests**: PHPUnit mirrors + golden + `test_symfony_check_drift` + metadata-factory-absent case.
 - [ ] **Verify**: `make test-symfony` green.
 
-### Phase 7 — UF9 Fit an unsupported stack
+### Phase 8 — UF9 Fit an unsupported stack
 
 - [ ] **Closest-stack reference**
   - File: `references/unsupported.md`
@@ -390,6 +446,12 @@ Docs only (`CONTEXT.md`, `docs/adr/`, `docs/features/`), APM config (`apm.yml`, 
 ### accent (`../accent`, prototype)
 - Current behavior: Symfony bundle, console command `theodo:access-control`; iterates `RouterInterface::getRouteCollection()`; for API Platform routes reads operation `getSecurity()`; console table; exit 1 if any route lacks an expression.
 - Current limitations: non-API-Platform routes labelled and skipped; ignores `access_control`, firewalls, `#[IsGranted]`, voters; no JSON; no tests; order = route collection order.
+
+### bootstrap-test (`~/Theodo/bootstrap-test`, NestJS fit target)
+- Turborepo + pnpm; API in `apps/backend` (NestJS 12, Express, ESM, vitest, tsconfig path aliases `@modules/*`, `@auth/*`…).
+- Boot: `src/openapi.ts` already creates `AppModule` without listening and opens no database connection; `src/configure-app.ts` is the HTTP setup shared by `main.ts` and tests; Swagger mounted in `main.ts` only outside production.
+- Access: `AuthGuard` as `APP_GUARD` (bearer JWT, skipped when `isPublic` metadata, set by `@Public()` through the `src/decorators/http.ts` route wrappers); `@Roles()` = `SetMetadata('roles')` + `UseGuards(RolesGuard)`; `ThrottlerGuard` on login/sign-up/refresh; refresh-cookie check inside the handler.
+- Env validated at boot (`src/config/env.ts`): `DATABASE_URL`, `JWT_SECRET` (≥ 32 chars, no `ChangeMe` outside development), `ALLOWED_ORIGIN` required; `ConfigModule` also reads `.env`, `.env.local`.
 
 ### security-audit skill (`../skills/security-audit`)
 - Current behavior: SKILL.md orchestrates one subagent per scanner reference (`references/*.md`), parses JSON via `scripts/parse_*.sh` (jq, summary section + JSON lines), baseline file, report template.
@@ -420,6 +482,8 @@ Docs only (`CONTEXT.md`, `docs/adr/`, `docs/features/`), APM config (`apm.yml`, 
 - **Fixture breadth** — `../django-access-inspector/demo_views/views.py`, `django_native_views.py`, `urls.py`: decorator vs attribute vs `@action` override, Django decorators/mixins, DRF router registration; extend per §3 AB.
 - **Python tooling** — `../django-access-inspector/pyproject.toml` (uv, ruff, mypy strict with django-stubs, pytest-django, coverage gate) and `Makefile` (`validate` = lint+typecheck+test).
 - **Router iteration + API Platform metadata** — `../accent/src/AccessControl/AccentReportFactory.php` (route collection loop), `RouteAccessControlFactory.php` (`_api_resource_class` / `_api_operation_name` → `ResourceMetadataCollectionFactoryInterface` → `getOperation()->getSecurity()`, exception handling for missing resource/operation).
+- **NestJS boot without listen** — `~/Theodo/bootstrap-test/apps/backend/src/openapi.ts` (`NestFactory.create` + `close`), `src/test/app.ts` (`Test.createTestingModule({imports: [AppModule]})`, overrides, `configureApp`): the boot path of `boot.ts`.
+- **NestJS metadata guard** — `~/Theodo/bootstrap-test/apps/backend/src/modules/auth/{auth.guard,roles.guard,roles.decorator,public.decorator}.ts`: `Reflector.getAllAndOverride` on handler then class; the shape `when_metadata`/`raw_metadata` must express.
 - **Spring sample controllers** — `../spring-access-inspector/sample/microservice-example/src/main/java/com/theodo/ms/controller/{Cars,Another,Houses,Trees}Controller.java`: `@RolesAllowed`, `@Secured`, `@PreAuthorize` with `isAuthenticated()`/`permitAll()`, class-level `@PreAuthorize`; seed for the Spring fixture.
 - **Scanner reference + parse script pattern** — `../skills/security-audit/references/semgrep.md` + `scripts/parse_semgrep.sh`: sections `=== X SUMMARY ===` then JSON lines; `jq -c` per finding; `set -euo pipefail`, jq presence check; replicate for `parse_access_inspector.sh`.
 - **Skill structure** — `../skills/security-audit/SKILL.md`: numbered workflow, `references/` discovery, `assets/` templates, AskUserQuestion at decision points; model for `SKILL.md` here.
@@ -428,7 +492,7 @@ Docs only (`CONTEXT.md`, `docs/adr/`, `docs/features/`), APM config (`apm.yml`, 
 
 ## Notes
 
-- Phases 1–3 are the first milestone; do not start 5–7 before a real Django project is fitted, the contract will move.
+- Phases 1–3 are the first milestone; do not start 5–8 before a real Django project is fitted, the contract will move.
 - Spring filter-chain reflection: record the Spring Security version tested in `references/spring.md`; guard with the "internals changed ⇒ unknown" fallback.
 - `.claude/skills/` is APM-generated; keep untracked unless decided otherwise.
 
@@ -443,6 +507,7 @@ None.
 - Distribution: this repository is an APM package; users add it as a dependency pinned by tag. The toolkit (`SKILL.md`, `references/`, `assets/`, `base-scripts/`, `schema/`, `VERSION`) lives under `skills/all-access-inspector/`, so it deploys as one skill; toolkit paths in this plan are relative to that directory. Fixtures stay at the repository root.
 
 - Milestone target: `~/Theodo/perenco/action-tracking`.
+- NestJS (added 2026-10-12): Phase 5, before Spring; `~/Theodo/bootstrap-test` is the fit target only, the fixture is written from scratch; the script runs through the project's own test runner (vitest or jest); guard rules carry a metadata condition (`when_metadata`), first matching rule per construct wins.
 - Spring handlers: dotted names without lines, for all handlers.
 - Fixtures on latest framework versions (Spring Boot 3.x, Symfony 7.x, API Platform 4.x).
 - Kotlin controller in the Spring fixture: deferred.
