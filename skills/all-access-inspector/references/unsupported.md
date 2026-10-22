@@ -18,24 +18,28 @@ A Base Script in another language than the project's is a template to translate,
 
 ## What stays and what you write
 
-Keep these byte-identical to the chosen Base Script, translated only when the language differs:
+Every file of the chosen Base Script falls in exactly one of three lists. Translate a file only when the language differs.
+
+**Kept** byte-identical, so a refresh can replace it:
 - the inventory module (canonical JSON, `--check` diff, validation);
-- the rules engine (strictest wins, Recognition Rules with evidence, Acknowledged Unknowns);
+- the rules engine (strictest wins, Recognition Rules with evidence, Acknowledged Unknowns), meaning everything in the rules file except its Built-in Rules table;
 - dimensions;
-- the table;
-- the entry and its command-line contract: `--check | --table | --unknowns`, exits 0 / 1 / 2, `tools/access-inspector/inventory.json`. Only the fields `build()` writes change: `stack`, `coverage`, `coverage_note`, and `discovery_mode` when static.
+- the table.
 
-The Base Script's Built-in Rules name its own framework's checks. Leave them in place, since they never match another framework's constructs, and add the improvised stack's builtins beside them. `no_check`, the builtin for a route with no check, carries over as is.
+**Extended in place**: the file stays, plus edits a refresh must carry over:
+- the Built-in Rules table. The Base Script's Built-in Rules name its own framework's checks. Leave them in place, since they never match another framework's constructs, and add the improvised stack's builtins beside them. `no_check`, the builtin for a route with no check, carries over as is;
+- the entry. Its command-line contract stays: `--check | --table | --unknowns`, exits 0 / 1 / 2, `tools/access-inspector/inventory.json`. Only the identity fields `build()` writes change: `stack`, `coverage`, `coverage_note`, and `discovery_mode` when static.
 
-The schema (`<skill>/schema/inventory.schema.json`) is the contract: the improvised inventory must validate against it.
-
-Rewrite, for the stack:
+**Rewritten** for the stack:
 - **boot**: load the production app object the way production does (`ENTRY`, `ENVIRON`, stubs under the same toward-production rule);
 - **discovery**: enumerate the framework's route registry (§ Route registries);
 - **classify**: turn each route's checks into findings: the dependency, decorator, middleware or guard, with its layer;
-- **the Built-in Rules** for that framework's own checks, each one read from the framework's source or documentation, never guessed.
+- **path conversion** (`paths.py` in `django`): turn the framework's path syntax into the inventory format, a leading `/` and parameters as `{name}`;
+- **the builtins** added above, each one read from the framework's source or documentation, never guessed.
 
-Start every rewritten file with a comment naming the Base Script, its version and what was rewritten: `# Improvised from the django Base Script 0.3.0 for FastAPI: discovery and classify read app.routes and Depends()`. A later refresh relies on it.
+The schema (`<skill>/schema/inventory.schema.json`) is the contract: the improvised inventory must validate against it.
+
+Start every rewritten and every extended file with a comment naming the Base Script, its version and what changed: `# Improvised from the django Base Script 0.3.0 for FastAPI: discovery and classify read app.routes and Depends()`, or `# Extended from the django Base Script 0.3.0 for FastAPI: builtins fastapi_security, fastapi_http_bearer`. A later refresh relies on it.
 
 In the inventory:
 - `stack` is the project's framework (`fastapi`).
