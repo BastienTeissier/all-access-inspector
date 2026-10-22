@@ -67,6 +67,34 @@ _Avoid_: ignored, baselined, suppressed
 **Evidence**:
 The source location (file and line) of the project construct a Recognition Rule interprets, cited in the Adapted Script so a reviewer can verify the rule.
 
+### Review
+
+**Review Log**:
+The append-only file of review events committed next to the Committed Inventory (`reviews.jsonl`); events are never edited or deleted, and the current state of every review is obtained by replaying it against the current inventory.
+_Avoid_: baseline, review database
+
+**Review Key**:
+How a review event names an Endpoint: method, path pattern and handler location with any line number stripped, so moving a handler within its file keeps its reviews.
+
+**Verdict**:
+A human's judgement on one Endpoint, given on the Core Classification it had at the time: `safe` (access is correct for what the endpoint does), `accepted` (a known weakness kept deliberately, optionally until a date) or `finding` (must be fixed). Only a human gives a Verdict.
+_Avoid_: approval, status, baseline
+
+**Outdated Verdict**:
+A Verdict that no longer holds because its Endpoint changed. Inside its expected access, an Endpoint invalidates a Verdict when its authentication or authorization value differs from the one reviewed; outside its expected access, any change to the reviewed classification does. Derived on replay, never written as an event. An `accepted` Verdict past its date is outdated too.
+
+**Orphaned Verdict**:
+A Verdict whose Review Key no longer matches any Endpoint in the inventory. Kept as history, never re-attached automatically.
+
+**Signal**:
+A reason to look at an Endpoint first. A deterministic Signal is computed from the inventory alone and never stored; an agent Signal comes from the Agent reading the handler, is stored in the Review Log, and is advisory only.
+
+**Triage**:
+An on-demand Agent run that reads the handlers of unreviewed, non-`rule` Endpoints and appends agent Signals, or a record that it found nothing. It never gives a Verdict.
+
+**Review Queue**:
+Every Endpoint without a valid Verdict, ordered by its highest Signal tier, then path and method.
+
 ## Relationships
 
 - One **Base Script** exists per supported stack
@@ -87,6 +115,10 @@ The source location (file and line) of the project construct a Recognition Rule 
 - An **Endpoint Inventory** is byte-stable: sorted, free of timestamps and absolute paths, so the **Committed Inventory** diff is meaningful
 - An **Adapted Script** pins its **Boot Environment**; an endpoint that exists only under some flags is a diff for a reviewer, not an environment variant
 - Every **Recognition Rule** cites its **Evidence**; the human review of the **Adapted Script** commit is the trust gate
+- A **Verdict** never changes the **Core Classification** or the **Committed Inventory**; facts and judgements are kept apart
+- A **Verdict** covers only the **Endpoints** that existed when it was given; a bulk review writes one event per **Endpoint**, never a selector
+- A `finding` closes only through an **Outdated Verdict** followed by a new `safe` one
+- An **Endpoint** leaves the **Review Queue** only through a human **Verdict**; **Triage** finding nothing does not take it out
 
 ## Flagged ambiguities
 
@@ -97,6 +129,8 @@ The source location (file and line) of the project construct a Recognition Rule 
 - "runtime not possible" was first read as "the app is hard to boot": resolved, a hard boot is the Agent's job to solve, not a reason for Static Discovery. The only admissible reason is that the routing layer cannot be enumerated.
 
 - "deterministic" and "agent" were used together: resolved by placing the determinism boundary at the Adapted Script. The Agent's work is non-deterministic but happens once, at setup; the audit itself is Agent-free.
+
+- "manage the baseline" could mean editing the inventory's facts or recording human judgements on them: resolved as the latter, the **Review Log**; the **Committed Inventory** stays tool-written.
 
 ## Example dialogue
 
