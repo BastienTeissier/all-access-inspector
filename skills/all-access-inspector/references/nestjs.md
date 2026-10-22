@@ -89,6 +89,19 @@ Field names are camelCase in TypeScript: `pathPrefix`, `safeAuthn`, `safeAuthz`,
 - An `APP_GUARD` provided with `useFactory` or `useExisting` and request-scoped is named after its factory or alias, not the guard class: write the rule for that name.
 - Interceptors and pipes are not read; an interceptor that rejects requests is a blind spot like a middleware.
 
+## Triage checklist
+
+Read each handler in the Triage scope (`SKILL.md` § Triage) for what the inventory cannot see. Raise a Signal on the first item that holds; otherwise mark it `triaged`.
+
+- **Name and verb against the guard.** A handler named `delete*`, `approve`, `export`, `impersonate` or `refund` with `required/none` or an `anonymous` write is a Signal. So is a `@Put` or `@Patch` that any signed-in user reaches on an entity whose `@Post` is restricted by role: raise it on the open handler, since the guarded one is not in scope.
+- **Checks in the handler or its service.** `@Req() req` / a `@CurrentUser()` decorator compared to the entity, `throw new ForbiddenException()`, an ownership filter in the service call (`where: { userId }`): follow the call one level into the service and say whether the check covers every route of the handler.
+- **Lookups by id.** A `findOne(id)` / `findById(id)` on a `{id}` path with no owner or tenant in the query is a Signal: any signed-in user reads any row.
+- **Bulk and export.** A response that streams many rows (CSV, `StreamableFile`, a `limit` with no ceiling) on an `anonymous` or `required/none` endpoint is a Signal.
+- **Anonymous writes.** Name what an anonymous write changes. Login, signup, password reset and webhooks verified by signature are expected: mark them `triaged`.
+- **Third-party handler** (no project file, e.g. a route mounted by a library module): read the module import that mounts it for a guard the inventory missed; otherwise skip it.
+
+Evidence is the line that shows the problem (`src/orders/orders.service.ts:41`), not the handler's first line.
+
 ## Candidate dimensions
 
 As for any stack: path prefix groups that share a guard or a middleware (`/api/admin/`, `/api/partner/`, `/webhooks/`, `/health`), roles named in rules (`roles=["admin"]` → `staff`), `@Public()` routes → `public`.

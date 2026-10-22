@@ -56,7 +56,7 @@ button:focus-visible,[data-s]:focus-visible,label.btn:focus-within{outline:2px s
 .path{font-family:var(--mono);font-size:.9rem;overflow-wrap:anywhere}
 .legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
 .foot{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);font-family:var(--mono);font-size:.75rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 20px}
-/* triage */
+/* overview */
 .verdict{font-size:1.3rem;font-weight:500;max-width:60ch;margin:0 0 20px}
 .verdict em{font-style:normal;color:var(--unknown)}
 .bucket{margin-bottom:26px}
@@ -126,7 +126,7 @@ body.dragging::after{content:'Drop inventory.json';position:fixed;inset:12px;bor
 <script>
 'use strict';
 /* ---- state ---- */
-let INV = null, FILE = '', EPS = [], current = 'triage', dim = null, sel = null, error = '';
+let INV = null, FILE = '', EPS = [], current = 'overview', dim = null, sel = null, error = '';
 
 const LEVELS = {
   unknown:{label:"Can't tell", cls:'l-unknown', c:'var(--unknown)', g:'?',
@@ -209,7 +209,7 @@ const describe = x => x ? `expects authentication ${esc(x.authentication.join(' 
 /* ---- views ---- */
 const pick = e => `data-s="${e.id}" role="button" tabindex="0" aria-label="Details for ${esc(e.methods.join(' '))} ${esc(e.path)}"`;
 
-function triage() {
+function overview() {
   const by = l => EPS.filter(e => e.level === l);
   const n = by('unknown').length, o = by('open').length + by('optional').length, a = by('ack').length;
   let h = `<p class="verdict">${EPS.length} endpoint${EPS.length === 1 ? '' : 's'}. ` +
@@ -284,7 +284,7 @@ function empty() {
 }
 
 const VIEWS = [
-  {id:'triage', name:'Triage', render:triage, pitch:'What needs a human first, worst bucket on top. Click an endpoint to see how its access was decided.'},
+  {id:'overview', name:'Overview', render:overview, pitch:'What needs a human first, worst bucket on top. Click an endpoint to see how its access was decided.'},
   {id:'zones', name:'Zones', render:zones, pitch:'Endpoints grouped by the values of a Project Dimension. An outlined endpoint is outside the access its zone expects.'},
 ];
 
@@ -396,7 +396,7 @@ addEventListener('dragleave', () => { if (--depth <= 0) { depth = 0; document.bo
 addEventListener('dragover', ev => ev.preventDefault());
 addEventListener('drop', ev => { ev.preventDefault(); depth = 0; document.body.classList.remove('dragging'); load(ev.dataTransfer.files[0]); });
 
-current = VIEWS.some(v => v.id === location.hash.slice(1)) ? location.hash.slice(1) : 'triage';
+current = VIEWS.some(v => v.id === location.hash.slice(1)) ? location.hash.slice(1) : 'overview';
 render();
 </script>
 </body>

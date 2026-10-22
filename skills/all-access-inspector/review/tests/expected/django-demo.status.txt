@@ -51,7 +51,7 @@ Tier 6 · anyone can write (5)
   ANY      /pages/legacy-landing/  public  anonymous/none  open_write: anonymous ANY
   ANY      /pages/legacy/  public  anonymous/none  open_write: anonymous ANY
 
-Tier 7 · agent signal (1)
+Tier 7 · suggested by the agent (1)
   POST     /api/orders/{pk}/refund/  customer  required/rule  agent: Refund needs IsAdminUser while the order detail is owner-only: support staff may be locked out (shop/api.py:24)
 
 Tier 8 · path parameter, no authorization rule (2)
