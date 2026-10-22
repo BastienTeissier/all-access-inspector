@@ -39,7 +39,9 @@ final class Attributes
             } catch (\Throwable $e) {
                 return new Finding($text, $layer, $text, null, 'unreadable #[IsGranted]: ' . $e->getMessage());
             }
-            if ($granted->methods !== [] && !in_array($http, $granted->methods, true)) {
+            // An IsGranted older than its methods: argument applies to every method.
+            $methods = property_exists($granted, 'methods') ? $granted->methods : [];
+            if ($methods !== [] && !in_array($http, $methods, true)) {
                 return null;
             }
             $builtin = match (true) {
