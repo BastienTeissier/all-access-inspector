@@ -6,6 +6,7 @@ NESTJS := skills/all-access-inspector/base-scripts/nestjs
 NESTJS_FIXTURE := fixtures/nestjs-demo
 NESTJS_JEST_FIXTURE := fixtures/nestjs-jest-smoke
 REVIEW := skills/all-access-inspector/review
+REVIEW_APP := apps/review
 
 .PHONY: test test-django test-nestjs test-review install-nestjs install-review lint typecheck typecheck-nestjs typecheck-review deps check-all format
 
@@ -27,9 +28,12 @@ test-nestjs:
 
 install-review:
 	pnpm install --frozen-lockfile --dir $(REVIEW)
+	pnpm install --frozen-lockfile --dir $(REVIEW_APP)
 
 test-review:
 	pnpm --dir $(REVIEW) exec vitest run
+	pnpm --dir $(REVIEW_APP) exec vitest run
+	pnpm --dir $(REVIEW_APP) exec playwright test
 
 lint:
 	$(UV_DJANGO) ruff check . $(CURDIR)/$(DJANGO_FIXTURE)
@@ -45,6 +49,7 @@ typecheck-nestjs:
 
 typecheck-review:
 	pnpm --dir $(REVIEW) exec tsc --noEmit -p tsconfig.json
+	pnpm --dir $(REVIEW_APP) exec tsc --noEmit -p tsconfig.json
 
 deps:
 	$(UV_DJANGO) deptry .

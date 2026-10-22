@@ -1,0 +1,28 @@
+{
+  "name": "access-inspector-review-app",
+  "private": true,
+  "description": "Local review app of all-access-inspector: the Review Queue, an endpoint panel and the Verdict form. Started by `review app <project>`; writes only by appending to the project's reviews.jsonl.",
+  "type": "module",
+  "engines": {
+    "node": ">=24.2"
+  },
+  "scripts": {
+    "build": "next build",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "next": "16.4.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.4"
+  }
+}

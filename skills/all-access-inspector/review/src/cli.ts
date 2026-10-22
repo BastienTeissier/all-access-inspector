@@ -3,6 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 
+import { type App, prepare, serve } from './app.ts';
 import { appendAgent, appendVerdict } from './append.ts';
 import { InventoryError, classification } from './inventory.ts';
 import { Refused, load } from './project.ts';
@@ -13,6 +14,7 @@ const USAGE = `usage:
   review status <project> [--json]
   review append <project> --verdict safe|accepted|finding --reason <text> [--severity low|medium|high] [--ticket <url>] [--until YYYY-MM-DD] [--handler <handler>] <METHOD> <path>
   review append <project> --agent --model <id>   (events as JSON lines on stdin)
+  review app <project>   (the local review app, from a checkout of the toolkit)
 <project> is the directory holding tools/access-inspector/inventory.json.`;
 
 const zones = (row: Row) => Object.values(row.dimensions).join(',');
@@ -99,7 +101,8 @@ const status = (project: string, json: boolean): string => {
   return `${out.join('\n')}\n`;
 };
 
-export const main = (argv: string[], stdin: () => string): { code: number; stdout: string; stderr: string } => {
+/** The command's result; `app` adds the app to start once its checks passed. */
+export const main = (argv: string[], stdin: () => string): { code: number; stdout: string; stderr: string; app?: App } => {
   try {
     const { values, positionals } = parseArgs({
       args: argv,
@@ -124,7 +127,7 @@ export const main = (argv: string[], stdin: () => string): { code: number; stdou
       return { code: 0, stdout: appendAgent(project, values.model, stdin()), stderr: '' };
     }
     if (command === 'append') return { code: 0, stdout: appendVerdict(project, values, rest), stderr: '' };
-    if (command === 'app') throw new Refused('the review app is not available yet');
+    if (command === 'app' && !rest.length) return { code: 0, stdout: '', stderr: '', app: prepare(project) };
     throw new Refused(USAGE);
   } catch (error) {
     if (error instanceof Refused || error instanceof InventoryError || (error as { code?: string }).code?.startsWith('ERR_PARSE_ARGS'))
@@ -142,4 +145,5 @@ if (import.meta.main === undefined) {
   process.stdout.write(result.stdout);
   process.stderr.write(result.stderr);
   process.exitCode = result.code;
+  if (result.app) process.exitCode = await serve(result.app);
 }
