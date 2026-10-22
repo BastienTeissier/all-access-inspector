@@ -23,6 +23,7 @@ An agent skill fits the toolkit to your project **once**. It leaves a small scri
 - [Read the inventory](#read-the-inventory)
 - [Look at it in the viewer](#look-at-it-in-the-viewer)
 - [Review the inventory](#review-the-inventory)
+- [Review app](#review-app)
 - [Triage with the Agent](#triage-with-the-agent)
 - [Wire it into CI](#wire-it-into-ci)
 - [Living with it](#living-with-it)
@@ -318,7 +319,7 @@ A `HEAD` row identical to its `GET` is shown merged with it.
 
 ## Review the inventory
 
-Five hundred endpoints are too many to read one by one. The review CLI keeps track of what you checked and ranks what is left. It needs Node 24.2 or later and nothing else: no install, no build.
+Five hundred endpoints are too many to read one by one. The review CLI keeps track of what you checked and ranks what is left. It needs Node 24.2 or later and nothing else: no install, no build. To review in a browser, see the [Review app](#review-app).
 
 ```bash
 REVIEW="node <skill>/review/src/cli.ts"
@@ -348,17 +349,82 @@ $REVIEW append <project> --verdict accepted --until 2027-01-01 --reason "…" AN
 
 Verdicts are appended to `tools/access-inspector/reviews.jsonl`, one JSON line per event. The CLI never rewrites the file and never runs git. Commit it with your code. The first `append` also writes `tools/access-inspector/.gitattributes` with `reviews.jsonl merge=union`, so two branches that both review endpoints merge without a conflict. When the same endpoint is reviewed twice, the later Verdict wins.
 
-### In the browser
+## Review app
 
-From a checkout of this repository, `make install-review` once, then:
+The review app is a local Next.js app for the review CLI's queue: the same tiers, Verdicts and log, with the endpoint's details next to the form. It reads `inventory.json` and `reviews.jsonl`, and it writes only by appending to `reviews.jsonl`, through the same code as `review append`.
+
+### Start it
+
+The app is **not shipped with the skill**: it lives in `apps/review/` of this repository, so it runs from a checkout. You need Node 24.2 or later and pnpm.
 
 ```bash
+git clone https://github.com/BastienTeissier/all-access-inspector.git
+cd all-access-inspector
+make install-review                                             # once
 node skills/all-access-inspector/review/src/cli.ts app <project>
 ```
 
-It builds the app the first time and serves it on `http://127.0.0.1:4377`, or on the next free port. It is never reachable from another machine. The page shows the queue by tier, with the same filters as `status`. Click a row to see both axes, the Signals, the siblings and the endpoint's history, then give a Verdict. The app writes through the same `append` as the CLI, and the header counts the events you have not committed yet. A change to the inventory or the log shows on the next reload. The app's cache under `~/.cache/all-access-inspector/` can be deleted at any time.
+```text
+review app: building…                                           # first run, or after the app's sources changed
+review app: http://127.0.0.1:4377 (/home/me/shop)
+```
 
-To review many endpoints at once, filter the queue, then click **Review selection**. It gives one Verdict to every endpoint the filters select, written as one batch, and asks you to confirm before it replaces an open finding. **History** shows the log by batch, newest first, and the orphaned Verdicts, whose endpoint is no longer in the inventory. When an endpoint without a Verdict shares its path or its handler file with an orphan, as a renamed URL does, its panel proposes the orphan: **Copy reason** puts the orphan's reason in the form. The orphan itself stays in the log.
+- `<project>` is the app root holding `tools/access-inspector/inventory.json`. The app refuses to start without a readable inventory.
+- It listens on `127.0.0.1`, on port 4377 or the next free one. A request under any host name other than `127.0.0.1` or `localhost` gets a 403, so a page on another site cannot reach it by DNS rebinding.
+- Stop it with Ctrl-C. Run one per project, each on its own port.
+
+### The queue
+
+The header shows the project, its stack, coverage and endpoint count, how many Verdicts are valid, outdated and orphaned, and how many log events you have **not committed** yet.
+
+Below it, the rows are grouped by tier, worst first, with the same 11 tiers as `review status`. Each row shows the method (a `HEAD` identical to its `GET` is merged as `GET,HEAD`), the path, its zone, `authentication/authorization`, its Signals and its Verdict state.
+
+The filters combine, and they live in the URL, so you can bookmark a view:
+
+| Filter | Keeps |
+|---|---|
+| Zone | one Project Dimension value (shown when the inventory has dimensions) |
+| Tier | one tier |
+| Signal | rows carrying one Signal: `outside_expected`, `unknown`, `sibling`, `open_write`, `agent`, `id_without_authz`, `open_read` |
+| Verdict | `none` (never reviewed) or `outdated` |
+| Path | paths containing the text, e.g. `/api/admin/` |
+| reviewed | shows the endpoints with a valid Verdict instead of the queue |
+
+### Review one endpoint
+
+Click a row to open its panel:
+- **Handler**, with the classification, the tier and the current Verdict. A `file:line` handler or evidence opens in VS Code at that line;
+- the **unknown reason**, when the endpoint has one;
+- **Authentication** and **Authorization**: value, layer, raw, rule and evidence for each axis;
+- **Outdated verdict**: what the reviewer saw beside what the inventory says now, or the date an `accepted` Verdict expired;
+- **Signals**: why the row is queued, one line each, including the Agent's triage reason;
+- **Siblings**: the other methods of the same resource, such as the list and the detail, with their classification;
+- **History**: every event on this endpoint.
+
+Then give a **Verdict**:
+- `safe`, `accepted` (optionally with an *until* date) or `finding` (with a severity and, optionally, a ticket URL);
+- a reason, always required.
+
+Nothing is written while a field is missing. When the Verdict is saved, the panel moves to the next row of the same tier, so you can work through a tier without going back to the list.
+
+When an unreviewed endpoint shares its path or its handler file with an orphaned Verdict, as a renamed URL does, the form asks **Was it one of these?** **Copy reason** puts the orphan's reason in the form. The orphan itself stays in the log.
+
+### Review many endpoints at once
+
+Filter the queue down to the endpoints that share a judgement, for example every `GET` under `/api/catalog/`, then click **Review selection**. One Verdict and reason go to every endpoint the filters select, written as one batch.
+
+The selection is computed again when you save, from the current files, not from the page you loaded. If it holds an open finding, the app names it and asks you to confirm before replacing it.
+
+### History
+
+**History** in the header lists the log grouped by batch, newest first, a page at a time. Each batch shows its author (your git email, or `agent · <model>` for a triage run), its time, its kinds of events and its count. Below the batches are the **orphaned Verdicts**, whose endpoint is no longer in the inventory.
+
+### Where the data lives
+
+- The files are the truth: `inventory.json` and `reviews.jsonl` in the project. A Verdict's `by` is your `git config user.email`, as with the CLI.
+- The app keeps a disposable SQLite cache per project in `~/.cache/all-access-inspector/`. It is rebuilt whenever either file changes, and you can delete it at any time.
+- A change to either file, whether a regenerated inventory, a `git pull` or a CLI `append`, shows on the next reload. When a file cannot be read mid-edit, the page shows the last state it could read, with a warning.
+- The app never runs git. Commit `reviews.jsonl`, and `.gitattributes` on the first Verdict, with your code. The header's "not committed" count is a reminder.
 
 ## Triage with the Agent
 
