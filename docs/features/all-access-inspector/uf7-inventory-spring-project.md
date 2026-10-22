@@ -29,7 +29,7 @@ AAU (developer, with the project's build tool available), running the Spring Bas
 
 ## Edge Cases
 
-- AAU, if the project has no Spring Security on the classpath, I see every endpoint `anonymous` at layer `framework-default`.
+- AAU, if the project has no Spring Security on the classpath, the run fails at compile time: Spring Security is required (`references/spring.md` blind spot).
 - AAU, if a `@PreAuthorize` calls a custom bean (`@permissionEvaluator.can(...)`), I see `unknown` for authorization until a Recognition Rule names it.
 - AAU, if `@RolesAllowed({"USER","ADMIN"})` is used, I see the full list in the raw field, not only the first element.
 - AAU, if the project is Kotlin, I see the same result, because discovery is runtime.

@@ -55,7 +55,7 @@ No database. The "data model" is the inventory JSON contract, `schema/inventory.
   - `coverage`: `complete|best-effort`
   - `coverage_note`: string|null (required non-null when `best-effort`: static reason or "improvised from <stack> Base Script")
   - `base_script`: `{stack: string, version: string}` (toolkit version vendored)
-  - `boot_environment`: `{entry: string, environ: [{name, value, reason}], stubs: [{target, reason}], pinned: [{setting, value, reason}]}` — `entry` = settings module / NestJS root module / Spring profile / Symfony env
+  - `boot_environment`: `{entry: string, environ: [{name, value, reason}], stubs: [{target, reason}], pinned: [{setting, value, reason}]}` — `entry` = settings module / NestJS root module / Spring application class (the profile pinned as `spring.profiles.active`) / Symfony env
   - `project_dimensions`: object `{<dimension>: [values...]}`, may be `{}`; each value list non-empty, no duplicates
   - `endpoints`: array of **Endpoint**, sorted by (`path`, `method`, `handler`)
 - **Endpoint** (keys in this order):
@@ -588,17 +588,24 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 
 ### Phase 6 — UF7 Inventory a Spring project
 
-- [ ] **Runner + boot + discovery**
+- [x] **Runner + boot + discovery**
   - Files: `base-scripts/spring/tools/access-inspector/inspect.sh`, `src/test/java/accessinspector/{AccessInspectorRun,Boot,Discovery}.java`
-- [ ] **Filter chain + method security + rules**
+  - The mode and output directory travel as environment variables `ACCESS_INSPECTOR_MODE` / `ACCESS_INSPECTOR_OUT`, not `-D` properties: Maven and Gradle both pass the environment to the test JVM, with no `systemProperty` passthrough to document. `AccessInspectorRun` is `@EnabledIfEnvironmentVariable`, so the project's own `test` skips it. Results travel through files (stdout, stderr, status) since a build only passes or fails.
+  - `Boot` carries `@SpringBootTest(classes = …)` and `@ActiveProfiles` in its project section; the context loads through `TestContextManager`, so a boot failure is reported (`cannot boot <class>: <deepest cause>`), not a crashed test. Stubs are `@MockitoBean` fields with `@Reason` (`@MockBean` is removed in Boot 4); pins go through `@DynamicPropertySource`.
+  - No declared method ⇒ `ANY`, split into concrete methods only when their classifications differ; HEAD beside every GET; `{name:regex}`/`{*name}` ⇒ `{name}`, `*`/`**` ⇒ `{wildcard}`.
+- [x] **Filter chain + method security + rules**
   - Files: `FilterChainResolver.java`, `MethodSecurity.java`, `Rules.java`
-- [ ] **Inventory + check + table + dimensions**
-  - Files: `Inventory.java`, `Dimensions.java`, `Table.java`
-- [ ] **Fixtures**
-  - Dirs: `fixtures/spring-demo/` (⚪ seed `sample/microservice-example`, add §3 AC constructs), `fixtures/spring-gradle-smoke/`
-- [ ] **Reference**: `references/spring.md` (profile heuristics, `@MockBean` stub cookbook, filter-chain internals note + Spring Security version tested).
-- [ ] **Write tests**: `InventoryCanonicalTest`, `CheckDiffTest`, `RulesPrecedenceTest`, golden via `./mvnw test` in fixture, `test_spring_check_drift`, `test_spring_gradle_smoke` (driven from `Makefile`).
-- [ ] **Verify**: `make test-spring` green; reflection access to authorization mappings guarded: on failure → every endpoint global layer `unknown` with reason "Spring Security internals changed", not a crash.
+  - Method security per family (PreAuthorize, PostAuthorize, Secured, JSR-250): the method's annotation wins over the class's, and a family counts only when its interceptor bean exists. SpEL is a builtin only as one call with quoted literals.
+- [x] **Inventory + check + table + dimensions**
+  - Files: `Inventory.java`, `Dimensions.java`, `Table.java`, `Json.java` (hand-written JSON, no Jackson on the project's classpath assumed)
+- [x] **Fixtures**
+  - Dirs: `fixtures/spring-demo/` (⚪ seed `sample/microservice-example` without Lombok, plus two chains, an interface mapping, `@RolesAllowed` with two roles, `@permissionEvaluator` with a Recognition Rule, `hasIpAddress` acknowledged, a stubbed bean failing at boot, a prod profile narrowing the actuator), `fixtures/spring-gradle-smoke/` (Gradle 9.8 wrapper)
+  - Spring Boot 4.1.1 (the latest; §Decisions said 3.x before 4 shipped). `hasRole(ADMIN)` from the seed stays the real unknown; `@permissionEvaluator` gets a Recognition Rule so the evidence path is exercised.
+- [x] **Reference**: `references/spring.md` (profile heuristics, `@MockitoBean` stub cookbook, filter-chain internals note + Spring Security 7 tested, blind spots: sample path vs a more specific matcher, context path, functional routes, WebFlux, static resources, Spring Security required, one module per run). `SKILL.md` stack row and terms column.
+- [x] **Write tests**: `InventoryCanonicalTest`, `CheckDiffTest`, `RulesPrecedenceTest`, `FilterChainResolverTest` in the Base Script (`./mvnw test`, `-Werror`); `fixtures/spring-demo/tests/golden.sh` (golden, classifications, unknowns, table, determinism, check clean/drift/missing/unreadable, missing dimension, boot failure, usage, vendored copy); `fixtures/spring-gradle-smoke/tests/golden.sh`.
+- [x] **Toolkit tooling**: `Makefile` `test-spring` in `test`, Java run in `eclipse-temurin:21-jdk` through `SPRING_RUN` (nothing installed on the host); CI job `spring` with `setup-java` 21 and `SPRING_RUN=`.
+- [x] **Verify**: `make test-spring` green; reflection access to authorization mappings guarded: on failure → every endpoint global layer `unknown` with reason "Spring Security internals changed", not a crash (`FilterChainResolverTest`).
+- **Deviations** (PR #12 review): Spring `entry` is the application class, the profile goes to `pinned` as `spring.profiles.active` (§2); Spring Security is required, a project without it fails to compile the vendored script (UF7 edge case amended, `spring.md` blind spot); URL-mapped handlers and an enabled method security family without its interceptor are reported (`best-effort` note, `unknown`) rather than dropped.
 
 ### Phase 7 — UF8 Inventory a Symfony project
 

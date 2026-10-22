@@ -5,12 +5,17 @@ UV_DJANGO_FIXTURE := uv run --locked --directory $(DJANGO_FIXTURE)
 NESTJS := skills/all-access-inspector/base-scripts/nestjs
 NESTJS_FIXTURE := fixtures/nestjs-demo
 NESTJS_JEST_FIXTURE := fixtures/nestjs-jest-smoke
+SPRING := skills/all-access-inspector/base-scripts/spring
+SPRING_FIXTURE := fixtures/spring-demo
+SPRING_GRADLE_FIXTURE := fixtures/spring-gradle-smoke
+# Java runs in a container, the Maven and Gradle caches in volumes; CI has a JDK and sets it empty.
+SPRING_RUN ?= docker run --rm -v aai-m2:/root/.m2 -v aai-gradle:/root/.gradle -v $(CURDIR):/work -w /work eclipse-temurin:21-jdk
 REVIEW := skills/all-access-inspector/review
 REVIEW_APP := apps/review
 
-.PHONY: test test-django test-nestjs test-review install-nestjs install-review lint typecheck typecheck-nestjs typecheck-review deps check-all format
+.PHONY: test test-django test-nestjs test-spring test-review install-nestjs install-review lint typecheck typecheck-nestjs typecheck-review deps check-all format
 
-test: test-django test-nestjs test-review
+test: test-django test-nestjs test-spring test-review
 
 test-django:
 	$(UV_DJANGO) pytest --cov
@@ -25,6 +30,11 @@ test-nestjs:
 	pnpm --dir $(NESTJS) exec vitest run
 	pnpm --dir $(NESTJS_FIXTURE) exec vitest run
 	pnpm --dir $(NESTJS_JEST_FIXTURE) run test:golden
+
+test-spring:
+	$(SPRING_RUN) $(SPRING)/mvnw -B -q -f $(SPRING)/pom.xml test
+	$(SPRING_RUN) $(SPRING_FIXTURE)/tests/golden.sh
+	$(SPRING_RUN) $(SPRING_GRADLE_FIXTURE)/tests/golden.sh
 
 install-review:
 	pnpm install --frozen-lockfile --dir $(REVIEW)
