@@ -81,7 +81,7 @@ Stop, and commit nothing, when there is no registry and no recognisable routing 
 
 An improvised Adapted Script has `stack` different from `base_script.stack`.
 - When the toolkit now ships a Base Script for its `stack`, offer to re-base. Vendor the new Base Script, move the project sections over, and regenerate. `coverage` then becomes what that Base Script claims, and the summary lists every endpoint whose classification moved.
-- Otherwise, refresh only the modules kept from the Base Script, and leave the rewritten ones as they are.
+- Otherwise, replace only the **kept** files with the new Base Script's. In each **extended** file, take the new Base Script's version and carry the stack's edits over, the way project sections are carried: the added builtins, and the identity fields in `build()`. Leave the **rewritten** files as they are. A refresh never resets `stack` to the Base Script's or `coverage` to `complete`: the regenerated inventory still reads `best-effort` with the same `coverage_note`.
 
 ## Blind spots
 
