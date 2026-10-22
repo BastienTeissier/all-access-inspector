@@ -24,6 +24,8 @@ final class ShopController
     {
         $this->denyAccessUnlessGranted('ROLE_MANAGER');
         $this->denyAccessUnlessGranted('ORDER_EDIT', $order);
+        // $this->denyAccessUnlessGranted('ROLE_ADMIN');
+        $note = "->denyAccessUnlessGranted('ROLE_ADMIN')";
     }
 
     private function denyAccessUnlessGranted(string $attribute, mixed $subject = null): void

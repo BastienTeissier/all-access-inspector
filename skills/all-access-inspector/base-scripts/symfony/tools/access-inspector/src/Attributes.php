@@ -73,12 +73,8 @@ final class Attributes
             return [];
         }
         $lines = array_slice(file($method->getFileName()) ?: [], $method->getStartLine() - 1, $method->getEndLine() - $method->getStartLine() + 1);
-        $source = implode('', $lines);
         $findings = [];
-        $offset = 0;
-        while (($at = strpos($source, 'denyAccessUnlessGranted(', $offset)) !== false) {
-            $call = self::call($source, $at);
-            $offset = $at + strlen($call);
+        foreach (self::calls(implode('', $lines)) as $call) {
             if (preg_match('/^denyAccessUnlessGranted\(\s*([\'"])([A-Za-z0-9_]+)\1\s*\)$/', $call, $m) && Rules::attribute($m[2]) !== null) {
                 $findings[] = new Finding($call, 'method', $call, Rules::attribute($m[2]));
             } else {
@@ -89,18 +85,49 @@ final class Attributes
         return $findings;
     }
 
-    /** The call starting at $at, up to its balanced closing parenthesis. */
-    private static function call(string $source, int $at): string
+    /**
+     * Each ->denyAccessUnlessGranted(…) or ::denyAccessUnlessGranted(…) call in the source, as written, up to its balanced
+     * closing parenthesis: read from PHP tokens, so a comment or a string naming it is no call.
+     *
+     * @return list<string>
+     */
+    private static function calls(string $source): array
     {
-        $depth = 0;
-        for ($i = strpos($source, '(', $at); $i < strlen($source); ++$i) {
-            $depth += match ($source[$i]) { '(' => 1, ')' => -1, default => 0 };
-            if ($depth === 0) {
-                return substr($source, $at, $i - $at + 1);
+        $tokens = array_values(array_filter(\PhpToken::tokenize('<?php ' . $source), fn (\PhpToken $t) => !$t->is([T_OPEN_TAG])));
+        $significant = fn (int $i, int $step) => self::next($tokens, $i, $step);
+        $calls = [];
+        foreach ($tokens as $i => $token) {
+            $before = $significant($i, -1);
+            $after = $significant($i, 1);
+            if (!$token->is(T_STRING) || $token->text !== 'denyAccessUnlessGranted' || $before === null || $after === null
+                || !$tokens[$before]->is([T_OBJECT_OPERATOR, T_NULLSAFE_OBJECT_OPERATOR, T_DOUBLE_COLON]) || $tokens[$after]->text !== '(') {
+                continue;
+            }
+            $call = '';
+            $depth = 0;
+            for ($j = $i; $j < count($tokens); ++$j) {
+                $call .= $tokens[$j]->text;
+                $depth += match ($tokens[$j]->text) { '(' => 1, ')' => -1, default => 0 };
+                if ($j >= $after && $depth === 0) {
+                    break;
+                }
+            }
+            $calls[] = $call;
+        }
+
+        return $calls;
+    }
+
+    /** @param list<\PhpToken> $tokens */
+    private static function next(array $tokens, int $i, int $step): ?int
+    {
+        for ($j = $i + $step; isset($tokens[$j]); $j += $step) {
+            if (!$tokens[$j]->is([T_WHITESPACE, T_COMMENT, T_DOC_COMMENT])) {
+                return $j;
             }
         }
 
-        return substr($source, $at);
+        return null;
     }
 
     /** Attribute arguments as PHP source: strings quoted, an Expression as new Expression('…'), a closure as closure. */

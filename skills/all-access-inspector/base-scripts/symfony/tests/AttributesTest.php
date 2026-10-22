@@ -35,7 +35,9 @@ final class AttributesTest extends TestCase
 
     public function testABodyCheckIsReadForOneAccessAttributeAndUnknownForAVoter(): void
     {
-        [, $manager, $voter] = self::findings('body', 'GET');
+        $findings = self::findings('body', 'GET');
+        self::assertCount(3, $findings, 'a call in a comment or a string is no check');
+        [, $manager, $voter] = $findings;
         self::assertEquals(new Finding("denyAccessUnlessGranted('ROLE_MANAGER')", 'method', "denyAccessUnlessGranted('ROLE_MANAGER')", 'role'), $manager);
         self::assertEquals(new Finding("denyAccessUnlessGranted('ORDER_EDIT', \$order)", 'method', "denyAccessUnlessGranted('ORDER_EDIT', \$order)", null, Attributes::BODY), $voter);
     }
