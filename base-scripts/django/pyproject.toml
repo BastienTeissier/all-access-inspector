@@ -12,6 +12,8 @@ dev = [
     "mypy>=1.8.0,<2.0",
     "jsonschema>=4.23,<5",
     "types-jsonschema>=4.23,<5",
+    "pytest-cov>=6,<7",
+    "deptry>=0.23,<1",
 ]
 
 [tool.uv]
@@ -33,3 +35,27 @@ warn_redundant_casts = true
 warn_return_any = true
 warn_unused_configs = true
 warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+# The project's own Django and DRF, untyped here: the Base Script never installs them.
+module = ["django.*", "rest_framework.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["access_inspector"]
+# Django-bound modules run only inside a booted project: the fixture golden tests cover them.
+omit = ["access_inspector/classify.py", "access_inspector/discovery.py", "access_inspector/inspect.py"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+
+[tool.deptry]
+known_first_party = ["access_inspector"]
+
+[tool.deptry.per_rule_ignores]
+# The project's own Django and DRF: the Base Script runs inside the audited project and never declares them.
+DEP001 = ["django", "rest_framework"]

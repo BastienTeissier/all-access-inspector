@@ -1,0 +1,120 @@
+"""The pinned Boot Environment: settings module, stubs and pinned settings, each with its reason."""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+from unittest import mock
+
+from access_inspector import inventory
+
+ROOT = (
+    Path(__file__).resolve().parents[2]
+)  # tools/access-inspector/ sits two levels under the project root
+
+
+@dataclass(frozen=True)
+class Stub:
+    target: (
+        str  # dotted name patched before the settings load, e.g. "config.secrets.load"
+    )
+    reason: str
+    replacement: Any = None  # None → MagicMock
+
+
+@dataclass(frozen=True)
+class Pin:
+    setting: str
+    value: Any
+    reason: str
+
+
+class BootError(Exception):
+    pass
+
+
+# --- project ---
+# Settings module; None reads the DJANGO_SETTINGS_MODULE default from manage.py, usually a dev module.
+ENTRY: str | None = None
+
+# Toward production only: stubs replace secrets, databases and external services, never the settings module, e.g.:
+# Stub("config.secrets.load", reason="secrets vault unreachable outside production", replacement=lambda: {...}),
+STUBS: list[Stub] = []
+
+# Pin("DEBUG", False, reason="production value"),
+# Pins are set after the settings module ran: a value it derived from DEBUG at import time keeps its dev value,
+# so logic like `if DEBUG: INSTALLED_APPS += [...]` needs a production ENTRY, not a pin.
+PINNED: list[Pin] = []
+# --- end project ---
+
+
+def check_config(entry: str, stubs: list[Stub], pinned: list[Pin]) -> None:
+    guarded = ["django.conf.settings", entry]
+    package = entry.rpartition(".")[0]
+    if package.rpartition(".")[2] == "settings":  # config/settings/{base,production}.py
+        guarded.append(package)
+    for stub in stubs:
+        if any(stub.target == g or stub.target.startswith(g + ".") for g in guarded):
+            raise BootError("settings module may not be stubbed")
+        if not stub.reason:
+            raise BootError(f"stub {stub.target} needs a reason")
+    for pin in pinned:
+        if pin.setting == "DEBUG" and pin.value is not False:
+            raise BootError("pin must move toward production")
+        if not pin.reason:
+            raise BootError(f"pin {pin.setting} needs a reason")
+        try:
+            json.dumps(pin.value)
+        except TypeError:
+            raise BootError(
+                f"pin {pin.setting} value is not JSON-serialisable"
+            ) from None
+
+
+def default_entry(root: Path) -> str:
+    manage = root / "manage.py"
+    found = re.search(
+        r"""setdefault\(\s*["']DJANGO_SETTINGS_MODULE["']\s*,\s*["']([\w.]+)["']""",
+        manage.read_text(encoding="utf-8") if manage.is_file() else "",
+    )
+    if found is None:
+        raise BootError(
+            f"ENTRY is not set and {manage} sets no DJANGO_SETTINGS_MODULE default"
+        )
+    return found.group(1)
+
+
+def boot() -> inventory.BootEnvironment:
+    entry = ENTRY or default_entry(ROOT)
+    check_config(entry, STUBS, PINNED)
+    sys.path.insert(0, str(ROOT))
+    os.environ["DJANGO_SETTINGS_MODULE"] = entry
+    try:
+        for stub in STUBS:
+            replacement = (
+                mock.MagicMock() if stub.replacement is None else stub.replacement
+            )
+            mock.patch(stub.target, replacement).start()
+        import django
+        from django.conf import settings
+
+        for pin in PINNED:
+            setattr(settings, pin.setting, pin.value)
+        django.setup()
+        from django.urls import get_resolver
+
+        get_resolver().url_patterns  # imports the URLconf: a broken one is a boot error
+    except Exception as exc:
+        raise BootError(
+            f"cannot boot settings module {entry}: {type(exc).__name__}: {exc}"
+        ) from exc
+    return inventory.BootEnvironment(
+        entry=entry,
+        stubs=[inventory.Stub(s.target, s.reason) for s in STUBS],
+        pinned=[inventory.Pin(p.setting, p.value, p.reason) for p in PINNED],
+    )
