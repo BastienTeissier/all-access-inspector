@@ -10,12 +10,16 @@ SPRING_FIXTURE := fixtures/spring-demo
 SPRING_GRADLE_FIXTURE := fixtures/spring-gradle-smoke
 # Java runs in a container, the Maven and Gradle caches in volumes; CI has a JDK and sets it empty.
 SPRING_RUN ?= docker run --rm -v aai-m2:/root/.m2 -v aai-gradle:/root/.gradle -v $(CURDIR):/work -w /work eclipse-temurin:21-jdk
+SYMFONY := skills/all-access-inspector/base-scripts/symfony
+SYMFONY_FIXTURE := fixtures/symfony-demo
+# PHP runs in a container, the Composer cache in a volume; CI has PHP and sets it empty.
+SYMFONY_RUN ?= docker run --rm -v aai-composer:/tmp/cache -e COMPOSER_CACHE_DIR=/tmp/cache -v $(CURDIR):/work -w /work composer:2
 REVIEW := skills/all-access-inspector/review
 REVIEW_APP := apps/review
 
-.PHONY: test test-django test-nestjs test-spring test-review install-nestjs install-review lint typecheck typecheck-nestjs typecheck-review deps check-all format
+.PHONY: test test-django test-nestjs test-spring test-symfony test-review install-nestjs install-symfony install-review lint typecheck typecheck-nestjs typecheck-review deps check-all format
 
-test: test-django test-nestjs test-spring test-review
+test: test-django test-nestjs test-spring test-symfony test-review
 
 test-django:
 	$(UV_DJANGO) pytest --cov
@@ -35,6 +39,14 @@ test-spring:
 	$(SPRING_RUN) $(SPRING)/mvnw -B -q -f $(SPRING)/pom.xml test
 	$(SPRING_RUN) $(SPRING_FIXTURE)/tests/golden.sh
 	$(SPRING_RUN) $(SPRING_GRADLE_FIXTURE)/tests/golden.sh
+
+install-symfony:
+	$(SYMFONY_RUN) composer install --no-interaction --no-progress -d $(SYMFONY)
+	$(SYMFONY_RUN) composer install --no-interaction --no-progress --no-scripts -d $(SYMFONY_FIXTURE)
+
+test-symfony:
+	$(SYMFONY_RUN) $(SYMFONY)/vendor/bin/phpunit -c $(SYMFONY)/phpunit.xml
+	$(SYMFONY_RUN) $(SYMFONY_FIXTURE)/tests/golden.sh
 
 install-review:
 	pnpm install --frozen-lockfile --dir $(REVIEW)
