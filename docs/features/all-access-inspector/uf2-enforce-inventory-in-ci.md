@@ -18,7 +18,7 @@ AAU (developer), looking at `tools/access-inspector/ci-snippet.yml`, I see a rea
 ## Success Scenario
 
 - AAU, I add an endpoint without regenerating the inventory, the CI step fails and the diff names the new endpoint with its classification.
-- AAU, I change a permission class from `IsAdminUser` to `AllowAny`, the diff shows the endpoint with authorization `rule` → `none` and authentication `required` → `optional`.
+- AAU, I change a permission class from `IsAdminUser` to `AllowAny`, the diff shows the endpoint with authorization `rule` → `none` and authentication `required` → `anonymous`, unless another check (for example a middleware Recognition Rule) still requires authentication.
 - AAU, I regenerate and commit the inventory in the same PR, the reviewer sees the inventory change beside the code change and CI is green.
 
 ## Error Scenario

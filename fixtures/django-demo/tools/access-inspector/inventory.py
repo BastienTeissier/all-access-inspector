@@ -136,6 +136,58 @@ def from_dict(data: dict[str, Any]) -> Inventory:
     )
 
 
+def check(committed: Inventory, current: Inventory) -> list[str]:
+    """Diff lines from the Committed Inventory to the regenerated one; empty when they match.
+
+    Structural, so the committed file's ordering and whitespace never count as a difference.
+    """
+    current = from_dict(json.loads(to_canonical_json(current)))  # compare as written
+    old, new = asdict(committed), asdict(current)
+    lines = [
+        f"~ {key}: {_compact(old[key])} -> {_compact(new[key])}"
+        for key in new
+        if key != "endpoints" and old[key] != new[key]
+    ]
+    before: dict[tuple[str, str, str], Endpoint] = {}
+    for e in committed.endpoints:
+        if sort_key(e) in before:
+            lines.append(f"- {e.label()} (duplicate entry)")
+        before[sort_key(e)] = e
+    after = {sort_key(e): e for e in current.endpoints}
+    for key in sorted(before.keys() | after.keys()):
+        if key not in after:
+            lines.append(f"- {before[key].label()}")
+        elif key not in before:
+            e = after[key]
+            unknown = " [unknown]" if e.is_unknown else ""
+            lines.append(
+                f"+ {e.label()} authentication={e.authentication.value}"
+                f" authorization={e.authorization.value}{unknown}"
+            )
+        else:
+            was, now = _flatten(asdict(before[key])), _flatten(asdict(after[key]))
+            lines += [
+                f"~ {after[key].label()} {name}: {_text(was.get(name))} -> {_text(now.get(name))}"
+                for name in dict.fromkeys([*was, *now])
+                if was.get(name) != now.get(name)
+            ]
+    return lines
+
+
+def _flatten(data: dict[str, Any], prefix: str = "") -> dict[str, Any]:
+    flat: dict[str, Any] = {}
+    for key, value in data.items():
+        if isinstance(value, dict):
+            flat.update(_flatten(value, f"{prefix}{key}."))
+        else:
+            flat[prefix + key] = value
+    return flat
+
+
+def _text(value: Any) -> str:
+    return value if isinstance(value, str) else _compact(value)
+
+
 def validate(inventory: Inventory) -> None:
     """Raise ValidationError naming the first offending endpoint; never write an invalid inventory."""
     if inventory.discovery_mode == "static" and inventory.coverage != "best-effort":

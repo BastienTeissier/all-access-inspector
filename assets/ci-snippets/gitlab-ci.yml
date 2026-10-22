@@ -1,0 +1,16 @@
+# Access Inspector: fail the merge request when the Committed Inventory no longer matches the code.
+# Template filled by the Agent, then proposed to the project as tools/access-inspector/ci-snippet.yml:
+#   {{setup}}   the image (and services) of the project's own test job, e.g. image: python:3.13
+#   {{install}} the project's own install command; nothing outside its stack
+#   {{check}}   the stack's check command, e.g. python tools/access-inspector/inspect.py --check
+# Exit 1: inventory drift, with a per-endpoint diff.
+# Exit 2: no inventory could be produced or read (boot failure, invalid rules or dimensions,
+#         missing or corrupt inventory.json).
+access-inspector:
+  stage: test
+  {{setup}}
+  script:
+    - |
+      {{install}}
+    - |
+      {{check}}

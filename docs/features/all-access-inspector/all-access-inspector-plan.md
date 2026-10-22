@@ -210,7 +210,7 @@ Django (`base-scripts/django/tests/`, pytest, no Django boot):
 - `test_inventory_sort`: `/a` `POST` before `/a/b` `GET`; `ANY` sorts before `DELETE`; same path + method → handler order.
 - `test_inventory_validate_dimension_keys`: endpoint with dimension key not declared → `ValidationError` naming endpoint.
 - `test_inventory_validate_coverage_note`: `best-effort` with `coverage_note: null` → error.
-- `test_check_diff`: committed vs current with one added, one removed, one authn change → diff lines `+ GET /x`, `- POST /y`, `~ GET /z authentication.value required→optional`; exit 1; identical → exit 0; no committed file → exit 2 with hint.
+- `test_check_diff`: committed vs current with one added (unknown), one removed, one authn change → lines `+ GET /x (h) authentication=unknown authorization=unknown [unknown]`, `- POST /y (h)`, `~ GET /z (h) authentication.value: required -> optional`; header fields diff as `~ project_dimensions: old -> new`; reordered/reformatted committed file → no diff (structural compare). Exit codes (0 clean, 1 drift, 2 missing/unreadable `inventory.json`) are covered by the fixture tests.
 - `test_rules_precedence`: method outcome beats class beats global beats framework-default; custom permission with no rule → `unknown`; `IsAuthenticatedOrReadOnly` GET → `optional`, POST → `required`.
 - `test_dimensions_assign_missing`: no matching rule → `MissingDimension` naming the endpoint; two matching → first (most specific) wins.
 - `test_boot_stub_rules`: a `Stub` whose target is a settings module path → `BootError("settings module may not be stubbed")`; `Pin("DEBUG", True)` → `BootError("pin must move toward production")` (allow-list: `DEBUG=False`, `ALLOWED_HOSTS`, flags listed with reason).
@@ -231,8 +231,9 @@ Cross-language:
 
 Golden files (one per fixture; run the vendored `tools/access-inspector/` inside the fixture, compare bytes with `expected/inventory.json`):
 - `test_django_golden` (`fixtures/django-demo`): asserts, through the golden file, the UF1 acceptance list: unnamed view present; duplicate-name views both present; `IsAuthenticatedOrReadOnly` split per method; `@action(permission_classes=)` and `get_permissions()` override reflected at layer `method`; admin endpoints `required`/`global`/`is_staff`; `i18n_patterns` → one endpoint per language; `@require_http_methods(["POST"])` → single `POST`; function view without restriction → `ANY`; custom `IsOwner` → `unknown` + `unknown_reason` from the fixture's Acknowledged Unknown; `TenantMiddleware` Recognition Rule → `/api/*` authentication `required` layer `global`, `rule: recognition:tenant_middleware`; `/graphql/` authorization `unknown` with reason; dimension `access_tier` on every endpoint; explicit `permission_classes` → layer `class`, inherited `REST_FRAMEWORK` default → `global`; view with no check → `builtin:no_check` at `framework-default`; non-Django callable → `unknown` on both axes with a reason naming it.
-- `test_django_check_clean`: `--check` on the fixture → exit 0, no write.
-- `test_django_check_drift`: copy fixture, change `IsAdminUser` → `AllowAny` on one view → exit 1, diff shows `~ ... authorization.value rule→none` and `authentication.value required→optional`; `inventory.json` untouched.
+- `test_django_check_clean`: `--check` against the golden, reversed and re-indented → exit 0, `inventory up to date`, no write.
+- `test_django_check_missing_inventory`: no `inventory.json` → exit 2, hint to generate it first.
+- `test_django_check_drift`: copy fixture, change the `refund` action's `IsAdminUser` → `AllowAny` → exit 1, diff shows `~ POST /api/orders/{pk}/refund/ (…) authorization.value: rule -> none`; authentication unchanged (the `TenantMiddleware` rule keeps it `required`); regenerate hint; `inventory.json` untouched.
 - `test_django_check_missing_dimension`: add a view under a prefix no dimension rule covers → exit 2 naming the endpoint.
 - `test_django_boot_failure`: fixture settings pointing to a missing secrets module without stub → exit 2, stderr contains import error and `ENTRY`; no `inventory.json` written.
 - `test_django_unknowns_output`: `--unknowns` → JSON lines containing exactly the `/graphql/`, `IsOwner` (one per served method) and non-Django callable endpoints, each with its `unknown_reason`.
@@ -303,15 +304,15 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 
 ### Phase 2 — UF2 Enforce the inventory in CI
 
-- [ ] **Check diff**
+- [x] **Check diff**
   - File: `base-scripts/django/access_inspector/inventory.py` (`check`), `inspect.py` (`--check`, exit 1, never writes)
-- [ ] **CI snippets**
+- [x] **CI snippets**
   - Files: `assets/ci-snippets/github-actions.yml`, `gitlab-ci.yml`, `generic.sh`
-  - Install project deps only, run `python tools/access-inspector/inspect.py --check`.
-- [ ] **Write tests**
+  - Templates shared by every stack: the Agent fills `{{setup}}` (the project's own toolchain setup), `{{install}}` (project deps only) and `{{check}}` (e.g. `python tools/access-inspector/inspect.py --check`).
+- [x] **Write tests**
   - Files: `base-scripts/django/tests/test_check.py`, `fixtures/django-demo/tests/test_golden.py`
-  - Tests: `test_check_diff`, `test_django_check_clean`, `test_django_check_drift`.
-- [ ] **Verify**: drift test diff output matches UF2 wording (added/removed/changed + hint).
+  - Tests: `test_check_diff`, `test_check_ignores_ordering_and_whitespace`, `test_check_header_change`, `test_django_check_clean`, `test_django_check_drift`, `test_django_check_missing_inventory`.
+- [x] **Verify**: drift test diff output matches UF2 wording (added/removed/changed + hint).
 
 ### Phase 3 — UF3 Fit a Django project with the Agent (+ UF4 dimensions, UF5 update) — first milestone
 
