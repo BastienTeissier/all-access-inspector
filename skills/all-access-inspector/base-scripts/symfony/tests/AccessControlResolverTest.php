@@ -26,6 +26,7 @@ final class AccessControlResolverTest extends TestCase
     private static function resolver(?object $accessMap, array $firewalls = ['/' => true]): AccessControlResolver
     {
         $container = new Container();
+        $container->setParameter(InspectorKernel::SECURITY, true);
         $container->set(InspectorKernel::FIREWALL_MAP, new class($firewalls) {
             public function __construct(private array $firewalls)
             {
@@ -98,6 +99,16 @@ final class AccessControlResolverTest extends TestCase
         self::assertSame('no_firewall', self::resolver(new AccessMap(), ['/api' => true])->resolve('GET', '/x')->builtin);
         self::assertEquals(new Finding('security: false', 'global', 'dev: security: false', 'security_false'), self::resolver(new AccessMap(), ['/' => false])->resolve('GET', '/x'));
         self::assertSame('no_security', (new AccessControlResolver(new Container()))->resolve('GET', '/x')->builtin);
+    }
+
+    public function testAMissingSecurityServiceWithTheBundleRegisteredIsUnknownNeverAnonymous(): void
+    {
+        $finding = self::resolver(null)->resolve('GET', '/x');
+        self::assertNull($finding->builtin);
+        self::assertSame(AccessControlResolver::INTERNALS_CHANGED . ': no service security.access_map', $finding->reason);
+        $container = new Container();
+        $container->setParameter(InspectorKernel::SECURITY, true);
+        self::assertSame(AccessControlResolver::INTERNALS_CHANGED . ': no service security.firewall.map', (new AccessControlResolver($container))->resolve('GET', '/x')->reason);
     }
 
     public function testMovedInternalsReadAsUnknownWithTheirReasonNeverACrash(): void

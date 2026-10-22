@@ -26,8 +26,13 @@ final class AccessControlResolver
 
     public function resolve(string $method, string $path): Finding
     {
-        if (!$this->container->has(InspectorKernel::FIREWALL_MAP)) {
+        if (!$this->container->hasParameter(InspectorKernel::SECURITY) || $this->container->getParameter(InspectorKernel::SECURITY) !== true) {
             return new Finding('no_security', 'framework-default', null, 'no_security');
+        }
+        foreach ([InspectorKernel::FIREWALL_MAP => 'security.firewall.map', InspectorKernel::ACCESS_MAP => 'security.access_map'] as $alias => $id) {
+            if (!$this->container->has($alias)) {
+                return new Finding('symfony-security', 'global', 'access_control', null, self::INTERNALS_CHANGED . ': no service ' . $id);
+            }
         }
         $request = Request::create($path, $method);
         try {
@@ -39,9 +44,7 @@ final class AccessControlResolver
             if (!$firewall->isSecurityEnabled()) {
                 return new Finding('security: false', 'global', $name . ': security: false', 'security_false');
             }
-            $map = $this->container->has(InspectorKernel::ACCESS_MAP)
-                ? (new \ReflectionProperty(AccessMap::class, 'map'))->getValue($this->container->get(InspectorKernel::ACCESS_MAP))
-                : [];
+            $map = (new \ReflectionProperty(AccessMap::class, 'map'))->getValue($this->container->get(InspectorKernel::ACCESS_MAP));
             foreach (array_values($map) as $i => [$matcher, $attributes]) {
                 $finding = $this->entry($i + 1, $name, $matcher, $attributes, $request);
                 if ($finding !== null) {

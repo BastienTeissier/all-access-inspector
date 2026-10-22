@@ -18,6 +18,7 @@ final class InspectorKernel extends ProjectKernel
     public const FIREWALL_MAP = 'access_inspector.firewall_map';
     public const RESOURCE_METADATA = 'access_inspector.resource_metadata';
     public const CONTROLLERS = 'access_inspector.controllers';
+    public const SECURITY = 'access_inspector.security';
 
     public static string $root = '';
     public static string $dir = '';
@@ -61,6 +62,8 @@ final class InspectorKernel extends ProjectKernel
                         $container->setAlias($alias, $id)->setPublic(true);
                     }
                 }
+                // With SecurityBundle registered, a map missing above is a moved internal, not a project without security.
+                $container->setParameter(InspectorKernel::SECURITY, $container->hasExtension('security'));
                 // A route names its controller by service id or class; the class is what the inventory shows.
                 $classes = [];
                 foreach ($container->getDefinitions() as $id => $definition) {
