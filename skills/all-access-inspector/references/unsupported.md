@@ -12,7 +12,7 @@ Choose by language first, then by how the framework routes and decides access. S
 | Express, Fastify, Koa, Hono, NestJS on Fastify without the Nest router | `nestjs` | TypeScript/JavaScript. An app object holds a route stack, and access lives in middleware and guards per route |
 | Micronaut, Quarkus, Jakarta EE (JAX-RS), Ktor | `spring` | JVM. Run from the project's test classpath, with annotations on resource methods and a security filter in front |
 | Laravel, Slim, Laminas, CakePHP | `symfony` | PHP. The kernel boots in-process, and a router plus middleware groups decide access |
-| Anything else (Rails, ASP.NET Core, Go, Phoenix…) | the Base Script of the closest routing shape | the inventory, rules, dimensions and table modules carry over unchanged; only the language changes |
+| Anything else (Rails, ASP.NET Core, Go, Phoenix…) | the Base Script of the closest routing shape | the kept files carry over, translated into the project's language; the extended and rewritten files are written for the stack, as § What stays and what you write lists them |
 
 A Base Script in another language than the project's is a template to translate, never one to run beside it.
 
