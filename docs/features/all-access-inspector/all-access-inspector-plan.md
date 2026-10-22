@@ -395,6 +395,18 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 - [x] **Write tests**: §4 NestJS unit tests, `test_nestjs_golden`, `test_nestjs_check_drift`, `test_nestjs_boot_failure`, `test_nestjs_jest_smoke`, canonical bytes shared with Python.
 - [x] **Verify**: `make test-nestjs` green; fit `~/Theodo/bootstrap-test` (`apps/backend`, `ENTRY` `AppModule`, `CONFIGURE` `configureApp`, `ENVIRON` `NODE_ENV=production` + placeholders for `DATABASE_URL`, `JWT_SECRET`, `ALLOWED_ORIGIN`): `AuthGuard` rules on `isPublic` (anonymous) and default (required), `RolesGuard` rule with `raw_metadata: roles`; expected 14 endpoints, `/auth/login`, `/auth/logout`, `/auth/refresh`, `POST /users`, `/health/*` anonymous, `/users/me` required/none, `GET /users` and `PATCH /users/{id}` required/rule; no Swagger route (`NODE_ENV=production`); `--unknowns` empty, `--check` green.
 
+### Phase 5b — UF11 View the inventory
+
+- [x] **Schema** (stays `"1"`, no user yet)
+  - File: `schema/inventory.schema.json`, `schema/samples/*`
+  - Axis `evidence` (`file:line` of the Recognition Rule; null for builtin and unknown); endpoint `acknowledged` (true iff an Ack produced the `unknown_reason`); top-level `expected_access` `{dimension: {value: {authentication: [...], authorization: [...]}}}` (no `unknown`), from `EXPECTED` in the dimensions project section.
+- [x] **Django + NestJS Base Scripts**: emit, validate and `--check` the new fields; `EXPECTED` keys and values must be declared in `DIMENSIONS`; VERSION 0.3.0; regenerate goldens; vendored copies synced.
+- [x] **Viewer**
+  - File: `viewer/inventory-viewer.html`: one self-contained file (no CDN, system fonts, light/dark), opens `inventory.json` by file picker or drag-and-drop; Triage, Zones (dimension picker, mismatch flag against `expected_access`), detail drawer with layers, rules and evidence; HEAD folded into GET when identical.
+- [x] **Skill**: `SKILL.md` step 6 proposes `EXPECTED` per value; step 7 points the user to the viewer; references and summary template mention `EXPECTED`.
+- [x] **Write tests**: unit tests for evidence, acknowledged and `EXPECTED` validation in both stacks; goldens; canonical bytes.
+- [x] **Verify**: `make check-all`, `make test`; open the viewer on `fixtures/nestjs-demo/expected/inventory.json` and `fixtures/django-demo/expected/inventory.json`.
+
 ### Phase 6 — UF7 Inventory a Spring project
 
 - [ ] **Runner + boot + discovery**

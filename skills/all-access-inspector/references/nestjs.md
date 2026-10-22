@@ -93,6 +93,8 @@ Field names are camelCase in TypeScript: `pathPrefix`, `safeAuthn`, `safeAuthz`,
 
 As for any stack: path prefix groups that share a guard or a middleware (`/api/admin/`, `/api/partner/`, `/webhooks/`, `/health`), roles named in rules (`roles=["admin"]` → `staff`), `@Public()` routes → `public`.
 
+Each value then gets an expected access in `EXPECTED`, keyed like `DIMENSIONS`: the `authentication` and `authorization` values its endpoints may have. Typical: `public` anonymous or optional, none; `customer` required, none or rule; `staff` required, rule. Derive it from what the value means; an endpoint outside it is a finding for the team, not a reason to move the endpoint.
+
 ## Linters
 
 Exclude `tools/access-inspector/` from:

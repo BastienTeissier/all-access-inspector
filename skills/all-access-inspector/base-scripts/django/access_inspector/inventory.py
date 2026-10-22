@@ -11,6 +11,10 @@ METHODS = ("ANY", "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT")
 AUTHENTICATION = ("anonymous", "optional", "required", "unknown")
 AUTHORIZATION = ("none", "rule", "unknown")
 LAYERS = ("global", "class", "method", "framework-default", None)
+EXPECTED_AXES = {
+    "authentication": ("anonymous", "optional", "required"),
+    "authorization": ("none", "rule"),
+}
 
 
 class ValidationError(Exception):
@@ -23,6 +27,7 @@ class Axis:
     layer: str | None
     raw: str | None
     rule: str | None
+    evidence: str | None = None  # the Recognition Rule's file:line; None otherwise
 
 
 @dataclass(frozen=True)
@@ -34,6 +39,7 @@ class Endpoint:
     authorization: Axis
     dimensions: dict[str, str] = field(default_factory=dict)
     unknown_reason: str | None = None
+    acknowledged: bool = False  # the unknown_reason is an Acknowledged Unknown's
 
     @property
     def is_unknown(self) -> bool:
@@ -87,6 +93,7 @@ class Inventory:
     base_script: BaseScript
     boot_environment: BootEnvironment
     project_dimensions: dict[str, list[str]]
+    expected_access: dict[str, dict[str, dict[str, list[str]]]]
     endpoints: list[Endpoint]
 
 
@@ -130,6 +137,7 @@ def from_dict(data: dict[str, Any]) -> Inventory:
             pinned=[Pin(**p) for p in boot["pinned"]],
         ),
         project_dimensions=data["project_dimensions"],
+        expected_access=data["expected_access"],
         endpoints=[
             Endpoint(
                 method=e["method"],
@@ -139,6 +147,7 @@ def from_dict(data: dict[str, Any]) -> Inventory:
                 authorization=Axis(**e["authorization"]),
                 dimensions=e["dimensions"],
                 unknown_reason=e["unknown_reason"],
+                acknowledged=e["acknowledged"],
             )
             for e in data["endpoints"]
         ],
@@ -208,6 +217,7 @@ def validate(inventory: Inventory) -> None:
             raise ValidationError(
                 f"dimension {name} needs a non-empty list of distinct non-empty values"
             )
+    _validate_expected(inventory.expected_access, inventory.project_dimensions)
     seen: set[tuple[str, str, str]] = set()
     for endpoint in inventory.endpoints:
         _validate_endpoint(endpoint, inventory.project_dimensions)
@@ -215,6 +225,29 @@ def validate(inventory: Inventory) -> None:
         if identity in seen:
             raise ValidationError(f"duplicate endpoint {endpoint.label()}")
         seen.add(identity)
+
+
+def _validate_expected(
+    expected: dict[str, dict[str, dict[str, list[str]]]],
+    project_dimensions: dict[str, list[str]],
+) -> None:
+    for dimension, values in expected.items():
+        for value, access in values.items():
+            where = f"expected access {dimension}={value!r}"
+            if value not in project_dimensions.get(dimension, []):
+                raise ValidationError(f"{where} is not a declared dimension value")
+            if set(access) != set(EXPECTED_AXES):
+                raise ValidationError(f"{where} needs exactly {sorted(EXPECTED_AXES)}")
+            for axis, allowed in EXPECTED_AXES.items():
+                listed = access[axis]
+                if (
+                    not listed
+                    or len(set(listed)) != len(listed)
+                    or not set(listed) <= set(allowed)
+                ):
+                    raise ValidationError(
+                        f"{where}: {axis} needs a non-empty list of distinct values from {allowed}"
+                    )
 
 
 def _validate_endpoint(
@@ -237,10 +270,15 @@ def _validate_endpoint(
             fail(f"{name}.layer {axis.layer!r} outside {LAYERS}")
         if (axis.value == "unknown") != (axis.rule is None):
             fail(f"{name}: an unknown value has no rule and any other value names one")
+        recognised = axis.rule is not None and axis.rule.startswith("recognition:")
+        if recognised != bool(axis.evidence):
+            fail(f"{name}: evidence is set exactly when a Recognition Rule decides")
     if endpoint.unknown_reason is not None and (
         not endpoint.unknown_reason or not endpoint.is_unknown
     ):
         fail("unknown_reason must be non-empty and sit next to an unknown value")
+    if endpoint.acknowledged and endpoint.unknown_reason is None:
+        fail("an acknowledged endpoint carries its unknown_reason")
     if set(endpoint.dimensions) != set(project_dimensions):
         fail(
             f"dimensions {sorted(endpoint.dimensions)} must equal project dimensions {sorted(project_dimensions)}"
