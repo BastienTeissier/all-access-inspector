@@ -17,10 +17,13 @@ An agent skill fits the toolkit to your project **once**. It leaves a small scri
 - [Supported stacks](#supported-stacks)
 - [Install the skill](#install-the-skill)
 - [Fit a project](#fit-a-project)
+- [Fit an unsupported stack](#fit-an-unsupported-stack)
 - [What lands in your repository](#what-lands-in-your-repository)
 - [Run the Adapted Script](#run-the-adapted-script)
 - [Read the inventory](#read-the-inventory)
 - [Look at it in the viewer](#look-at-it-in-the-viewer)
+- [Review the inventory](#review-the-inventory)
+- [Triage with the Agent](#triage-with-the-agent)
 - [Wire it into CI](#wire-it-into-ci)
 - [Living with it](#living-with-it)
 - [Edit the fitting by hand](#edit-the-fitting-by-hand)
@@ -35,7 +38,9 @@ An agent skill fits the toolkit to your project **once**. It leaves a small scri
 |---|---|---|---|
 | Django (+ Django REST framework) | `base-scripts/django/` | runtime, URL resolver | Django admin, DRF permissions, `login_required`, mixins, `LoginRequiredMiddleware` |
 | NestJS | `base-scripts/nestjs/` | runtime, Express router | Tested on NestJS 11 (CommonJS, jest) and 12 (ESM, vitest), Express adapter; runs through the project's own vitest or jest |
-| Spring, Symfony | none yet | none | The skill says so and stops |
+| Spring Boot (Spring MVC + Spring Security) | `base-scripts/spring/` | runtime, `DispatcherServlet` handler mappings | Tested on Spring Boot 4.1 (Spring Security 7), Java 21, Maven 3.9 and Gradle 9; runs as one test through the project's own build. Filter chains, `@PreAuthorize`, `@Secured`, JSR-250 |
+| Symfony (+ API Platform) | `base-scripts/symfony/` | runtime, the router | Tested on Symfony 8.1 and API Platform 5.0, PHP 8.5 (needs PHP 8.2 or later). Firewalls, `access_control`, `#[IsGranted]`, `denyAccessUnlessGranted()`, API Platform `security` |
+| Anything else (FastAPI, Flask, Express, Laravel, Rails…) | improvised from the closest one | runtime when the framework has a route registry, else static | Always `coverage: best-effort`. See [Fit an unsupported stack](#fit-an-unsupported-stack) |
 
 Base Script version: see [`skills/all-access-inspector/VERSION`](skills/all-access-inspector/VERSION) (currently 0.3.0). Every inventory records the version that produced it.
 
@@ -56,8 +61,11 @@ cp -R all-access-inspector/skills/all-access-inspector <project>/.claude/skills/
 **APM.** The repository is also an APM package (see `apm.yml`, target `claude`). You can install it as a dependency the way your team installs its other skills.
 
 **Requirements on the machine that runs the fitting:**
-- the project's own toolchain, installed: its virtualenv / `uv` / `poetry` for Django, its `node_modules` for NestJS;
-- the project able to import its code. The script boots the app but never serves it, and never needs a database.
+- the project's own toolchain, installed: its virtualenv / `uv` / `poetry` for Django, its `node_modules` for NestJS, a JDK and the Maven or Gradle build for Spring, `composer install` done for Symfony;
+- the project able to import its code. The script boots the app but never serves it, and never needs a database;
+- Spring: `spring-boot-starter-test` and Spring Security on the test classpath, and `useJUnitPlatform()` on a Gradle `test` task;
+- Symfony: `symfony/framework-bundle`. `access_control` is read only with `symfony/security-bundle`, API Platform operations only with `api-platform/core`, `.env` files only with `symfony/dotenv`. The kernel class must not be `final`, because the script extends it;
+- Node 24.2 or later for the review CLI and triage. Nothing to install.
 
 ## Fit a project
 
@@ -73,29 +81,37 @@ The Agent follows [`SKILL.md`](skills/all-access-inspector/SKILL.md). Expect a f
 
 ### 1. Detect the stack
 
-It reads `manage.py` / `pyproject.toml` / `package.json` and tells you which Base Script it uses. In a monorepo with several bootable apps, it asks which ones to fit. Each one gets its own `tools/access-inspector/` in its own app root.
+It reads `manage.py` / `pyproject.toml` (Django), `package.json` with `@nestjs/core` (NestJS), `pom.xml` / `build.gradle*` with `spring-boot` (Spring), or `composer.json` with `symfony/framework-bundle` (Symfony), and tells you which Base Script it uses. For any other stack it says no Base Script exists and improvises one ([Fit an unsupported stack](#fit-an-unsupported-stack)). In a monorepo with several bootable apps (several settings packages, Nest apps, Maven or Gradle application modules, Symfony kernels), it asks which ones to fit. Each one gets its own `tools/access-inspector/` in its own app root.
 
 If `tools/access-inspector/` already exists, it switches to [update mode](#update-the-fitting).
 
 ### 2. Vendor the Base Script
 
-It copies the Base Script into `tools/access-inspector/`. That copy, the **Adapted Script**, is yours from now on (see [ADR 0003](docs/adr/0003-adapted-script-is-vendored.md)).
+It copies the Base Script into `tools/access-inspector/`. For Spring, the Java sources go into the project's test sources as `src/test/java/accessinspector/`, so they run on the project's own classpath. That copy, the **Adapted Script**, is yours from now on (see [ADR 0003](docs/adr/0003-adapted-script-is-vendored.md)).
 
 ### 3. Pin the Boot Environment
 
 The inventory must describe what **production** serves, not what a developer's laptop serves. The Agent:
 
-- finds the production entry: the settings module production runs (Django), or the root module and the setup function `main.ts` applies (NestJS);
-- pins every environment variable that shapes routes or access to its production value (`ENVIRON`);
+- finds the production entry:
+
+  | Stack | Production entry |
+  |---|---|
+  | Django | the settings module production runs |
+  | NestJS | the root module, and the setup function `main.ts` applies |
+  | Spring | the application class `main` runs (`@SpringBootTest(classes = …)`), and the production profile (`@ActiveProfiles`) |
+  | Symfony | the kernel class (`Boot::KERNEL`), and the `APP_ENV` production runs (`Boot::ENV`); `APP_DEBUG` is always `0` |
+
+- pins every environment variable or property that shapes routes or access to its production value: `ENVIRON` (Django, NestJS), `PINNED` (Spring, through `@DynamicPropertySource`), `Boot::environ()` (Symfony; `.env.local` files never load);
 - runs the script, reads the boot error, and stubs only what blocks the boot: secrets, vault clients, databases, caches, brokers.
 
-It **never** stubs what decides routes or access checks: the settings module, a guard, a controller, the root module. A pin may only move a setting *toward* production (`DEBUG=False`, `NODE_ENV=production`). The boot file enforces part of this itself.
+It **never** stubs what decides routes or access checks: the settings module, a guard, a controller, the root module, a `SecurityFilterChain`, an `AuthorizationManager`, `security.yaml`, a voter, the kernel. A pin may only move a setting *toward* production (`DEBUG=False`, `NODE_ENV=production`). The boot file enforces part of this itself.
 
 **You will be asked** when only the team knows a value, for example a feature flag's production setting. Each boot entry carries a written reason.
 
 ### 4. Resolve every unknown
 
-The script emits `unknown` for any construct it cannot read: a custom decorator, a project permission class, a custom guard, an overridden admin site. For each one, the Agent reads the source and either:
+The script emits `unknown` for any construct it cannot read: a custom decorator, a project permission class, a custom guard, an overridden admin site, a SpEL expression calling a project bean (`@permissions.canRead(#id)`), a voter attribute (`#[IsGranted('PROJECT_VIEW')]`). For each one, the Agent reads the source and either:
 
 - writes a **Recognition Rule**: it maps the construct onto the classification and cites **evidence**, the `file:line` of the class or function that implements the check; or
 - writes an **Acknowledged Unknown** with a reason a reviewer can verify. Use this when the source cannot settle the question: an ownership check on data, GraphQL per-resolver auth, an external policy engine.
@@ -121,7 +137,31 @@ It writes `inventory.json`, checks that `--check` exits 0, and fills a CI snippe
 
 It creates a branch following your naming convention (fallback `access-inspector/fit`) and commits. The commit body lists every boot decision, rule and acknowledged unknown. It **never pushes**. It ends with a summary: endpoint counts by authentication × authorization, boot decisions, rules with their evidence, acknowledged unknowns, zones, endpoints outside their zone, and next steps.
 
+## Fit an unsupported stack
+
+For a stack with no Base Script (FastAPI, Flask, Express, Fastify, Laravel, Micronaut, Rails, ASP.NET Core, Go…), the Agent improvises an Adapted Script from the closest Base Script. It follows [`references/unsupported.md`](skills/all-access-inspector/references/unsupported.md):
+
+1. **It picks the closest Base Script**, by language first, then by routing shape, and says why: a Python framework starts from `django`, a JavaScript one from `nestjs`, a JVM one from `spring`, a PHP one from `symfony`.
+2. **It sorts every file of that Base Script into one of three lists:**
+   - *kept* byte-identical: the inventory module, the rules engine, dimensions, the table;
+   - *extended in place*: the Built-in Rules table gains the framework's own checks, and the entry writes the stack's identity (`stack`, `coverage`, `coverage_note`);
+   - *rewritten*: boot, discovery, classify and path conversion.
+
+   Every extended or rewritten file starts with a comment naming the Base Script, its version and what changed.
+3. **It reads the framework's route registry at runtime** when there is one, such as `app.routes` (FastAPI), `app.url_map` (Flask), the Express router stack, Laravel's route collection, Rails' routes or ASP.NET Core's `EndpointDataSource`. It falls back to reading the route declarations from source only when nothing can be enumerated at runtime, and says why in `coverage_note`.
+4. **It marks the inventory `coverage: best-effort`**, whatever the discovery mode. `stack` is the project's framework, and `base_script.stack` is the Base Script it derives from.
+
+The command-line contract stays the same (`--check`, `--table`, `--unknowns`, exits 0 / 1 / 2), so CI, the viewer and the review CLI work unchanged.
+
+The Agent **stops and commits nothing** when the project has neither a route registry nor recognisable routing in its source. It tells you what it looked for.
+
+In update mode, a refresh replaces only the kept files, carries the extended edits over, and never resets `stack` or `coverage`. Once the toolkit ships a Base Script for the stack, the Agent offers to re-base onto it.
+
+Expect more review work than on a supported stack. Every builtin the Agent adds cites the framework's source or documentation, and the commit names them, so check each one.
+
 ## What lands in your repository
+
+**Django and NestJS:**
 
 ```
 tools/access-inspector/
@@ -136,18 +176,47 @@ tools/access-inspector/
 └── ci-snippet.yml | .sh          # proposed CI job, for you to wire in
 ```
 
+**Spring** vendors in two places: the Java sources run as a test on your classpath, and the shell entry runs that test through your build.
+
+```
+src/test/java/accessinspector/
+├── Boot.java          # project section: @SpringBootTest(classes = …), @ActiveProfiles, PINNED, @MockitoBean stubs
+├── Rules.java         # project section: RECOGNITION, ACKNOWLEDGED
+├── Dimensions.java    # project section: DIMENSIONS, EXPECTED, RULES
+└── AccessInspectorRun.java, Discovery, Inventory …   # Base Script, do not edit
+tools/access-inspector/
+├── inspect.sh         # runs the one test through mvnw / gradlew; skipped by your own `mvn test`
+├── VERSION, inventory.json, ci-snippet.*
+```
+
+**Symfony** keeps everything under `tools/access-inspector/`:
+
+```
+tools/access-inspector/
+├── inspect.php        # entry point
+├── src/Boot.php       # project section: KERNEL, ENV, environ()
+├── src/Rules.php      # project section: recognition(), acknowledged()
+├── src/Dimensions.php # project section: DIMENSIONS, expected(), rules()
+├── src/…              # Base Script, do not edit
+├── VERSION, inventory.json, ci-snippet.*
+```
+
+The Symfony script boots a subclass of your kernel that builds its container in a temporary directory, so `var/cache/` and `config/` are never touched.
+
 Plus one exclusion line per linter or type checker. Nothing else outside `tools/access-inspector/` changes.
 
-Only the blocks between `# --- project ---` and `# --- end project ---` (`// --- project ---` in TypeScript) are project-specific. Everything else stays byte-identical to the Base Script, so a later refresh can replace it.
+Only the blocks between `# --- project ---` and `# --- end project ---` (`// --- project ---` in TypeScript, Java and PHP) are project-specific. Everything else stays byte-identical to the Base Script, so a later refresh can replace it.
 
 ## Run the Adapted Script
 
-Run from the app root: the directory that holds `manage.py` (Django) or the app's `package.json` (NestJS).
+Run from the app root: the directory that holds `manage.py` (Django), the app's `package.json` (NestJS), the application module's `pom.xml` / `build.gradle*` (Spring; in a multi-module build, the module with the application class, not the root), or `composer.json` and `src/Kernel.php` (Symfony).
 
 | Stack | Command |
 |---|---|
 | Django | `<run> python tools/access-inspector/inspect.py [option]`, with `<run>` = how the project runs Python (`uv run`, `poetry run`, `docker compose run web`, an activated venv) |
 | NestJS | `tools/access-inspector/inspect.sh [option]`: it detects vitest or jest from `package.json`, and pnpm / yarn / bun / npm from the nearest lockfile |
+| Spring | `tools/access-inspector/inspect.sh [option]`: it runs the test `accessinspector.AccessInspectorRun` through `mvnw` / `gradlew` (app root or a parent), else `mvn` / `gradle` on `PATH`. The build's log shows only when the build stops before the script reports |
+| Symfony | `php tools/access-inspector/inspect.php [option]`, on the project's own `vendor/autoload.php` |
 
 | Option | Does | Writes |
 |---|---|---|
@@ -291,6 +360,27 @@ It builds the app the first time and serves it on `http://127.0.0.1:4377`, or on
 
 To review many endpoints at once, filter the queue, then click **Review selection**. It gives one Verdict to every endpoint the filters select, written as one batch, and asks you to confirm before it replaces an open finding. **History** shows the log by batch, newest first, and the orphaned Verdicts, whose endpoint is no longer in the inventory. When an endpoint without a Verdict shares its path or its handler file with an orphan, as a renamed URL does, its panel proposes the orphan: **Copy reason** puts the orphan's reason in the form. The orphan itself stays in the log.
 
+## Triage with the Agent
+
+The deterministic tiers only see the inventory's facts. Ask the Agent to read the handlers they cannot see into:
+
+```
+/all-access-inspector triage the inventory
+```
+
+Or: *"triage the access inspector queue"*, *"triage the endpoints under /api/admin/"*.
+
+The Agent:
+1. checks that `inventory.json` is committed, and stops otherwise;
+2. reads `review status <project> --json` and keeps the rows to triage: no valid human Verdict, not decided by an authorization rule alone, and no agent event still valid for the current classification. You can narrow this to named endpoints or a path prefix;
+3. opens each handler and reads it against the stack reference's triage checklist, looking for checks in the body, writes open to anyone, and ownership taken from the request;
+4. appends one event per row in a single batch through `review append --agent`:
+   - `signal_raised`, with a one-line reason and the `file:line` it read;
+   - `triaged`, when it found nothing;
+5. prints the Signals it raised and the rows it skipped, with the reason for each.
+
+A Signal moves its row up to tier 7, "suggested by the agent". It **never clears** an endpoint: only a person gives a Verdict. The Agent changes only `reviews.jsonl`, plus `.gitattributes` on the first run. It never edits the inventory or the Adapted Script, and it never commits. Commit those files yourself.
+
 ## Wire it into CI
 
 The Agent writes `tools/access-inspector/ci-snippet.yml` (GitHub Actions or GitLab CI) or `ci-snippet.sh` (anything else), filled from your existing test job. Paste it into your pipeline yourself. A GitHub Actions job looks like:
@@ -309,7 +399,7 @@ access-inspector:
       run: uv run python tools/access-inspector/inspect.py --check
 ```
 
-CI needs the same install as your tests. It needs no database, no secrets and no LLM.
+CI needs the same install as your tests: the virtualenv, `node_modules`, the JDK and the build's cache, or `composer install`. It needs no database, no secrets and no LLM. A Spring job runs `tools/access-inspector/inspect.sh --check`; a Symfony job runs `php tools/access-inspector/inspect.php --check` after `composer install`.
 
 ## Living with it
 
@@ -414,7 +504,7 @@ export const ACKNOWLEDGED: Ack[] = [
 - A check that differs for reads: `safe_authn` / `safe_authz` (Django) or `safeAuthn` / `safeAuthz` (NestJS) apply to GET / HEAD / OPTIONS.
 - NestJS metadata (`@Public()`, `@Roles()`) is matched with `whenMetadata` and shown in `raw` with `rawMetadata`.
 
-See the stack references for how to read each kind of construct: [`references/django.md`](skills/all-access-inspector/references/django.md), [`references/nestjs.md`](skills/all-access-inspector/references/nestjs.md).
+See the stack references for how to read each kind of construct: [`references/django.md`](skills/all-access-inspector/references/django.md), [`references/nestjs.md`](skills/all-access-inspector/references/nestjs.md), [`references/spring.md`](skills/all-access-inspector/references/spring.md), [`references/symfony.md`](skills/all-access-inspector/references/symfony.md).
 
 ### Dimensions and expected access (`dimensions.py` / `dimensions.ts`)
 
@@ -440,6 +530,61 @@ RULES = [  # most specific first; every endpoint must get a value for every dime
 - `EXPECTED` may leave a value out: that zone is not checked. `unknown` is never an expected value.
 - An endpoint outside its expected access is **not** an error. The inventory records it and the viewer flags it.
 
+### Spring and Symfony
+
+The same three blocks, in Java and PHP. From the fixtures:
+
+```java
+// Boot.java
+@SpringBootTest(classes = com.acme.Application.class, webEnvironment = SpringBootTest.WebEnvironment.MOCK)
+@ActiveProfiles("prod")
+class Boot {
+  static final String PROFILE_REASON = "production profile, set by SPRING_PROFILES_ACTIVE in the Dockerfile";
+  static final List<Pin> PINNED = List.of(
+      new Pin("app.jwt-secret", "inventory-placeholder", "secret required at boot by src/main/java/com/acme/security/SecurityConfig.java:19"));
+  @MockitoBean @Reason("payment gateway reachable from production only") com.acme.payments.PaymentClient payments;
+  // …
+}
+
+// Rules.java
+static final List<Rule> RECOGNITION = List.of(
+    Rule.construct("can_read", "src/main/java/com/acme/security/PermissionEvaluator.java:10",
+        "@PreAuthorize(\"@permissionEvaluator.canRead(#id)\")", "required", "rule"),
+    Rule.pathPrefix("partner_key", "src/main/java/com/acme/PartnerKeyFilter.java:22", "/partner/", "global", "required", "none"));
+static final List<Ack> ACKNOWLEDGED = List.of(
+    Ack.construct("reachable from the office network only, which the firewall enforces as well",
+        "access(\"hasIpAddress('10.0.0.0/8')\")"));
+```
+
+```php
+// src/Boot.php
+public const KERNEL = 'App\Kernel';
+public const ENV = 'prod';
+public static function environ(): array
+{
+    return [new Env('TRUSTED_IPS', '10.0.0.0/8', 'the office network, set by the deployment; access_control reads it')];
+}
+
+// src/Rules.php
+public static function recognition(): array
+{
+    return [Rule::construct('project_view', 'src/Security/ProjectVoter.php:18', "#[IsGranted('PROJECT_VIEW', subject: 'project')]", 'required', 'rule')];
+}
+public static function acknowledged(): array
+{
+    return [Ack::construct("an admin or the book's owner deletes it; the owner is known once the book is loaded",
+        "security: is_granted('ROLE_ADMIN') or object.owner == user")];
+}
+```
+
+- `construct` is the check exactly as `--unknowns` shows it in `raw`: after `-> ` for a filter-chain or `access_control` entry, the whole `raw` for an annotation, an attribute, a `denyAccessUnlessGranted()` call or an API Platform `security` expression.
+- `evidence` is the line that decides: the method a SpEL expression calls, the voter's `voteOnAttribute`, an `AuthorizationManager`'s `check`, or the line where a filter or authenticator rejects the request.
+- A check that lets reads through: `.safe("anonymous", "none")` (Spring) or `->safe('anonymous', 'none')` (Symfony).
+- Spring stubs are `@MockitoBean` fields with a `@Reason`. `Boot` refuses a stub of a `SecurityFilterChain`, an `AuthorizationManager`, a `PermissionEvaluator`, a controller or the application class, and a pinned `spring.profiles.active`.
+- Symfony's `Boot` refuses `APP_ENV` and `APP_DEBUG` in `environ()`, a name set twice, and an entry without a reason.
+
+See [`references/spring.md`](skills/all-access-inspector/references/spring.md) and [`references/symfony.md`](skills/all-access-inspector/references/symfony.md).
+
 ## Review the fitting
 
 The human review of the fitting commit is the trust gate. Check:
@@ -460,6 +605,10 @@ The human review of the fitting commit is the trust gate. Check:
 - **Apps mounted outside the framework** (an Express router outside Nest, an ASGI sub-app) appear as unknown endpoints naming the callable.
 - **Several patterns resolving to one Django path with different checks** are unknown: the first match wins at runtime.
 - **NestJS**: `jest.config.ts` is not read (port it to `jest.config.cjs`). Only the Express adapter is supported, and Express 4 has no fixture.
+- **Spring**: the filter chain is decided for one sample request per endpoint, with every path variable set to `1`, so a matcher more specific than the mapping can decide other requests differently. Functional routes (`RouterFunction`) and URL-mapped handlers are not listed, and the inventory says `best-effort`. WebFlux is not read. `server.servlet.context-path` is not part of the paths. In a multi-module build, run the script from each application module.
+- **Symfony**: the firewall and `access_control` are decided for one sample request per endpoint. An entry with `ips`, `host` or another condition reads `unknown`. `$this->isGranted()` and checks in services are not read. The `access_decision_manager` strategy is assumed to be `affirmative`. Two routes that differ only by host show as one.
+- **Reflection on framework internals** (Spring Security, Symfony Security): when a new version moves them, the endpoints read `unknown` with `… internals changed`, never a guess. Report it to the toolkit rather than writing rules around it.
+- **Unsupported stacks** are always `best-effort`. A route added outside the registry the script reads (a hand-mounted sub-app, a raw ASGI or WSGI handler, a proxy) is missed. So is anything a gateway or reverse proxy enforces.
 - The inventory records **facts**, not verdicts: whether `anonymous` is right for an endpoint is your call. Zones and expected access are how you state the intent.
 
 The full lists are under "Blind spots" in each stack reference.
@@ -476,6 +625,12 @@ The full lists are under "Blind spots" in each stack reference.
 | Exit 2: "… not found: generate it first" | There is no `inventory.json` yet. Run the script without options. |
 | Exit 2: "cannot read … inventory.json" | A merge conflict or a hand edit broke it. Regenerate it; never hand-merge it. |
 | An inventory written by an older Base Script no longer loads | Regenerate it after a Base Script refresh, before `--check`. |
+| Spring: `cannot boot <class> with profile <profile>` | Read the deepest cause it prints. Add a `Pin` for a missing placeholder, or a `@MockitoBean` with a `@Reason` for a bean that connects at startup. See the stub cookbook in `references/spring.md`. |
+| Spring: the build fails before the script reports | A compile error, a missing `spring-boot-starter-test`, or no `useJUnitPlatform()` in Gradle. The build's log is printed. |
+| Symfony: `cannot boot … with env …: EnvNotFoundException` | Add an `Env` to `Boot::environ()`: a placeholder for a secret or a DSN, the production value for anything that shapes access. |
+| Symfony: `<kernel> is final` | The script extends your kernel. Ask the team to drop `final`. |
+| Symfony: `class App\Kernel not found` | Run `composer install`, or check `config/bundles.php` for a dev-only bundle registered for `all`. |
+| An endpoint reads `… internals changed` | The framework moved an internal the script reads. Report it to the toolkit; do not write a rule around it. |
 | Viewer: "not an Endpoint Inventory this viewer reads" | The file predates Base Script 0.3.0 or is not an inventory. Regenerate it. |
 
 ## Work on the toolkit
@@ -486,22 +641,28 @@ skills/all-access-inspector/
 ├── VERSION
 ├── base-scripts/django/         # Base Script + tests (uv, pytest, ruff, mypy)
 ├── base-scripts/nestjs/         # Base Script + tests (pnpm, vitest, tsc)
+├── base-scripts/spring/         # Base Script + tests (Maven, JUnit), Java 21
+├── base-scripts/symfony/        # Base Script + tests (Composer, PHPUnit)
+├── review/                      # review CLI (Node 24, zero dependencies)
 ├── references/                  # per-stack knowledge the Agent reads
 ├── schema/                      # inventory.schema.json + canonical samples
 ├── assets/                      # CI snippet templates, summary template
 └── viewer/inventory-viewer.html
-fixtures/                        # django-demo, nestjs-demo, nestjs-jest-smoke: fitted projects with golden inventories
+fixtures/                        # django-demo, nestjs-demo, nestjs-jest-smoke, spring-demo, spring-gradle-smoke, symfony-demo:
+                                 # fitted projects with golden inventories
+apps/review/                     # the Next.js review app
 docs/                            # ADRs, PRD, user flows, plan
 CONTEXT.md                       # the domain glossary
 ```
 
 ```bash
-make install-nestjs   # once
+make install-nestjs install-symfony install-review   # once
 make test             # Base Script unit tests + golden tests on every fixture
 make check-all        # ruff, mypy, deptry, tsc
 make format
 ```
 
+- Java and PHP run in Docker (`eclipse-temurin:21-jdk`, `composer:2`) with their caches in volumes, so you need neither on your machine. CI, which has them, sets `SPRING_RUN=` and `SYMFONY_RUN=` to run them directly.
 - The fixtures vendor the Base Script. A golden test checks that each vendored copy matches the Base Script outside its project section, so copy changes into the fixtures.
 - After a change in classification, regenerate the fixture goldens (`expected/inventory.json`) by running the script in the fixture and moving the output into `expected/`. Review that diff like any inventory diff.
 - Keep the Core Classification closed. A new framework construct becomes a Built-in Rule, never a new value.
