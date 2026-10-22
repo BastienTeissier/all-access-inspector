@@ -2,7 +2,10 @@
 
 import { type Axis, type SeenAxis, classification, keyText } from '../../../skills/all-access-inspector/review/src/inventory.ts';
 import type { Logged } from '../../../skills/all-access-inspector/review/src/log.ts';
+import type { Orphan } from '../../../skills/all-access-inspector/review/src/replay.ts';
 import type { Projected } from '../lib/projection.ts';
+import { eventText } from '../lib/history.ts';
+import { saveVerdict } from './actions.ts';
 import { VerdictForm } from './verdict-form.tsx';
 
 const FIELDS = ['value', 'layer', 'raw', 'rule', 'evidence'] as const;
@@ -35,17 +38,11 @@ const AxisTable = ({ title, axis, project }: { title: string; axis: Axis; projec
 
 const seenText = (a: SeenAxis) => [a.value, a.layer, a.raw, a.rule].map(v => v ?? '—').join(' · ');
 
-const eventText = (e: Logged): string =>
-  e.event === 'reviewed'
-    ? `${e.verdict}${e.severity ? ` (${e.severity})` : ''}: ${e.reason}`
-    : e.event === 'signal_raised'
-      ? `signal: ${e.reason} (${e.evidence})`
-      : 'triaged: no signal';
-
 export const EndpointPanel = ({
   row,
   siblings,
   history,
+  candidates,
   project,
   filters,
   close,
@@ -53,6 +50,8 @@ export const EndpointPanel = ({
   row: Projected;
   siblings: Projected[];
   history: Logged[];
+  /** Orphaned Verdicts this endpoint may have been, renamed or moved. */
+  candidates: Orphan[];
   project: string;
   filters: string;
   close: string;
@@ -155,7 +154,14 @@ export const EndpointPanel = ({
           <p className="muted">No event yet.</p>
         )}
       </section>
-      <VerdictForm key={keyText(row.key)} keyText={keyText(row.key)} filters={filters} reason={outdated?.reason} />
+      <VerdictForm
+        key={keyText(row.key)}
+        save={saveVerdict}
+        hidden={{ key: keyText(row.key), filters }}
+        submit="Save verdict"
+        reason={outdated?.reason}
+        candidates={candidates.map(o => ({ endpoint: `${o.key[0]} ${o.key[1]} (${o.key[2]})`, verdict: o.verdict.verdict, reason: o.verdict.reason }))}
+      />
     </aside>
   );
 };

@@ -4,6 +4,8 @@ import { execFileSync } from 'node:child_process';
 import { copyFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { load } from '../../../../skills/all-access-inspector/review/src/project.ts';
+
 const REPO = join(import.meta.dirname, '..', '..', '..', '..');
 export const CLI = join(REPO, 'skills', 'all-access-inspector', 'review', 'src', 'cli.ts');
 export const INVENTORY = join(REPO, 'fixtures', 'django-demo', 'expected', 'inventory.json');
@@ -26,8 +28,12 @@ export const reset = (): void => copyFileSync(SAMPLE_LOG, join(dir(), 'tools', '
 
 export const review = (...args: string[]): string => execFileSync(process.execPath, [CLI, ...args], { cwd: dir(), env: env(), encoding: 'utf8' });
 
-export const status = (): { key: string[]; tier: number; state: string; method: string; path: string; verdict: { verdict: string; reason: string } | null }[] =>
+export const status = (): { key: string[]; tier: number; state: string; method: string; head: boolean; path: string; handler: string; verdict: { verdict: string; reason: string } | null }[] =>
   review('status', dir(), '--json')
     .trimEnd()
     .split('\n')
     .map(l => JSON.parse(l));
+
+/** The orphaned Verdicts, read as the CLI reads them. */
+export const orphans = (): { method: string; path: string; reason: string }[] =>
+  load(dir()).orphans.map(o => ({ method: o.key[0], path: o.key[1], reason: o.verdict.reason }));

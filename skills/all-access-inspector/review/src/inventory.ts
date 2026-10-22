@@ -79,6 +79,9 @@ export const keyOf = (e: { method: string; path: string; handler: string }): Key
 
 export const keyText = (key: Key): string => JSON.stringify(key);
 
+/** The file of a project handler (`file:line`), or null for a framework handler (a dotted name), which serves unrelated paths. */
+export const handlerFile = (handler: string): string | null => (/:\d+$/.test(handler) ? handler.replace(/:\d+$/, '') : null);
+
 export const isUnknown = (e: Endpoint): boolean => e.authentication.value === 'unknown' || e.authorization.value === 'unknown';
 
 /** Same rule as the viewer's `fold`: a HEAD equal to its GET in everything but the method is shown as that GET. */
