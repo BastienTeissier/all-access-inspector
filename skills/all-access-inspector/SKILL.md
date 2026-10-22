@@ -11,22 +11,22 @@ The workflow below is the same for every stack. What differs (file names, the co
 
 ## Stack terms
 
-| Term | Django | NestJS | Spring |
-|---|---|---|---|
-| app root | the directory that holds `manage.py` | the directory that holds the app's `package.json` | the module that holds the application class and its `pom.xml` / `build.gradle*` |
-| `<inspect>` | `<run> python tools/access-inspector/inspect.py` | `tools/access-inspector/inspect.sh` | `tools/access-inspector/inspect.sh` |
-| boot / rules / dimensions file | `boot.py`, `rules.py`, `dimensions.py` | `boot.ts`, `rules.ts`, `dimensions.ts` | `Boot.java`, `Rules.java`, `Dimensions.java` in `src/test/java/accessinspector/` |
-| project section | `# --- project ---` … `# --- end project ---` | `// --- project ---` … `// --- end project ---` | `// --- project ---` … `// --- end project ---` |
-| production entry | `ENTRY`, the settings module | `ENTRY`, the root module, and `CONFIGURE`, the setup function | `@SpringBootTest(classes = …)`, the application class, and `@ActiveProfiles` |
-| boot entries | `Env`, `Stub`, `Pin` | `Env`, `Stub` | `Pin`, `@MockitoBean` fields with `@Reason` |
-| rule fields | `path_prefix`, `safe_authn`, `safe_authz` | `pathPrefix`, `safeAuthn`, `safeAuthz`, `whenMetadata`, `rawMetadata` | `Rule.construct`, `Rule.pathPrefix`, `.safe(…)`, `.raw(…)` |
+| Term | Django | NestJS | Spring | Symfony |
+|---|---|---|---|---|
+| app root | the directory that holds `manage.py` | the directory that holds the app's `package.json` | the module that holds the application class and its `pom.xml` / `build.gradle*` | the directory that holds `composer.json` and `src/Kernel.php` |
+| `<inspect>` | `<run> python tools/access-inspector/inspect.py` | `tools/access-inspector/inspect.sh` | `tools/access-inspector/inspect.sh` | `php tools/access-inspector/inspect.php` |
+| boot / rules / dimensions file | `boot.py`, `rules.py`, `dimensions.py` | `boot.ts`, `rules.ts`, `dimensions.ts` | `Boot.java`, `Rules.java`, `Dimensions.java` in `src/test/java/accessinspector/` | `src/Boot.php`, `src/Rules.php`, `src/Dimensions.php` in `tools/access-inspector/` |
+| project section | `# --- project ---` … `# --- end project ---` | `// --- project ---` … `// --- end project ---` | `// --- project ---` … `// --- end project ---` | `// --- project ---` … `// --- end project ---` |
+| production entry | `ENTRY`, the settings module | `ENTRY`, the root module, and `CONFIGURE`, the setup function | `@SpringBootTest(classes = …)`, the application class, and `@ActiveProfiles` | `Boot::KERNEL`, the kernel class, and `Boot::ENV`, its `APP_ENV` |
+| boot entries | `Env`, `Stub`, `Pin` | `Env`, `Stub` | `Pin`, `@MockitoBean` fields with `@Reason` | `Env` in `Boot::environ()` |
+| rule fields | `path_prefix`, `safe_authn`, `safe_authz` | `pathPrefix`, `safeAuthn`, `safeAuthz`, `whenMetadata`, `rawMetadata` | `Rule.construct`, `Rule.pathPrefix`, `.safe(…)`, `.raw(…)` | `Rule::construct`, `Rule::pathPrefix`, `->safe(…)`, `->withRaw(…)` |
 
 Paths below are relative to this skill's base directory (`<skill>/`) or to the app root.
 
 ## Hard rules
 
 - Never edit a CI pipeline file. Propose `tools/access-inspector/ci-snippet.*` and let the team wire it in.
-- Never stub what decides the routes or the access checks: the settings module (Django); a guard, a controller, an `APP_GUARD` or the root module (NestJS); a `SecurityFilterChain`, an `AuthorizationManager`, a controller or the application class (Spring). Stub only secrets, databases and external services. A pin or an `ENVIRON` value may move a setting only toward production. The boot file enforces part of this (the reference's stub cookbook says which part); the other `ENVIRON` values are on you. Do not work around its checks.
+- Never stub what decides the routes or the access checks: the settings module (Django); a guard, a controller, an `APP_GUARD` or the root module (NestJS); a `SecurityFilterChain`, an `AuthorizationManager`, a controller or the application class (Spring); `security.yaml`, a voter, a controller or the kernel (Symfony). Stub only secrets, databases and external services. A pin or an `ENVIRON` value may move a setting only toward production. The boot file enforces part of this (the reference's stub cookbook says which part); the other `ENVIRON` values are on you. Do not work around its checks.
 - Never write a Recognition Rule without evidence: a `file:line` in the project that shows the construct the rule interprets. Never map a construct whose meaning the source does not settle. Ask instead, or acknowledge it as unknown.
 - Never fall back to static discovery because the boot is hard. Static discovery is admissible only when the routing layer cannot be enumerated at runtime.
 - Never claim `coverage: complete` for a stack that has no Base Script.
@@ -44,11 +44,11 @@ Paths below are relative to this skill's base directory (`<skill>/`) or to the a
 | `manage.py`, or `django` in `pyproject.toml` / `requirements*.txt` / `setup.cfg` | Django | `<skill>/base-scripts/django/`, reference `<skill>/references/django.md` |
 | `@nestjs/core` in `package.json` | NestJS | `<skill>/base-scripts/nestjs/`, reference `<skill>/references/nestjs.md` |
 | `pom.xml` / `build.gradle*` with `spring-boot` | Spring | `<skill>/base-scripts/spring/`, reference `<skill>/references/spring.md` |
-| `composer.json` with `symfony/framework-bundle` | Symfony | not shipped in this version |
+| `composer.json` with `symfony/framework-bundle` | Symfony | `<skill>/base-scripts/symfony/`, reference `<skill>/references/symfony.md` |
 
 Tell the user which Base Script you use. If none is shipped for the stack, say so and stop. Read the stack's reference before going further.
 
-If the repository holds several bootable applications (several Django settings packages, several Nest apps in a monorepo, several application modules of a Maven or Gradle build), ask which ones to fit. Each one gets its own `tools/access-inspector/` in its own app root.
+If the repository holds several bootable applications (several Django settings packages, several Nest apps in a monorepo, several application modules of a Maven or Gradle build, several Symfony kernels), ask which ones to fit. Each one gets its own `tools/access-inspector/` in its own app root.
 
 ### 2. Existing fitting?
 

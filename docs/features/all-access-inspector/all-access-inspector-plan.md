@@ -609,15 +609,21 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 
 ### Phase 7 — UF8 Inventory a Symfony project
 
-- [ ] **Entry + boot + dropped config**
-  - Files: `base-scripts/symfony/tools/access-inspector/inspect.php`, `boot.php`, `config/packages/access_inspector.yaml`
-- [ ] **Discovery + access control + attributes + API Platform**
-  - Files: `src/Discovery.php` (⚪), `AccessControlResolver.php`, `Attributes.php`, `ApiPlatform.php` (⚪), `Rules.php`
-- [ ] **Inventory + check + table + dimensions**: `Inventory.php`, `Dimensions.php`, `Table.php`
-- [ ] **Fixture**: `fixtures/symfony-demo/` per §3 AE (latest Symfony 7.x, API Platform 4.x; Spring fixture on latest Spring Boot 3.x).
-- [ ] **Reference**: `references/symfony.md`.
-- [ ] **Write tests**: PHPUnit mirrors + golden + `test_symfony_check_drift` + metadata-factory-absent case.
-- [ ] **Verify**: `make test-symfony` green.
+- [x] **Entry + boot**
+  - Files: `base-scripts/symfony/tools/access-inspector/inspect.php`, `src/{Boot,Kernel,Run}.php`
+  - No `config/packages/access_inspector.yaml` dropped into the project: `InspectorKernel` extends the project's kernel (aliased `ProjectKernel`), builds into a fresh temp dir (never `var/cache/`), and a compiler pass publishes `security.access_map`, `security.firewall.map` and API Platform's metadata factory, resolving alias chains. A `final` kernel is a boot failure.
+  - `Boot::KERNEL` + `Boot::ENV` (`APP_DEBUG=0`) + `Boot::environ()` (`Env` with reason; `APP_ENV`/`APP_DEBUG`, duplicates, empty reason refused). `ENVIRON` set first, then `.env` and `.env.<ENV>` through Dotenv, never a `*.local` file. Router and access maps read during boot, so a missing `%env()%` is a boot failure. `boot_environment.entry` = the env; `stubs`, `pinned` always `[]`.
+- [x] **Discovery + access control + attributes + API Platform**
+  - Files: `src/Discovery.php`, `AccessControlResolver.php`, `Attributes.php`, `ApiPlatform.php`, `Rules.php`
+  - First route per method + path wins (host, condition, requirements ignored); no methods ⇒ `ANY` (remaining concrete methods behind earlier routes); HEAD beside GET; `{!x}` ⇒ `{x}`.
+  - `access_control`: `path` + `methods` evaluated on the sample request; any other condition (`ips`, `host`…) or a custom request matcher ⇒ `unknown` with reason. Multi-role entry read with the default affirmative strategy. Reflection failure ⇒ `unknown` "Symfony Security internals changed".
+  - `#[IsGranted]` (class then method, `methods:` filter) + Sensio `#[Security]` + `denyAccessUnlessGranted()` in the action body (one literal ⇒ builtin, else `unknown` "voter check in handler body"). API Platform `security` / `securityPostDenormalize`, handler = resource file at its single `new <Operation>(` line.
+- [x] **Inventory + check + table + dimensions**: `Inventory.php`, `Dimensions.php`, `Table.php`, `Json.php`, checked against the shared samples.
+- [x] **Fixture**: `fixtures/symfony-demo/`, Symfony 8.1 + API Platform 5.0 (the latest; §AE said 7.x / 4.x). `ips: '%env(TRUSTED_IPS)%'` entry pinned through `environ()` and acknowledged, `PROJECT_VIEW` voter with a Recognition Rule, `denyAccessUnlessGranted('EDIT', $post)` left the real unknown.
+- [x] **Reference**: `references/symfony.md` (kernel subclass, `.env` loading, `EnvNotFoundException` cookbook, blind spots: route dedup by path + method, sample request, `.{_format}`, `isGranted()` in bodies, branch-blind body check, affirmative strategy, custom matchers, shell env overrides `.env`, non-final kernel). `SKILL.md` stack row and terms column.
+- [x] **Write tests**: `InventoryCanonicalTest`, `CheckDiffTest`, `RulesPrecedenceTest`, `AccessControlResolverTest`, `AttributesTest`, `DiscoveryTest` (PHPUnit 12, fail on warning/deprecation); `fixtures/symfony-demo/tests/golden.sh` (bash, like Spring, not PHPUnit: golden, classifications, unknowns, table, determinism, check clean/drift/missing/unreadable, missing dimension, boot failure, environ refusal, API Platform metadata absent, usage, vendored copy).
+- [x] **Toolkit tooling**: `Makefile` `install-symfony`, `test-symfony` in `test`, PHP run in `composer:2` through `SYMFONY_RUN`; CI job `symfony` with `setup-php` 8.5 and `SYMFONY_RUN=`.
+- [x] **Verify**: `make test-symfony` green.
 
 ### Phase 8 — UF9 Fit an unsupported stack
 
