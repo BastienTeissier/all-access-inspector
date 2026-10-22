@@ -61,8 +61,12 @@ final class DiscoveryTest extends TestCase
         self::assertSame(['ANY /x app.missing::run'], self::discover(['a' => new Route('/x', ['_controller' => 'app.missing::run'])]));
     }
 
-    public function testSamplesFillEveryParameter(): void
+    public function testASampleIsAPathTheRouteMatchesOrNoneWhenNoValueSatisfiesItsRequirements(): void
     {
-        self::assertSame('/api/books/1.1', Discovery::sample('/api/books/{id}.{_format}'));
+        self::assertSame('/api/books/1', Discovery::sample(new Route('/api/books/{id}.{_format}', ['_format' => null])));
+        self::assertSame('/en/admin', Discovery::sample(new Route('/{_locale}/admin', [], ['_locale' => 'en|fr'])));
+        self::assertSame('/fr/admin', Discovery::sample(new Route('/{_locale}/admin', ['_locale' => 'fr'], ['_locale' => 'en|fr'])));
+        self::assertSame('/shop/a/1', Discovery::sample(new Route('/shop/{slug}/{id}', [], ['slug' => '[a-z-]+'])));
+        self::assertNull(Discovery::sample(new Route('/x/{id}', [], ['id' => '\\d{3}'])));
     }
 }

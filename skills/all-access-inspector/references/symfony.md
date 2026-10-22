@@ -20,7 +20,7 @@ The script runs on the project's own `vendor/autoload.php`: run `composer instal
 | `method` | `#[IsGranted]` on the action, `$this->denyAccessUnlessGranted(…)` in its body, an API Platform operation's own `security` / `securityPostDenormalize` | yes |
 | `framework-default` | no SecurityBundle (`no_security`), no firewall matching (`no_firewall`), no `access_control` entry matching (`no_access_control`) | yes |
 
-The firewall and the entry are decided for one sample request per endpoint, every route parameter filled with `1`. An entry's `path` and `methods` are evaluated; any other condition (`ips`, `host`, `port`, `attributes`, `route`) cannot be decided for every request, so the entry reads `unknown` with `access_control entry N applies only when … match; other requests go on to the next entry`. `raw` reads `<firewall>: <path regex> [<methods>] <conditions> -> <attributes>`, e.g. `main: ^/admin -> ROLE_ADMIN`.
+The firewall and the entry are decided for one sample request per endpoint, generated as the router would: defaults kept, an optional trailing parameter (`.{_format}`) left out, and every other parameter set to a literal its requirement lists (`{_locale}` with `en|fr` ⇒ `en`), else `1` or `a`. When no such value satisfies a requirement, the endpoint reads `unknown` with `no request path satisfies the route requirements…`. An entry's `path` and `methods` are evaluated; any other condition (`ips`, `host`, `port`, `attributes`, `route`) cannot be decided for every request, so the entry reads `unknown` with `access_control entry N applies only when … match; other requests go on to the next entry`. `raw` reads `<firewall>: <path regex> [<methods>] <conditions> -> <attributes>`, e.g. `main: ^/admin -> ROLE_ADMIN`.
 
 `#[IsGranted]` on the class and on the action both apply, each filtered by its `methods:`. A `denyAccessUnlessGranted()` call is read from the action's own body only.
 
@@ -82,7 +82,7 @@ An entry or attribute listing several roles is read as the default `affirmative`
 ## Blind spots
 
 - Routes are listed once per path and method, the first route winning, as the router matches them. `host`, `condition`, `schemes` and requirements are ignored, so two routes differing only by host show as one.
-- The firewall and `access_control` are decided for one sample request; a `path` regex more specific than the route (`^/api/users/1`) decides other requests differently.
+- The firewall and `access_control` are decided for one sample request; a `path` regex more specific than the route (`^/api/users/1`, `^/en/`) decides other requests differently.
 - API Platform's optional `.{_format}` suffix stays in the path.
 - `$this->isGranted()`, `AuthorizationCheckerInterface` and `Security::isGranted()` in a handler or a service are not read; nor is a `denyAccessUnlessGranted()` call outside the action's own body. A call inside a branch counts as always applied. Grep handlers flagged `anonymous` or `none` for `isGranted(`, `AccessDeniedException`, `getUser()`.
 - The `access_decision_manager` strategy is assumed `affirmative` (the default). With `unanimous` or `consensus`, a multi-role entry may be stricter than the inventory shows.

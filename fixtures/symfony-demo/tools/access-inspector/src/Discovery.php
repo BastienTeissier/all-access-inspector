@@ -5,16 +5,20 @@ declare(strict_types=1);
 namespace AccessInspector;
 
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\Routing\Exception\ExceptionInterface;
+use Symfony\Component\Routing\Generator\UrlGenerator;
+use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\Route;
+use Symfony\Component\Routing\RouteCollection;
 
-/** One route as the inventory lists it; findings are the checks of the route itself, by method. */
+/** One route as the inventory lists it; findings are the checks of the route itself, by method; no sample when none fits. */
 final class Mapped
 {
     /** @param \Closure(string): list<Finding> $findings */
     public function __construct(
         public readonly string $method,
         public readonly string $path,
-        public readonly string $sample,
+        public readonly ?string $sample,
         public readonly string $handler,
         public readonly \Closure $findings,
     ) {
@@ -41,7 +45,7 @@ final class Discovery
                 : self::controller($route, $controllers, $root);
             foreach (self::unanswered($methods, $path, $seen) as $method) {
                 $seen[$method . ' ' . $path] = true;
-                $mapped[] = new Mapped($method, $path, self::sample($path), $handler, $findings);
+                $mapped[] = new Mapped($method, $path, self::sample($route), $handler, $findings);
             }
         }
 
@@ -75,10 +79,53 @@ final class Discovery
         return preg_replace('/\{!/', '{', $path);
     }
 
-    /** A request path the route matches, each parameter filled with 1. */
-    public static function sample(string $path): string
+    public const UNSAMPLED = 'no request path satisfies the route requirements, so the firewall and access_control cannot be decided';
+
+    /**
+     * A request path the route matches, as the router generates it: defaults kept (an optional trailing parameter such as
+     * .{_format} left out), every other parameter the default, a literal its requirement lists, 1 or a. Null when no
+     * such value satisfies a requirement.
+     */
+    public static function sample(Route $route): ?string
     {
-        return preg_replace('/\{[^}]+\}/', '1', $path);
+        $routes = new RouteCollection();
+        $routes->add('sample', $route);
+        $generator = new UrlGenerator($routes, new RequestContext());
+        $variables = $route->compile()->getVariables();
+        foreach ([array_filter($variables, fn (string $name) => !$route->hasDefault($name)), $variables] as $names) {
+            $parameters = [];
+            foreach ($names as $name) {
+                $value = self::value($route, $name);
+                if ($value === null) {
+                    return null;
+                }
+                $parameters[$name] = $value;
+            }
+            try {
+                return $generator->generate('sample', $parameters);
+            } catch (ExceptionInterface) {
+                // a default the requirement rejects: try again with every parameter filled
+            }
+        }
+
+        return null;
+    }
+
+    private static function value(Route $route, string $name): ?string
+    {
+        $requirement = $route->getRequirement($name);
+        if ($requirement === null) {
+            return '1';
+        }
+        $default = $route->getDefault($name);
+        $literals = preg_match('/^[\w.-]+(\|[\w.-]+)*$/', $requirement) ? explode('|', $requirement) : [];
+        foreach ([...(is_scalar($default) ? [(string) $default] : []), ...$literals, '1', 'a'] as $candidate) {
+            if (preg_match('{^(?:' . $requirement . ')$}sDu', $candidate) === 1) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     /** The path relative to the project for a file of its own, null for a vendor or unknown file. */

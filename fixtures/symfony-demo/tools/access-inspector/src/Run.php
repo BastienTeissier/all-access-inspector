@@ -18,7 +18,10 @@ final class Run
         $resolver = new AccessControlResolver($container);
         $endpoints = [];
         foreach (Discovery::discover($container, $root) as $mapped) {
-            $findings = fn (string $method) => [$resolver->resolve($method, $mapped->sample), ...($mapped->findings)($method)];
+            $global = fn (string $method) => $mapped->sample === null
+                ? new Finding('route requirements', 'global', 'access_control', null, Discovery::UNSAMPLED)
+                : $resolver->resolve($method, $mapped->sample);
+            $findings = fn (string $method) => [$global($method), ...($mapped->findings)($method)];
             foreach (Rules::methods($findings, $mapped->method, $mapped->path) as $method) {
                 // an ANY kept whole classifies the same for every method
                 $resolved = Rules::resolveAccess($findings($method === 'ANY' ? 'GET' : $method), $method, $mapped->path);
