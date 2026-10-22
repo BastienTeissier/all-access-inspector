@@ -1,6 +1,6 @@
 name: all-access-inspector
 version: 1.0.0
-description: APM project for all-access-inspector
+description: Fit the All Access Inspector to a project to inventory every HTTP endpoint with its authentication and authorization
 author: BastienTeissier
 # Which agent platforms to deploy to.
 # Resolution order: --target flag > this field > auto-detect from filesystem.

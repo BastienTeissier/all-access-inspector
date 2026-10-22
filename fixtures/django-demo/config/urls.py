@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.conf.urls.i18n import i18n_patterns
 from django.urls import include, path
 from shop import api, views
@@ -14,3 +15,6 @@ urlpatterns = [
     path("graphql/", views.graphql),
     path("hooks/ping", views.PingHook()),  # not a Django view
 ] + i18n_patterns(path("about/", views.about, name="about"))
+
+if settings.SHOP_ENV == "local":  # absent in production: ENVIRON pins SHOP_ENV
+    urlpatterns += [path("dev/mail-preview/", views.mail_preview)]

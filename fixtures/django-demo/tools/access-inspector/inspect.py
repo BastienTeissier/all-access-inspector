@@ -41,11 +41,12 @@ def build(environment: inventory.BootEnvironment) -> inventory.Inventory:
             # Django serves whichever pattern matches the request first: not readable from the path alone.
             unreadable = f"{len(variants)} URL patterns resolve to this path with different access checks"
             findings = [rules.Finding(handler, None, None, unreadable)]
-        authn, authz, reason = rules.resolve(findings, method, path)
-        endpoint = inventory.Endpoint(method, path, handler, authn, authz, {}, reason)
-        endpoints.append(
-            dataclasses.replace(endpoint, dimensions=dimensions.assign(endpoint))
-        )
+        for m in rules.methods(findings, method, path):
+            authn, authz, reason = rules.resolve(findings, m, path)
+            endpoint = inventory.Endpoint(m, path, handler, authn, authz, {}, reason)
+            endpoints.append(
+                dataclasses.replace(endpoint, dimensions=dimensions.assign(endpoint))
+            )
     return inventory.Inventory(
         schema_version=inventory.SCHEMA_VERSION,
         stack="django",
