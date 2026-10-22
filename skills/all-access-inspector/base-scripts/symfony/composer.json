@@ -1,0 +1,16 @@
+{
+    "description": "Symfony Base Script toolkit: tools/access-inspector/ is what a project vendors; tests/ runs its unit tests and stays here.",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^12.0",
+        "symfony/security-bundle": "^8.0",
+        "symfony/expression-language": "^8.0"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}
