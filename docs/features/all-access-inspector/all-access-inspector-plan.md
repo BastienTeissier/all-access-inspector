@@ -627,11 +627,11 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 
 ### Phase 8 — UF9 Fit an unsupported stack
 
-- [ ] **Closest-stack reference**
+- [x] **Closest-stack reference**
   - File: `references/unsupported.md`
-  - Table framework → Base Script; route-registry hints (FastAPI `app.routes`, Flask `app.url_map`, Express `app._router.stack`, Laravel `Route::getRoutes()`); mandatory `coverage: best-effort` + note.
-- [ ] **Skill branch**: `SKILL.md` step 1 fallback; refuse when no registry and no recognisable routing.
-- [ ] **Verify (manual)**: fit a small FastAPI sample; inventory validates, `best-effort`, `--check` green.
+  - Table framework → Base Script; what is kept (inventory, rules engine, dimensions, table, entry) vs rewritten (boot, discovery, classify, framework builtins, each file headed with its origin); route-registry hints (FastAPI `iter_route_contexts(app.routes)`, Flask `app.url_map`, Express `app._router.stack` / `app.router.stack`, Fastify, Laravel `getRoutes()`, Micronaut, JAX-RS, Rails, ASP.NET Core, Go); mandatory `coverage: best-effort` + note naming stack and Base Script; update mode re-base when `stack` ≠ `base_script.stack`.
+- [x] **Skill branch**: `SKILL.md` step 1 fallback row, improvise or refuse when no registry and no recognisable routing, the byte-identical hard rule's exception, update mode pointer.
+- [x] **Verify (manual)**: improvised a FastAPI 0.159 sample (3 routes: open, `Depends(current_user)` parameter, router-level `require_admin`) from the django Base Script: inventory validates against the schema, `best-effort`, `--check` green, drift on removing a dependency exits 1. Found that `include_router()` is no longer flattened in `app.routes`; `unsupported.md` says to use `iter_route_contexts`.
 
 ---
 ## 6. Context: Current System Architecture

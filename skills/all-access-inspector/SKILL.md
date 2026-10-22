@@ -30,7 +30,7 @@ Paths below are relative to this skill's base directory (`<skill>/`) or to the a
 - Never write a Recognition Rule without evidence: a `file:line` in the project that shows the construct the rule interprets. Never map a construct whose meaning the source does not settle. Ask instead, or acknowledge it as unknown.
 - Never fall back to static discovery because the boot is hard. Static discovery is admissible only when the routing layer cannot be enumerated at runtime.
 - Never claim `coverage: complete` for a stack that has no Base Script.
-- Never remove or rename a Core Classification field or value. Project-specific code goes only in the project section of the boot, rules and dimensions files. Everything else stays byte-identical to the Base Script, so a later refresh can replace it.
+- Never remove or rename a Core Classification field or value. Project-specific code goes only in the project section of the boot, rules and dimensions files. Everything else stays byte-identical to the Base Script, so a later refresh can replace it. An improvised Adapted Script (unsupported stack) is the one exception: it rewrites boot, discovery and classify, each file headed with the Base Script it derives from, and keeps the rest as `unsupported.md` says.
 - Change nothing outside `tools/access-inspector/` except one entry per linter or type checker the project runs, excluding `tools/access-inspector/` from it. The vendored files follow the toolkit's style, not the project's.
 - Never commit on the current branch, and never push.
 - Write to the Review Log (`tools/access-inspector/reviews.jsonl`) only through `review append --agent`, and never give a Verdict: only a human does.
@@ -45,8 +45,9 @@ Paths below are relative to this skill's base directory (`<skill>/`) or to the a
 | `@nestjs/core` in `package.json` | NestJS | `<skill>/base-scripts/nestjs/`, reference `<skill>/references/nestjs.md` |
 | `pom.xml` / `build.gradle*` with `spring-boot` | Spring | `<skill>/base-scripts/spring/`, reference `<skill>/references/spring.md` |
 | `composer.json` with `symfony/framework-bundle` | Symfony | `<skill>/base-scripts/symfony/`, reference `<skill>/references/symfony.md` |
+| anything else (FastAPI, Flask, Express, Laravel, Rails…) | unsupported | the closest Base Script, per `<skill>/references/unsupported.md` |
 
-Tell the user which Base Script you use. If none is shipped for the stack, say so and stop. Read the stack's reference before going further.
+Tell the user which Base Script you use. If none is shipped for the stack, name the stack, say no Base Script exists for it, and follow `<skill>/references/unsupported.md`: pick the closest Base Script and say which and why, improvise the Adapted Script from it, and mark the inventory `coverage: best-effort`. Stop, with nothing committed, when the project has no route registry and no recognisable routing. Read the stack's reference (for an unsupported stack, `unsupported.md` and the closest stack's) before going further.
 
 If the repository holds several bootable applications (several Django settings packages, several Nest apps in a monorepo, several application modules of a Maven or Gradle build, several Symfony kernels), ask which ones to fit. Each one gets its own `tools/access-inspector/` in its own app root.
 
@@ -109,7 +110,7 @@ Exit 2 naming an endpoint means a rule misses it. Extend the rules; never add a 
 
 A project already has `tools/access-inspector/`. Keep what the team decided and work only on what changed.
 
-1. Read the project sections of the boot, rules and dimensions files. Each of these entries survives byte for byte unless step 2 or 4 changes it.
+1. Read the project sections of the boot, rules and dimensions files. Each of these entries survives byte for byte unless step 2 or 4 changes it. If the inventory's `stack` differs from `base_script.stack`, the Adapted Script was improvised: follow `<skill>/references/unsupported.md` § Update mode, which offers a re-base once a Base Script exists for the stack.
 2. Check each Recognition Rule's evidence. If the file and line still show the construct, keep the rule. If the construct moved, grep for it and update the evidence. If it is gone, remove the rule and give the reason in the summary.
 3. Run `<inspect> --check`.
    - Exit 2 from a boot error: fix the boot file under the same toward-production rule, without touching rules.
