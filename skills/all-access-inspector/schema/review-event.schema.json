@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/BastienTeissier/all-access-inspector/schema/review-event.schema.json",
+  "title": "Review Event",
+  "description": "One line of tools/access-inspector/reviews.jsonl: a human Verdict, or an agent Signal or Triage, on one endpoint as it was seen.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["v", "at", "by", "event", "batch", "endpoint", "seen", "verdict", "reason"],
+      "properties": {
+        "v": { "$ref": "#/$defs/v" },
+        "at": { "$ref": "#/$defs/at" },
+        "by": { "$ref": "#/$defs/by" },
+        "event": { "const": "reviewed" },
+        "batch": { "$ref": "#/$defs/batch" },
+        "endpoint": { "$ref": "#/$defs/endpoint" },
+        "seen": { "$ref": "#/$defs/seen" },
+        "verdict": { "enum": ["safe", "accepted", "finding"] },
+        "reason": { "$ref": "#/$defs/text", "maxLength": 2000 },
+        "severity": { "enum": ["low", "medium", "high"] },
+        "ticket": { "type": "string", "pattern": "^https?://\\S+$" },
+        "until": { "type": "string", "pattern": "^\\d{4}-\\d\\d-\\d\\d$" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "verdict": { "const": "finding" } } },
+          "then": { "required": ["severity"], "not": { "required": ["until"] } },
+          "else": { "not": { "anyOf": [{ "required": ["severity"] }, { "required": ["ticket"] }] } }
+        },
+        {
+          "if": { "properties": { "verdict": { "const": "safe" } } },
+          "then": { "not": { "required": ["until"] } }
+        }
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["v", "at", "by", "event", "batch", "endpoint", "seen", "reason", "evidence"],
+      "properties": {
+        "v": { "$ref": "#/$defs/v" },
+        "at": { "$ref": "#/$defs/at" },
+        "by": { "$ref": "#/$defs/by" },
+        "event": { "const": "signal_raised" },
+        "batch": { "$ref": "#/$defs/batch" },
+        "endpoint": { "$ref": "#/$defs/endpoint" },
+        "seen": { "$ref": "#/$defs/seen" },
+        "reason": { "$ref": "#/$defs/text", "maxLength": 500 },
+        "evidence": { "type": "string", "pattern": "^[^\\s:]+:\\d+$" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["v", "at", "by", "event", "batch", "endpoint", "seen"],
+      "properties": {
+        "v": { "$ref": "#/$defs/v" },
+        "at": { "$ref": "#/$defs/at" },
+        "by": { "$ref": "#/$defs/by" },
+        "event": { "const": "triaged" },
+        "batch": { "$ref": "#/$defs/batch" },
+        "endpoint": { "$ref": "#/$defs/endpoint" },
+        "seen": { "$ref": "#/$defs/seen" }
+      }
+    }
+  ],
+  "$defs": {
+    "v": { "const": 1 },
+    "at": { "type": "string", "pattern": "^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\dZ$" },
+    "by": { "$ref": "#/$defs/text", "maxLength": 320 },
+    "text": { "type": "string", "minLength": 1, "pattern": "\\S" },
+    "batch": { "type": ["string", "null"], "pattern": "^b-[0-9a-f]{8}$" },
+    "endpoint": {
+      "description": "Review Key: method, path, handler with its trailing :<line> stripped.",
+      "type": "array",
+      "prefixItems": [{ "type": "string" }, { "type": "string" }, { "type": "string" }],
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "axis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "layer", "raw", "rule"],
+      "properties": {
+        "value": { "type": "string" },
+        "layer": { "type": ["string", "null"] },
+        "raw": { "type": ["string", "null"] },
+        "rule": { "type": ["string", "null"] }
+      }
+    },
+    "seen": {
+      "description": "The endpoint as the event saw it; inside is null when no expectation applies or an axis is unknown.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handler", "authentication", "authorization", "inside"],
+      "properties": {
+        "handler": { "type": "string" },
+        "authentication": { "$ref": "#/$defs/axis" },
+        "authorization": { "$ref": "#/$defs/axis" },
+        "inside": { "type": ["boolean", "null"] }
+      }
+    }
+  }
+}

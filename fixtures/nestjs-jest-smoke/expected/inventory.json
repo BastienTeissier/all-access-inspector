@@ -1,0 +1,16 @@
+{
+  "schema_version": "1",
+  "stack": "nestjs",
+  "discovery_mode": "runtime",
+  "coverage": "complete",
+  "coverage_note": null,
+  "base_script": {"stack": "nestjs", "version": "0.3.0"},
+  "boot_environment": {"entry": "src/app.module.js#AppModule", "environ": [{"name": "NODE_ENV", "value": "production", "reason": "production value"}], "stubs": [], "pinned": []},
+  "project_dimensions": {},
+  "expected_access": {},
+  "endpoints": [
+    {"method": "POST", "path": "/orders", "handler": "AppController.create", "authentication": {"value": "required", "layer": "method", "raw": "ApiKeyGuard", "rule": "recognition:api_key", "evidence": "src/api-key.guard.ts:5"}, "authorization": {"value": "none", "layer": "method", "raw": "ApiKeyGuard", "rule": "recognition:api_key", "evidence": "src/api-key.guard.ts:5"}, "dimensions": {}, "unknown_reason": null, "acknowledged": false},
+    {"method": "GET", "path": "/ping", "handler": "AppController.ping", "authentication": {"value": "anonymous", "layer": "framework-default", "raw": null, "rule": "builtin:no_check", "evidence": null}, "authorization": {"value": "none", "layer": "framework-default", "raw": null, "rule": "builtin:no_check", "evidence": null}, "dimensions": {}, "unknown_reason": null, "acknowledged": false},
+    {"method": "HEAD", "path": "/ping", "handler": "AppController.ping", "authentication": {"value": "anonymous", "layer": "framework-default", "raw": null, "rule": "builtin:no_check", "evidence": null}, "authorization": {"value": "none", "layer": "framework-default", "raw": null, "rule": "builtin:no_check", "evidence": null}, "dimensions": {}, "unknown_reason": null, "acknowledged": false}
+  ]
+}

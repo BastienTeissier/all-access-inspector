@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inventory Viewer</title>
+<style>
+/* One self-contained page: no network, system fonts. Open it in a browser and load an inventory.json. */
+:root{
+  --bg:#f5f7fa; --panel:#ffffff; --sunk:#eef2f6; --line:#d8dfe8; --fg:#0f172a; --muted:#5b6b82; --accent:#0e7490;
+  --open:#b45309; --open-bg:#fdf1de; --optional:#0f766e; --optional-bg:#dcf3ef; --signin:#0369a1; --signin-bg:#e0f0fb;
+  --role:#6d28d9; --role-bg:#efe7fd; --unknown:#be123c; --unknown-bg:#fde4ea; --ack:#64748b; --ack-bg:#e9edf2;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;
+  --sans:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#020617; --panel:#0b1324; --sunk:#111c33; --line:#1e2b45; --fg:#e2e8f0; --muted:#94a3b8; --accent:#22d3ee;
+  --open:#fbbf24; --open-bg:#2a2010; --optional:#2dd4bf; --optional-bg:#0b2a28; --signin:#38bdf8; --signin-bg:#0c2236;
+  --role:#a78bfa; --role-bg:#1f1838; --unknown:#fb7185; --unknown-bg:#2d1220; --ack:#94a3b8; --ack-bg:#172033; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#020617; --panel:#0b1324; --sunk:#111c33; --line:#1e2b45; --fg:#e2e8f0; --muted:#94a3b8; --accent:#22d3ee;
+  --open:#fbbf24; --open-bg:#2a2010; --optional:#2dd4bf; --optional-bg:#0b2a28; --signin:#38bdf8; --signin-bg:#0c2236;
+  --role:#a78bfa; --role-bg:#1f1838; --unknown:#fb7185; --unknown-bg:#2d1220; --ack:#94a3b8; --ack-bg:#172033; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:24px 48px}
+code,.mono{font-family:var(--mono);font-size:.86em}
+h1,h2,h3{text-wrap:balance;margin:0}
+.muted{color:var(--muted)}
+button{font:inherit}
+button:focus-visible,[data-s]:focus-visible,label.btn:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+/* header */
+.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.brand{display:flex;gap:10px;align-items:center;font-family:var(--mono);font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.top h1{font-family:var(--mono);font-size:1.5rem;letter-spacing:-.02em;margin-top:4px;overflow-wrap:anywhere}
+.facts{display:flex;flex-wrap:wrap;gap:6px;font-family:var(--mono);font-size:.75rem;align-items:center}
+.fact{border:1px solid var(--line);border-radius:4px;padding:2px 8px;color:var(--muted);background:var(--panel);overflow-wrap:anywhere}
+.fact b{color:var(--fg);font-weight:500}
+.btn{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.8rem;border:1px solid var(--line);background:var(--panel);color:var(--fg);padding:6px 12px;border-radius:6px;cursor:pointer}
+.btn input{position:absolute;opacity:0;width:1px;height:1px}
+.btn.primary{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+/* tabs */
+.tabs{display:flex;gap:4px;margin-block:20px 8px;overflow-x:auto;padding-bottom:2px;align-items:center}
+.tab{font-family:var(--mono);font-size:.8rem;border:1px solid var(--line);background:var(--panel);color:var(--muted);padding:8px 14px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.tab[aria-selected="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.pitch{color:var(--muted);margin:0 0 20px;max-width:75ch}
+.note-box{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:.9rem}
+/* atoms */
+.chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.72rem;font-weight:500;padding:2px 8px;border-radius:999px;white-space:nowrap;width:fit-content}
+.l-open{color:var(--open);background:var(--open-bg)} .l-optional{color:var(--optional);background:var(--optional-bg)}
+.l-signin{color:var(--signin);background:var(--signin-bg)} .l-role{color:var(--role);background:var(--role-bg)}
+.l-unknown{color:var(--unknown);background:var(--unknown-bg)} .l-ack{color:var(--ack);background:var(--ack-bg)}
+.m{font-family:var(--mono);font-size:.7rem;font-weight:700;padding:1px 6px;border-radius:3px;background:var(--sunk);color:var(--fg)}
+.path{font-family:var(--mono);font-size:.9rem;overflow-wrap:anywhere}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.foot{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);font-family:var(--mono);font-size:.75rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 20px}
+/* overview */
+.verdict{font-size:1.3rem;font-weight:500;max-width:60ch;margin:0 0 20px}
+.verdict em{font-style:normal;color:var(--unknown)}
+.bucket{margin-bottom:26px}
+.bucket h3{font-size:1rem;display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.bucket h3 .n{font-family:var(--mono);color:var(--muted);font-weight:400}
+.bucket p.hint{margin:0 0 10px;color:var(--muted);font-size:.9rem;max-width:75ch}
+.row{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:6px 20px;padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--c);border-radius:6px;margin-bottom:6px}
+.row .why{font-size:.88rem;color:var(--muted);overflow-wrap:anywhere}
+.row .why code,.final code{color:var(--fg)}
+.sub{color:var(--muted);font-family:var(--mono);font-size:.78rem;overflow-wrap:anywhere}
+@media (max-width:640px){.row{grid-template-columns:1fr}}
+/* zones */
+.picker{display:flex;gap:8px;align-items:center;margin-bottom:14px;font-family:var(--mono);font-size:.8rem}
+.picker select{font:inherit;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+.zones{display:grid;gap:12px}
+.zone{border:1px dashed var(--line);border-radius:10px;padding:14px;background:var(--panel)}
+.zone header{display:flex;gap:6px 12px;align-items:baseline;flex-wrap:wrap;margin-bottom:10px}
+.zone header h3{font-family:var(--mono);font-size:1rem}
+.doors{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr));gap:8px}
+.door{border:1px solid var(--line);border-top:4px solid var(--c);border-radius:6px;padding:10px;background:var(--bg);display:grid;gap:4px;align-content:start}
+.door.flag{outline:2px solid var(--unknown);outline-offset:1px}
+.door .note{font-size:.8rem;color:var(--muted)}
+.door.flag .note,.tier.flag{color:var(--unknown)}
+/* clickable endpoints, detail drawer */
+[data-s]{cursor:pointer}
+.row[data-s]:hover,.door[data-s]:hover{border-color:var(--accent)}
+.scrim{position:fixed;inset:0;background:rgb(2 6 23 / .45);z-index:10}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(580px,100%);z-index:11;background:var(--panel);border-left:1px solid var(--line);
+  padding:calc(env(safe-area-inset-top,0px) + 18px) 20px calc(env(safe-area-inset-bottom,0px) + 24px);overflow-y:auto;box-shadow:-12px 0 32px rgb(0 0 0 / .18)}
+.drawer .close{float:right;margin-left:12px}
+.drawer h2{font-family:var(--mono);font-size:1.1rem;margin-top:8px;overflow-wrap:anywhere}
+.drawer .tier{margin-top:10px;font-size:.88rem}
+@media (prefers-reduced-motion:no-preference){.drawer{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px);opacity:.6}}}
+.chain{display:grid;margin-top:16px}
+.step{display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.step .lyr{font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding-top:3px}
+.step .what{display:grid;gap:6px;overflow-wrap:anywhere}
+.step.off .what{color:var(--muted)}
+.final{margin-top:12px;padding:12px;border-radius:6px;background:var(--sunk);display:flex;gap:10px;flex-wrap:wrap;align-items:center;overflow-wrap:anywhere}
+/* empty state */
+.drop{margin-top:32px;border:2px dashed var(--line);border-radius:12px;padding:40px 20px;text-align:center;background:var(--panel);display:grid;gap:14px;justify-items:center}
+.drop h2{font-size:1.2rem}
+.drop p{margin:0;max-width:60ch;color:var(--muted)}
+body.dragging::after{content:'Drop inventory.json';position:fixed;inset:12px;border:3px dashed var(--accent);border-radius:14px;display:grid;place-items:center;
+  font-family:var(--mono);font-size:1.2rem;color:var(--accent);background:color-mix(in srgb,var(--bg) 85%,transparent);z-index:20}
+.error{color:var(--unknown);font-family:var(--mono);font-size:.85rem;overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="brand"><span class="dot"></span>All Access Inspector</div>
+      <h1 id="title">Endpoint Inventory</h1>
+    </div>
+    <div class="facts" id="facts"></div>
+  </header>
+  <nav class="tabs" role="tablist" id="tabs" hidden></nav>
+  <p class="pitch" id="pitch"></p>
+  <main id="view"></main>
+  <footer class="foot">
+    <span>reads tools/access-inspector/inventory.json; nothing leaves this page</span>
+    <span>regenerate it with the Adapted Script, check it in CI with --check</span>
+  </footer>
+</div>
+
+<script>
+'use strict';
+/* ---- state ---- */
+let INV = null, FILE = '', EPS = [], current = 'overview', dim = null, sel = null, error = '';
+
+const LEVELS = {
+  unknown:{label:"Can't tell", cls:'l-unknown', c:'var(--unknown)', g:'?',
+    hint:'The script could not read these checks. Each needs a Recognition Rule or an Acknowledged Unknown before the inventory can vouch for it.'},
+  ack:{label:'Acknowledged unknown', cls:'l-ack', c:'var(--ack)', g:'≈',
+    hint:'The team recorded why the answer cannot be read from the code (it depends on the data or the request). Check the reason holds.'},
+  open:{label:'Open to anyone', cls:'l-open', c:'var(--open)', g:'○',
+    hint:'Anyone can call these without signing in. Confirm each one is meant to be public.'},
+  optional:{label:'Sign-in optional', cls:'l-optional', c:'var(--optional)', g:'◔',
+    hint:'Anyone can call these; a signed-in user may see more.'},
+  role:{label:'Role required', cls:'l-role', c:'var(--role)', g:'●',
+    hint:'Signed-in users who also pass a rule: a role, a permission, a tenant or ownership check.'},
+  signin:{label:'Sign-in required', cls:'l-signin', c:'var(--signin)', g:'◐',
+    hint:'Any signed-in user, whatever their role.'},
+};
+const ORDER = Object.keys(LEVELS);
+const LAYERS = ['global','class','method','framework-default'];
+
+/* ---- helpers ---- */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const isUnknown = e => e.authentication.value === 'unknown' || e.authorization.value === 'unknown';
+const level = e => {
+  if (isUnknown(e)) return e.acknowledged ? 'ack' : 'unknown';
+  // Who may call it decides first: a rule on an endpoint anyone can call does not make it sign-in only.
+  if (e.authentication.value === 'anonymous') return 'open';
+  if (e.authentication.value === 'optional') return 'optional';
+  return e.authorization.value === 'rule' ? 'role' : 'signin';
+};
+const chip = l => `<span class="chip ${LEVELS[l].cls}">${LEVELS[l].g} ${LEVELS[l].label}</span>`;
+const methods = e => e.methods.map(m => `<span class="m">${esc(m)}</span>`).join(' ');
+const ruleName = r => r ? esc(r.replace(/^(builtin|recognition):/, '')) : '';
+const ruleKind = r => !r ? '' : r.startsWith('recognition:') ? 'Recognition Rule' : 'built-in rule';
+const evidence = a => a.evidence ? ` <code>${esc(a.evidence)}</code>` : '';
+const check = a => a.raw ? `<code>${esc(a.raw)}</code>` : a.layer === 'framework-default' ? 'no check' : 'the framework';
+
+/** A HEAD row identical to its GET row (same handler and classification) is shown as one row; nothing else is merged. */
+function fold(endpoints) {
+  const out = [], bySig = new Map();
+  for (const e of endpoints) {
+    const sig = JSON.stringify([e.method === 'HEAD' ? 'GET' : e.method, e.path, e.handler, e.authentication, e.authorization, e.dimensions, e.unknown_reason, e.acknowledged]);
+    const prev = bySig.get(sig);
+    if (prev) { prev.methods.push(e.method); continue; }
+    const row = {...e, id: String(out.length), methods: [e.method], level: level(e)};
+    bySig.set(sig, row); out.push(row);
+  }
+  return out;
+}
+
+/** One sentence: why this endpoint got its level. */
+function why(e) {
+  if (e.level === 'unknown' || e.level === 'ack') {
+    return e.unknown_reason ? esc(e.unknown_reason)
+      : `No reason recorded: ${check(e.authentication.value === 'unknown' ? e.authentication : e.authorization)} is not read by the script yet.`;
+  }
+  const a = e.authentication, z = e.authorization;
+  const who = a.value === 'anonymous' ? 'lets anyone in' : a.value === 'optional' ? 'lets anyone in and reads the user when there is one' : 'asks for a signed-in user';
+  let s = `${check(a)} ${who} (${ruleKind(a.rule)} <code>${ruleName(a.rule)}</code>)${evidence(a)}`;
+  if (z.value === 'rule') {
+    s += z.raw === a.raw && z.rule === a.rule ? ', and checks a rule' : `, then ${check(z)} checks a rule (<code>${ruleName(z.rule)}</code>)${evidence(z)}`;
+  }
+  return s;
+}
+
+/* ---- expected access per zone ---- */
+const expectation = (d, value) => INV.expected_access?.[d]?.[value] || null;
+/** How an endpoint compares with its zone: a status (only 'outside' is a finding) and a note to show. */
+function zoneCheck(e, d) {
+  const x = expectation(d, e.dimensions[d]);
+  if (!x) return {status: 'unchecked', note: ''};
+  if (e.level === 'ack') return {status: 'ack', note: 'Acknowledged: cannot be checked against the zone'};
+  if (e.level === 'unknown') return {status: 'unknown', note: 'Nobody can tell whether it matches the zone'};
+  const off = [];
+  if (!x.authentication.includes(e.authentication.value)) off.push(`authentication ${e.authentication.value}, zone expects ${x.authentication.join(' or ')}`);
+  if (!x.authorization.includes(e.authorization.value)) off.push(`authorization ${e.authorization.value}, zone expects ${x.authorization.join(' or ')}`);
+  return off.length ? {status: 'outside', note: off.join('; ')} : {status: 'ok', note: ''};
+}
+const flagged = (e, d) => zoneCheck(e, d).status === 'outside';
+const describe = x => x ? `expects authentication ${esc(x.authentication.join(' or '))}, authorization ${esc(x.authorization.join(' or '))}` : 'no expected access declared';
+
+/* ---- views ---- */
+const pick = e => `data-s="${e.id}" role="button" tabindex="0" aria-label="Details for ${esc(e.methods.join(' '))} ${esc(e.path)}"`;
+
+function overview() {
+  const by = l => EPS.filter(e => e.level === l);
+  const n = by('unknown').length, o = by('open').length + by('optional').length, a = by('ack').length;
+  let h = `<p class="verdict">${EPS.length} endpoint${EPS.length === 1 ? '' : 's'}. ` +
+    `${n ? `<em>${n} can't be read</em>, ` : 'Every check is read, '}${o} open to anyone, ${EPS.length - n - o - a} need a signed-in user` +
+    `${a ? `, ${a} acknowledged` : ''}.</p>`;
+  if (!EPS.length) h += '<p class="muted">The inventory lists no endpoint.</p>';
+  for (const l of ORDER) {
+    const list = by(l);
+    if (!list.length) continue;
+    h += `<section class="bucket"><h3>${chip(l)} <span class="n">${list.length}</span></h3><p class="hint">${LEVELS[l].hint}</p>`;
+    h += list.map(e => `<div class="row" ${pick(e)} style="--c:${LEVELS[l].c}"><div>${methods(e)} <span class="path">${esc(e.path)}</span>` +
+      `<div class="sub">${esc(e.handler)}</div></div><div class="why">${why(e)}</div></div>`).join('');
+    h += '</section>';
+  }
+  return h;
+}
+
+function zones() {
+  const dims = Object.keys(INV.project_dimensions);
+  if (!dims.length) return '<p class="note-box">This inventory declares no Project Dimension. The skill proposes them in its step 6; once the team confirms some, endpoints are grouped by zone here.</p>';
+  if (!dims.includes(dim)) dim = dims[0];
+  let h = dims.length > 1
+    ? `<label class="picker">Dimension <select id="dim">${dims.map(d => `<option ${d === dim ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select></label>` : '';
+  h += `<div class="legend">${ORDER.map(chip).join('')}</div><div class="zones">`;
+  for (const value of INV.project_dimensions[dim]) {
+    const list = EPS.filter(e => e.dimensions[dim] === value);
+    const bad = list.filter(e => flagged(e, dim)).length;
+    h += `<section class="zone"><header><h3>${esc(value)}</h3><span class="muted">${list.length} endpoint${list.length === 1 ? '' : 's'} · ${describe(expectation(dim, value))}</span>` +
+      `${bad ? `<span class="chip l-unknown">${bad} outside the zone</span>` : ''}</header><div class="doors">`;
+    h += list.map(e => {
+      const {note} = zoneCheck(e, dim);
+      return `<div class="door ${flagged(e, dim) ? 'flag' : ''}" ${pick(e)} style="--c:${LEVELS[e.level].c}"><div>${methods(e)}</div>` +
+        `<span class="path">${esc(e.path)}</span>${chip(e.level)}${note ? `<span class="note">${esc(note)}</span>` : ''}</div>`;
+    }).join('') || '<span class="muted">No endpoint.</span>';
+    h += '</div></section>';
+  }
+  return h + '</div>';
+}
+
+function detail(e) {
+  const a = e.authentication, z = e.authorization;
+  const line = (name, x) => `<div><b>${name}:</b> ${check(x)} → <b>${esc(x.value)}</b>` +
+    `${x.rule ? ` <span class="sub">${ruleKind(x.rule)} ${ruleName(x.rule)}</span>` : ''}${evidence(x)}</div>`;
+  const step = lyr => {
+    const parts = [];
+    if (a.layer === lyr) parts.push(line('Who', a));
+    // One check that lets a signed-in user in and checks nothing more decides both axes: show it once, as Who.
+    if (z.layer === lyr && !(a.layer === lyr && z.raw === a.raw && z.rule === a.rule && z.value === 'none')) parts.push(line('What', z));
+    if (!parts.length) return lyr === 'framework-default' ? '' : `<div class="step off"><div class="lyr">${lyr}</div><div class="what">nothing decides here</div></div>`;
+    return `<div class="step"><div class="lyr">${lyr}</div><div class="what">${parts.join('')}</div></div>`;
+  };
+  const outside = [a, z].filter(x => x.layer === null).map(x => x === a ? line('Who', a) : line('What', z));
+  const chain = LAYERS.map(step).join('') + (outside.length ? `<div class="step"><div class="lyr">unplaced</div><div class="what">${outside.join('')}</div></div>` : '');
+  const dims = Object.entries(e.dimensions).map(([d, v]) => {
+    const {note} = zoneCheck(e, d);
+    return `<div class="tier ${flagged(e, d) ? 'flag' : ''}">${esc(d)} <b>${esc(v)}</b>${note ? ` · ${esc(note)}` : ''}</div>`;
+  }).join('');
+  const reason = e.unknown_reason ? `<div class="step"><div class="lyr">${e.acknowledged ? 'acknowledged' : 'reason'}</div><div class="what">${esc(e.unknown_reason)}</div></div>` : '';
+  return `<div class="scrim" data-close></div><aside class="drawer" role="dialog" aria-modal="true" aria-label="Endpoint details">
+    <button class="btn close" data-close>Close ✕</button><div>${methods(e)}</div><h2>${esc(e.path)}</h2>
+    <div class="sub">${esc(e.handler)}</div>${dims}
+    <div class="chain"><div class="step"><div class="lyr">request</div><div class="what">arrives at <span class="path">${esc(e.path)}</span></div></div>
+    ${chain}${reason}<div class="step"><div class="lyr">handler</div><div class="what"><code>${esc(e.handler)}</code></div></div></div>
+    <div class="final">${chip(e.level)} <span>${why(e)}</span></div></aside>`;
+}
+
+function empty() {
+  return `<section class="drop"><h2>Open an Endpoint Inventory</h2>
+    <p>Pick <code>tools/access-inspector/inventory.json</code> from a fitted project, or drop it anywhere on this page. The file is read in your browser and never sent anywhere.</p>
+    <label class="btn primary">Choose inventory.json<input type="file" accept=".json,application/json" data-file></label>
+    ${error ? `<p class="error" role="alert">${esc(error)}</p>` : ''}</section>`;
+}
+
+const VIEWS = [
+  {id:'overview', name:'Overview', render:overview, pitch:'What needs a human first, worst bucket on top. Click an endpoint to see how its access was decided.'},
+  {id:'zones', name:'Zones', render:zones, pitch:'Endpoints grouped by the values of a Project Dimension. An outlined endpoint is outside the access its zone expects.'},
+];
+
+/* ---- render ---- */
+function header() {
+  const b = INV.boot_environment;
+  const facts = [
+    ['stack', `${INV.stack} · Base Script ${INV.base_script.version}`], ['coverage', INV.coverage], ['discovery', INV.discovery_mode],
+    ['entry', b.entry], ...(b.environ.length ? [['environ', b.environ.map(x => x.name).join(', ')]] : []),
+    ...(b.stubs.length ? [['stubs', b.stubs.length]] : []),
+  ];
+  return facts.map(([k, v]) => `<span class="fact">${k} <b>${esc(v)}</b></span>`).join('') +
+    `<label class="btn">Open another<input type="file" accept=".json,application/json" data-file></label>`;
+}
+
+function render() {
+  const tabs = document.getElementById('tabs');
+  document.getElementById('title').textContent = INV ? FILE : 'Endpoint Inventory';
+  document.getElementById('facts').innerHTML = INV ? header() : '';
+  tabs.hidden = !INV;
+  if (!INV) {
+    document.getElementById('pitch').textContent = '';
+    document.getElementById('view').innerHTML = empty();
+    return;
+  }
+  tabs.innerHTML = VIEWS.map(v => `<button class="tab" role="tab" data-v="${v.id}" aria-selected="${v.id === current}">${v.name}</button>`).join('');
+  const v = VIEWS.find(x => x.id === current);
+  document.getElementById('pitch').textContent = v.pitch;
+  const note = INV.coverage_note ? `<p class="note-box"><b>Coverage ${esc(INV.coverage)}:</b> ${esc(INV.coverage_note)}</p>` : '';
+  const err = error ? `<p class="error" role="alert">${esc(error)}</p>` : '';
+  const e = EPS.find(x => x.id === sel);
+  document.getElementById('view').innerHTML = err + note + v.render() + (e ? detail(e) : '');
+  if (e) document.querySelector('.drawer .close')?.focus();
+}
+
+/* ---- loading ---- */
+function problem(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return 'not a JSON object';
+  if (data.schema_version !== '1') return `schema_version ${JSON.stringify(data.schema_version)}: this viewer reads version "1"`;
+  for (const k of ['stack', 'coverage', 'base_script', 'boot_environment', 'project_dimensions', 'expected_access', 'endpoints']) {
+    if (!(k in data)) return `missing "${k}": regenerate the inventory with Base Script 0.3.0 or later`;
+  }
+  const obj = x => !!x && typeof x === 'object' && !Array.isArray(x);
+  for (const k of ['base_script', 'boot_environment', 'project_dimensions', 'expected_access']) {
+    if (!obj(data[k])) return `"${k}" is not an object`;
+  }
+  if (!Array.isArray(data.boot_environment.environ) || !Array.isArray(data.boot_environment.stubs)) return '"boot_environment" misses its "environ" or "stubs" list';
+  for (const [d, values] of Object.entries(data.project_dimensions)) {
+    if (!Array.isArray(values)) return `dimension "${d}" is not a list of values`;
+  }
+  for (const [d, byValue] of Object.entries(data.expected_access)) {
+    for (const [v, x] of Object.entries(obj(byValue) ? byValue : {'': null})) {
+      if (!obj(x) || !Array.isArray(x.authentication) || !Array.isArray(x.authorization)) return `expected access of "${d}" ${v}: needs "authentication" and "authorization" lists`;
+    }
+  }
+  if (!Array.isArray(data.endpoints)) return '"endpoints" is not a list';
+  for (const e of data.endpoints) {
+    const where = `${e?.method} ${e?.path}`;
+    for (const k of ['method', 'path', 'handler', 'authentication', 'authorization', 'dimensions', 'acknowledged']) {
+      if (!obj(e) || !(k in e)) return `${where}: missing "${k}": regenerate the inventory with Base Script 0.3.0 or later`;
+    }
+    if (!obj(e.dimensions)) return `${where}: "dimensions" is not an object`;
+    for (const ax of [e.authentication, e.authorization]) {
+      if (!obj(ax) || !('value' in ax) || !('evidence' in ax)) return `${where}: an axis misses "value" or "evidence"`;
+    }
+  }
+  return '';
+}
+
+async function load(file) {
+  if (!file) return;
+  let data;
+  try { data = JSON.parse(await file.text()); } catch (err) { error = `${file.name} is not valid JSON: ${err.message}`; render(); return; }
+  const p = problem(data);
+  if (p) { error = `${file.name} is not an Endpoint Inventory this viewer reads: ${p}`; render(); return; }
+  const before = [INV, FILE, EPS, sel, dim];
+  try {
+    INV = data; FILE = file.name === 'inventory.json' ? `${data.stack} inventory` : file.name;
+    EPS = fold(data.endpoints); sel = null; dim = null; error = '';
+    render();
+  } catch (err) {
+    // A shape problem() did not catch: keep showing what was open before.
+    [INV, FILE, EPS, sel, dim] = before;
+    error = `${file.name} could not be shown: ${err.message}`;
+    render();
+  }
+}
+
+/* ---- events ---- */
+document.addEventListener('change', ev => {
+  if (ev.target.matches('[data-file]')) load(ev.target.files[0]);
+  if (ev.target.id === 'dim') { dim = ev.target.value; render(); }
+});
+document.addEventListener('click', ev => {
+  const t = ev.target.closest('[data-v],[data-s],[data-close]');
+  if (!t) return;
+  if (t.dataset.v) { current = t.dataset.v; sel = null; history.replaceState(null, '', '#' + current); }
+  if (t.dataset.s) sel = t.dataset.s;
+  if ('close' in t.dataset) sel = null;
+  render();
+});
+document.addEventListener('keydown', ev => {
+  if (ev.key === 'Escape' && sel !== null) { sel = null; render(); }
+  if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.dataset?.s) { ev.preventDefault(); sel = ev.target.dataset.s; render(); }
+});
+let depth = 0;
+addEventListener('dragenter', ev => { ev.preventDefault(); depth++; document.body.classList.add('dragging'); });
+addEventListener('dragleave', () => { if (--depth <= 0) { depth = 0; document.body.classList.remove('dragging'); } });
+addEventListener('dragover', ev => ev.preventDefault());
+addEventListener('drop', ev => { ev.preventDefault(); depth = 0; document.body.classList.remove('dragging'); load(ev.dataTransfer.files[0]); });
+
+current = VIEWS.some(v => v.id === location.hash.slice(1)) ? location.hash.slice(1) : 'overview';
+render();
+</script>
+</body>
+</html>

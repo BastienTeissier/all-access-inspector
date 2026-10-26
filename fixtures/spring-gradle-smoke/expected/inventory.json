@@ -1,0 +1,18 @@
+{
+  "schema_version": "1",
+  "stack": "spring",
+  "discovery_mode": "runtime",
+  "coverage": "complete",
+  "coverage_note": null,
+  "base_script": {"stack": "spring", "version": "0.3.0"},
+  "boot_environment": {"entry": "com.example.smoke.SmokeApplication", "environ": [], "stubs": [], "pinned": [{"setting": "spring.profiles.active", "value": "default", "reason": "production runs the default profile"}]},
+  "project_dimensions": {},
+  "expected_access": {},
+  "endpoints": [
+    {"method": "ANY", "path": "/error", "handler": "org.springframework.boot.webmvc.autoconfigure.error.BasicErrorController.error", "authentication": {"value": "required", "layer": "global", "raw": "web: any request -> authenticated", "rule": "builtin:authenticated", "evidence": null}, "authorization": {"value": "none", "layer": "global", "raw": "web: any request -> authenticated", "rule": "builtin:authenticated", "evidence": null}, "dimensions": {}, "unknown_reason": null, "acknowledged": false},
+    {"method": "ANY", "path": "/error", "handler": "org.springframework.boot.webmvc.autoconfigure.error.BasicErrorController.errorHtml", "authentication": {"value": "required", "layer": "global", "raw": "web: any request -> authenticated", "rule": "builtin:authenticated", "evidence": null}, "authorization": {"value": "none", "layer": "global", "raw": "web: any request -> authenticated", "rule": "builtin:authenticated", "evidence": null}, "dimensions": {}, "unknown_reason": null, "acknowledged": false},
+    {"method": "POST", "path": "/orders", "handler": "com.example.smoke.SmokeApplication.order", "authentication": {"value": "required", "layer": "global", "raw": "web: any request -> authenticated", "rule": "builtin:authenticated", "evidence": null}, "authorization": {"value": "none", "layer": "global", "raw": "web: any request -> authenticated", "rule": "builtin:authenticated", "evidence": null}, "dimensions": {}, "unknown_reason": null, "acknowledged": false},
+    {"method": "GET", "path": "/status", "handler": "com.example.smoke.SmokeApplication.status", "authentication": {"value": "anonymous", "layer": "global", "raw": "web: PathPattern [/status] -> permitAll", "rule": "builtin:permitAll", "evidence": null}, "authorization": {"value": "none", "layer": "global", "raw": "web: PathPattern [/status] -> permitAll", "rule": "builtin:permitAll", "evidence": null}, "dimensions": {}, "unknown_reason": null, "acknowledged": false},
+    {"method": "HEAD", "path": "/status", "handler": "com.example.smoke.SmokeApplication.status", "authentication": {"value": "anonymous", "layer": "global", "raw": "web: PathPattern [/status] -> permitAll", "rule": "builtin:permitAll", "evidence": null}, "authorization": {"value": "none", "layer": "global", "raw": "web: PathPattern [/status] -> permitAll", "rule": "builtin:permitAll", "evidence": null}, "dimensions": {}, "unknown_reason": null, "acknowledged": false}
+  ]
+}

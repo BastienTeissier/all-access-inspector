@@ -1,0 +1,89 @@
+django · complete · 75 endpoints (65 rows, HEAD shown with its GET)
+Verdicts: 3 valid (1 moot), 2 outdated, 1 orphaned
+Review Queue: 63 rows
+
+Tier 1 · open finding (1)
+  ANY      /pages/v1/old/  public  anonymous/none  finding high: Legacy page renders any order by id to anonymous users; open_write: anonymous ANY
+
+Tier 2 · outdated verdict (2)
+  ANY      /health/  public  anonymous/none  accepted by reviewer@example.com outdated: until 2026-01-01 has passed; open_write: anonymous ANY
+  GET,HEAD /reports/{slug}  customer  required/none  safe by reviewer@example.com outdated: was required/rule, now required/none; id_without_authz: path parameter, no authorization rule
+
+Tier 3 · outside its expected access (14)
+  ANY      /admin/login/  staff  anonymous/none  outside_expected: authentication anonymous, staff expects required; authorization none, staff expects rule; open_write: anonymous ANY
+  ANY      /admin/support/login/  staff  anonymous/none  outside_expected: authentication anonymous, staff expects required; authorization none, staff expects rule; open_write: anonymous ANY
+  POST     /catalog/products/  public  required/none  outside_expected: authentication required, public expects anonymous or optional
+  GET,HEAD /pages/account/  public  required/none  outside_expected: authentication required, public expects anonymous or optional
+  OPTIONS  /pages/account/  public  required/none  outside_expected: authentication required, public expects anonymous or optional
+  GET,HEAD /pages/drafts/  public  required/none  outside_expected: authentication required, public expects anonymous or optional
+  OPTIONS  /pages/drafts/  public  required/none  outside_expected: authentication required, public expects anonymous or optional
+  GET,HEAD /pages/drafts/shared/  public  required/none  outside_expected: authentication required, public expects anonymous or optional
+  OPTIONS  /pages/drafts/shared/  public  required/none  outside_expected: authentication required, public expects anonymous or optional
+  ANY      /pages/orders/export/  public  required/rule  outside_expected: authentication required, public expects anonymous or optional; authorization rule, public expects none
+  ANY      /pages/profile/  public  required/none  outside_expected: authentication required, public expects anonymous or optional
+  GET,HEAD /pages/stock/  public  required/rule  outside_expected: authentication required, public expects anonymous or optional; authorization rule, public expects none
+  OPTIONS  /pages/stock/  public  required/rule  outside_expected: authentication required, public expects anonymous or optional; authorization rule, public expects none
+  POST     /pages/stock/  public  required/rule  outside_expected: authentication required, public expects anonymous or optional; authorization rule, public expects none
+
+Tier 4 · unknown (17)
+  ANY      /admin/support/  staff  unknown/unknown  unknown: shop.admin.SupportAdminSite overrides has_permission or admin_view
+  ANY      /admin/support/autocomplete/  staff  unknown/unknown  unknown: shop.admin.SupportAdminSite overrides has_permission or admin_view
+  ANY      /admin/support/jsi18n/  staff  unknown/unknown  unknown: shop.admin.SupportAdminSite overrides has_permission or admin_view
+  ANY      /admin/support/logout/  staff  unknown/unknown  unknown: shop.admin.SupportAdminSite overrides has_permission or admin_view
+  ANY      /admin/support/password_change/  staff  unknown/unknown  unknown: shop.admin.SupportAdminSite overrides has_permission or admin_view
+  ANY      /admin/support/password_change/done/  staff  unknown/unknown  unknown: shop.admin.SupportAdminSite overrides has_permission or admin_view
+  ANY      /admin/support/r/{content_type_id}/{object_id}/  staff  unknown/unknown  unknown: shop.admin.SupportAdminSite overrides has_permission or admin_view
+  ANY      /admin/support/{url}  staff  unknown/unknown  unknown: shop.admin.SupportAdminSite overrides has_permission or admin_view
+  GET,HEAD /api/orders/{pk}/  customer  required/unknown  unknown: IsOwner compares obj.owner in has_object_permission; ownership is data, not configuration
+  OPTIONS  /api/orders/{pk}/  customer  required/unknown  unknown: IsOwner compares obj.owner in has_object_permission; ownership is data, not configuration
+  GET,HEAD /api/receipts/{pk}/  customer  required/unknown  unknown: get_permissions() raised AssertionError without a real request; its permissions are not readable
+  OPTIONS  /api/receipts/{pk}/  customer  required/unknown  unknown: get_permissions() raised AssertionError without a real request; its permissions are not readable
+  ANY      /graphql/  public  unknown/unknown  unknown: GraphQL operations are out of scope; authorization is enforced per resolver
+  ANY      /hooks/ping  public  unknown/unknown  unknown: shop.views.PingHook is not a Django view; its access checks are not readable
+  GET,HEAD /pages/archive/  public  unknown/unknown  unknown: permission_required is not set; Django raises ImproperlyConfigured
+  OPTIONS  /pages/archive/  public  unknown/unknown  unknown: permission_required is not set; Django raises ImproperlyConfigured
+  ANY      /pages/doc/{id}/  public  unknown/unknown  unknown: 2 URL patterns resolve to this path with different access checks
+
+Tier 6 · anyone can write (5)
+  ANY      /en/about/  public  anonymous/none  open_write: anonymous ANY
+  ANY      /fr/about/  public  anonymous/none  open_write: anonymous ANY
+  POST     /pages/contact/  public  anonymous/none  open_write: anonymous POST
+  ANY      /pages/legacy-landing/  public  anonymous/none  open_write: anonymous ANY
+  ANY      /pages/legacy/  public  anonymous/none  open_write: anonymous ANY
+
+Tier 7 · suggested by the agent (1)
+  POST     /api/orders/{pk}/refund/  customer  required/rule  agent: Refund needs IsAdminUser while the order detail is owner-only: support staff may be locked out (shop/api.py:24)
+
+Tier 8 · path parameter, no authorization rule (2)
+  OPTIONS  /api/invoices/{pk}/  customer  required/none  id_without_authz: path parameter, no authorization rule
+  OPTIONS  /reports/{slug}  customer  required/none  id_without_authz: path parameter, no authorization rule
+
+Tier 9 · anyone can read (4)
+  GET,HEAD /catalog/products/  public  optional/none  open_read: optional GET
+  OPTIONS  /catalog/products/  public  optional/none  open_read: optional OPTIONS
+  GET      /catalog/status  public  anonymous/none  open_read: anonymous GET
+  OPTIONS  /catalog/status  public  anonymous/none  open_read: anonymous OPTIONS
+
+Tier 10 · signed in, no authorization rule (1)
+  OPTIONS  /api/invoices/  customer  required/none  agent: no signal
+
+Tier 11 · authorization rule (16)
+  ANY      /admin/  staff  required/rule
+  ANY      /admin/autocomplete/  staff  required/rule
+  ANY      /admin/jsi18n/  staff  required/rule
+  ANY      /admin/logout/  staff  required/rule
+  ANY      /admin/password_change/  staff  required/rule
+  ANY      /admin/password_change/done/  staff  required/rule
+  ANY      /admin/r/{content_type_id}/{object_id}/  staff  required/rule
+  ANY      /admin/shop/product/  staff  required/rule
+  ANY      /admin/shop/product/add/  staff  required/rule
+  ANY      /admin/shop/product/{object_id}/  staff  required/rule
+  ANY      /admin/shop/product/{object_id}/change/  staff  required/rule
+  ANY      /admin/shop/product/{object_id}/delete/  staff  required/rule
+  ANY      /admin/shop/product/{object_id}/history/  staff  required/rule
+  ANY      /admin/{app_label}/  staff  required/rule
+  ANY      /admin/{url}  staff  required/rule
+  OPTIONS  /api/orders/{pk}/refund/  customer  required/rule
+
+Orphaned verdicts (1)
+  safe     GET /api/coupons/ (shop/api.py)  Coupons are public by design

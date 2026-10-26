@@ -1,0 +1,232 @@
+{
+    "endpoints": [
+        {
+            "acknowledged": false,
+            "unknown_reason": null,
+            "dimensions": {
+                "access_tier": "public"
+            },
+            "authorization": {
+                "evidence": null,
+                "rule": "builtin:AllowAny",
+                "raw": "AllowAny",
+                "layer": "framework-default",
+                "value": "none"
+            },
+            "authentication": {
+                "evidence": null,
+                "rule": "builtin:AllowAny",
+                "raw": "AllowAny",
+                "layer": "framework-default",
+                "value": "anonymous"
+            },
+            "handler": "menu/views.py:5",
+            "path": "/caf\u00e9/menu",
+            "method": "GET"
+        },
+        {
+            "acknowledged": false,
+            "unknown_reason": null,
+            "dimensions": {
+                "access_tier": "customer"
+            },
+            "authorization": {
+                "evidence": null,
+                "rule": "builtin:IsAuthenticatedOrReadOnly",
+                "raw": "IsAuthenticatedOrReadOnly",
+                "layer": "class",
+                "value": "none"
+            },
+            "authentication": {
+                "evidence": null,
+                "rule": "builtin:IsAuthenticatedOrReadOnly",
+                "raw": "IsAuthenticatedOrReadOnly",
+                "layer": "class",
+                "value": "required"
+            },
+            "handler": "orders/views.py:21",
+            "path": "/api/orders/{pk}/",
+            "method": "POST"
+        },
+        {
+            "acknowledged": false,
+            "unknown_reason": null,
+            "dimensions": {
+                "access_tier": "public"
+            },
+            "authorization": {
+                "evidence": null,
+                "rule": "builtin:AllowAny",
+                "raw": "AllowAny",
+                "layer": "method",
+                "value": "none"
+            },
+            "authentication": {
+                "evidence": null,
+                "rule": "builtin:AllowAny",
+                "raw": "AllowAny",
+                "layer": "method",
+                "value": "anonymous"
+            },
+            "handler": "health/views.py:8",
+            "path": "/api/health",
+            "method": "ANY"
+        },
+        {
+            "acknowledged": false,
+            "unknown_reason": null,
+            "dimensions": {
+                "access_tier": "staff"
+            },
+            "authorization": {
+                "evidence": null,
+                "rule": "builtin:django_admin",
+                "raw": "is_staff",
+                "layer": "global",
+                "value": "rule"
+            },
+            "authentication": {
+                "evidence": null,
+                "rule": "builtin:django_admin",
+                "raw": "is_staff",
+                "layer": "global",
+                "value": "required"
+            },
+            "handler": "django.contrib.admin.sites.AdminSite.index",
+            "path": "/admin/",
+            "method": "GET"
+        },
+        {
+            "acknowledged": true,
+            "unknown_reason": "IsOwner checks ownership in has_object_permission; not modelled",
+            "dimensions": {
+                "access_tier": "customer"
+            },
+            "authorization": {
+                "evidence": null,
+                "rule": null,
+                "raw": "IsOwner",
+                "layer": "method",
+                "value": "unknown"
+            },
+            "authentication": {
+                "evidence": "config/middleware.py:12",
+                "rule": "recognition:tenant_middleware",
+                "raw": "TenantMiddleware",
+                "layer": "global",
+                "value": "required"
+            },
+            "handler": "reports/views.py:40",
+            "path": "/api/reports/{slug}",
+            "method": "GET"
+        },
+        {
+            "acknowledged": false,
+            "unknown_reason": null,
+            "dimensions": {
+                "access_tier": "customer"
+            },
+            "authorization": {
+                "evidence": null,
+                "rule": "builtin:IsAuthenticatedOrReadOnly",
+                "raw": "IsAuthenticatedOrReadOnly",
+                "layer": "class",
+                "value": "none"
+            },
+            "authentication": {
+                "evidence": null,
+                "rule": "builtin:IsAuthenticatedOrReadOnly",
+                "raw": "IsAuthenticatedOrReadOnly",
+                "layer": "class",
+                "value": "optional"
+            },
+            "handler": "orders/views.py:21",
+            "path": "/api/orders/{pk}/",
+            "method": "GET"
+        },
+        {
+            "acknowledged": false,
+            "unknown_reason": null,
+            "dimensions": {
+                "access_tier": "public"
+            },
+            "authorization": {
+                "evidence": null,
+                "rule": "builtin:no_check",
+                "raw": null,
+                "layer": "framework-default",
+                "value": "none"
+            },
+            "authentication": {
+                "evidence": null,
+                "rule": "builtin:no_check",
+                "raw": null,
+                "layer": "framework-default",
+                "value": "anonymous"
+            },
+            "handler": "health/legacy.py:3",
+            "path": "/api/health",
+            "method": "ANY"
+        }
+    ],
+    "expected_access": {
+        "access_tier": {
+            "public": {
+                "authentication": [
+                    "anonymous",
+                    "optional"
+                ],
+                "authorization": [
+                    "none"
+                ]
+            },
+            "staff": {
+                "authentication": [
+                    "required"
+                ],
+                "authorization": [
+                    "rule"
+                ]
+            }
+        }
+    },
+    "project_dimensions": {
+        "access_tier": [
+            "public",
+            "customer",
+            "staff"
+        ]
+    },
+    "boot_environment": {
+        "pinned": [
+            {
+                "reason": "production value",
+                "value": false,
+                "setting": "DEBUG"
+            }
+        ],
+        "stubs": [
+            {
+                "reason": "secrets vault unreachable outside production",
+                "target": "config.secrets.load"
+            }
+        ],
+        "entry": "config.settings.production",
+        "environ": [
+            {
+                "reason": "production value; mounts no debug routes",
+                "value": "production",
+                "name": "DJANGO_ENV"
+            }
+        ]
+    },
+    "base_script": {
+        "version": "0.1.0",
+        "stack": "django"
+    },
+    "coverage_note": null,
+    "coverage": "complete",
+    "discovery_mode": "runtime",
+    "stack": "django",
+    "schema_version": "1"
+}

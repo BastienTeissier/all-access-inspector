@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  django:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+
+      - name: Lint and typecheck
+        run: make lint typecheck deps
+
+      - name: Test
+        run: make test-django
+
+  nestjs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Install pnpm
+        run: npm install --global pnpm@12.6.0
+
+      - name: Install dependencies
+        run: make install-nestjs
+
+      - name: Typecheck
+        run: make typecheck-nestjs
+
+      - name: Test
+        run: make test-nestjs
+
+  spring:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install Java
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Test
+        run: make test-spring SPRING_RUN=
+
+  symfony:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: make install-symfony SYMFONY_RUN=
+
+      - name: Test
+        run: make test-symfony SYMFONY_RUN=
+
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Install pnpm
+        run: npm install --global pnpm@12.6.0
+
+      - name: Install dependencies
+        run: make install-review
+
+      - name: Install the browser of the app's e2e tests
+        run: pnpm --dir apps/review exec playwright install --with-deps chromium
+
+      - name: Typecheck
+        run: make typecheck-review
+
+      - name: Test
+        run: make test-review
