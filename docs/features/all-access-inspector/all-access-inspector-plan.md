@@ -731,14 +731,14 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 
 ### Phase 9a — UF16, UF17 The access map: data, CLI, static page
 
-- [ ] **Contracts**: `schema/runtime.schema.json`, `schema/vocabulary.schema.json`, `review-event.schema.json` `v` 2 (CA, CB, CC).
-- [ ] **Review package**: `decided` events, `capability` key, decisions in `replay`, `appendDecision` (CD).
-- [ ] **Django Map Introspect**: port and split into `introspect.py`, `project.py`, `admin.py`, `runtime.py`; Map Rules; deterministic `runtime.json`; `--check` (CE–CH).
-- [ ] **Map package**: port `map/`, then `roles.ts`, `cells.ts`, `alerts.ts`, `data.ts`; `join.ts` stack-neutral; `cli.ts` `decide` and exit codes (CI–CP, CR).
-- [ ] **Static page**: `page.html` reduced to drawing Page data, moi strings and `localStorage` marks removed, basis borders and legend, partial state, decisions read-only (CQ).
-- [ ] **Fixture**: `fixtures/django-demo` grants, sign-in group, owner-filtered queryset, partial, `CONTEXT.md`; expected runtime and vocabulary (DA).
-- [ ] **Tooling**: Makefile and CI (CZ).
-- [ ] **Write tests**: §4 Access map, except `map.spec.ts`.
+- [x] **Contracts**: `schema/runtime.schema.json`, `schema/vocabulary.schema.json`, `review-event.schema.json` `v` 2 (CA, CB, CC).
+- [x] **Review package**: `decided` events, `capability` key, decisions in `replay`, `appendDecision` (CD).
+- [x] **Django Map Introspect**: port and split into `introspect.py`, `project.py`, `admin.py`, `runtime.py`; Map Rules; deterministic `runtime.json`; `--check` (CE–CH).
+- [x] **Map package**: port `map/`, then `roles.ts`, `cells.ts`, `alerts.ts`, `data.ts`; `join.ts` stack-neutral; `cli.ts` `decide` and exit codes (CI–CP, CR).
+- [x] **Static page**: `page.html` reduced to drawing Page data, moi strings and `localStorage` marks removed, basis borders and legend, partial state, decisions read-only (CQ).
+- [x] **Fixture**: `fixtures/django-demo` grants, sign-in group, owner-filtered queryset, partial, `CONTEXT.md`; expected runtime and vocabulary (DA).
+- [x] **Tooling**: Makefile and CI (CZ).
+- [x] **Write tests**: §4 Access map, except `map.spec.ts`.
 - [ ] **Verify**: `make check-all`, `make test`; on a scratch copy of moi (never in moi): vendor the 0.4.0 introspect, move the prototype vocabulary to the new shape, `map check` lists the 5 prototype findings as cells to decide and the "could be extracted" items; `map build` page opened, no console error.
 
 ### Phase 9b — UF18 The access map in the review app
