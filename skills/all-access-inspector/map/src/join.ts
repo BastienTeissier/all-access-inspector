@@ -1,7 +1,7 @@
 // The join: one map endpoint per review row, its check layers, who can pass and on what basis.
 
 import type { Axis } from '../../review/src/inventory.ts';
-import type { output } from '../../review/src/cli.ts';
+import type { output } from '../../review/src/output.ts';
 import { BASES, type Basis, type Layer, type Runtime, type RuntimeEndpoint, type Who, indexRuntime } from './runtime.ts';
 import type { Domain, Resource, RouteCheck, Vocabulary } from './vocabulary.ts';
 

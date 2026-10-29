@@ -2,7 +2,7 @@
 
 import { basename, resolve } from 'node:path';
 
-import { output } from '../../review/src/cli.ts';
+import { output } from '../../review/src/output.ts';
 import { readLog, now } from '../../review/src/log.ts';
 import { load } from '../../review/src/project.ts';
 import { type Alert, alerts } from './alerts.ts';
