@@ -196,7 +196,7 @@ def fallback(endpoint: dict[str, Any]) -> Who | None:
         return {"kind": "superuser", **from_axis(authz)}
     if rule in project.SIGNED_IN_RULES:
         return {"kind": "signed_in", **from_axis(authz)}
-    if authz["raw"] == "is_staff":
+    if rule in project.STAFF_RULES or authz["raw"] == "is_staff":
         return {"kind": "staff", **from_axis(authz)}
     return None
 
@@ -424,8 +424,18 @@ class Introspect:
             "notes": notes,
         }
 
+    def check(self, admin: Admin, action: str) -> str:
+        """The permission an action needs, or the override that decides it instead."""
+        method = f"has_{action}_permission"
+        chain = admin["overrides"].get(method)
+        if not chain:
+            return str(admin["permissions"][action])
+        found = [c for o in chain for c in self.permissions_in(o["source"])]
+        return f"{chain[0]['owner']}.{method}" + uses(found, "uses")
+
     def capabilities(self, endpoints: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Each admin model page as a capability: one per permission action, its model as the area."""
+        """Each admin model page as a capability: one per permission action, its model as the area;
+        each custom admin URL of `stack.admin_actions` as one more."""
         found: dict[str, dict[str, Any]] = {}
         for admin in self.admins:
             for action in ACTIONS:
@@ -449,10 +459,30 @@ class Introspect:
                     "term": admin["term"],
                     "verb": "read" if action == "view" else "write",
                     "endpoints": sorted(keys),
-                    "check": admin["permissions"][action],
+                    "check": self.check(admin, action),
                     "at": admin["at"],
                     "basis": "extracted",
                 }
+        for path, custom in self.admin_actions.items():
+            custom_admin = self.admin_of(path)
+            keys = [
+                key(e) for e in endpoints if e["method"] != "HEAD" and e["path"] == path
+            ]
+            if not (custom_admin and keys):
+                continue
+            suffix = path[len(custom_admin["prefix"]) :].strip("/").split("/")
+            name = ".".join(s for s in suffix if not s.startswith("{"))
+            cap_id = f"{custom_admin['model']}.{name}"
+            found[cap_id] = {
+                "id": cap_id,
+                "area": custom_admin["model"],
+                "term": custom_admin["term"],
+                "verb": "read" if custom["action"] == "view" else "write",
+                "endpoints": sorted(keys),
+                "check": self.check(custom_admin, custom["action"]),
+                "at": custom["at"],
+                "basis": "extracted",
+            }
         return list(found.values())
 
     def scope_candidates(self) -> list[dict[str, Any]]:

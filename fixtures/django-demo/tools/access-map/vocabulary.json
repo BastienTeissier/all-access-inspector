@@ -46,7 +46,10 @@
           "if not self.has_change_permission(request):"
         ]
       ],
-      "reason": "The order list and its export button are one task for the people who run the shop."
+      "reason": "The order list and its export button are one task for the people who run the shop.",
+      "replaces": [
+        "shop.order.export"
+      ]
     }
   ],
   "stack": {

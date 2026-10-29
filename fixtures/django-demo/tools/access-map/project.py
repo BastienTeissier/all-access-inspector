@@ -27,10 +27,11 @@ FIRST_PARTY: tuple[str, ...] = ()
 # Files holding `NAME = "codename"` constants that override code uses as `"app." + NAME`.
 CONSTANT_FILES: tuple[str, ...] = ()
 
-# Recognition Rules (tools/access-inspector/rules.py names) that end in superusers only, or
-# let any signed-in user through.
+# Recognition Rules (tools/access-inspector/rules.py names) that end in superusers only, let
+# any signed-in user through, or let staff through (a raw `is_staff` check is read already).
 SUPERUSER_RULES: frozenset[str] = frozenset()
 SIGNED_IN_RULES: frozenset[str] = frozenset()
+STAFF_RULES: frozenset[str] = frozenset()
 
 
 def roles() -> list[Fact]:

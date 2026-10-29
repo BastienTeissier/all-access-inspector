@@ -25,6 +25,9 @@ class OrderAdmin(admin.ModelAdmin):
             raise PermissionDenied
         return HttpResponse("orders.csv")
 
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
+
 
 shop_admin.register(Order, OrderAdmin)
 

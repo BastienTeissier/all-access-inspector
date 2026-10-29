@@ -133,3 +133,17 @@ def test_runtime_check() -> None:
     assert check(committed, added) == [
         '+ scopes own: {"id": "own", "label": "Own", "at": "q.py:1", "basis": "inferred"}'
     ]
+
+
+def test_staff_rules_fall_back_to_staff(monkeypatch: pytest.MonkeyPatch) -> None:
+    from access_map import admin
+
+    authz = {"rule": "recognition:staff_member", "raw": "staff_member", "evidence": "e"}
+    endpoint = {"authorization": authz}
+    assert admin.fallback(endpoint) is None
+    monkeypatch.setattr(project, "STAFF_RULES", frozenset({"staff_member"}))
+    assert admin.fallback(endpoint) == {
+        "kind": "staff",
+        "basis": "rule",
+        "how": "Recognition rule staff_member (e)",
+    }
