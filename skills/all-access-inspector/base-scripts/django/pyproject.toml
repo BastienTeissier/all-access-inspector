@@ -45,16 +45,22 @@ ignore_missing_imports = true
 pythonpath = ["."]
 
 [tool.coverage.run]
-source = ["access_inspector"]
+source = ["access_inspector", "access_map"]
 # Django-bound modules run only inside a booted project: the fixture golden tests cover them.
-omit = ["access_inspector/classify.py", "access_inspector/discovery.py", "access_inspector/inspect.py"]
+omit = [
+    "access_inspector/classify.py",
+    "access_inspector/discovery.py",
+    "access_inspector/inspect.py",
+    "access_map/admin.py",
+    "access_map/introspect.py",
+]
 
 [tool.coverage.report]
 fail_under = 90
 show_missing = true
 
 [tool.deptry]
-known_first_party = ["access_inspector"]
+known_first_party = ["access_inspector", "access_map"]
 
 [tool.deptry.per_rule_ignores]
 # The project's own Django and DRF: the Base Script runs inside the audited project and never declares them.
