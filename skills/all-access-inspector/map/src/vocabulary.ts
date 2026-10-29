@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { WHO_KINDS, type Runtime, type WhoKind } from './runtime.ts';
 
 /** A project file:line written by hand somewhere in the vocabulary. */
-const REFERENCE = /\b((?:[\w-]+\/)*[\w-]+\.(?:py|html|ts|tsx|js|java|kt|php|twig|ya?ml|xml)):(\d+)\b/g;
+const REFERENCE = /\b((?:[\w-]+\/)*[\w-]+\.(?:py|html|ts|tsx|js|java|kt|php|twig|ya?ml|xml|md)):(\d+)\b/g;
 const AT = /^[^\s:]+:\d+$/;
 
 export interface Area {
@@ -174,7 +174,7 @@ export const references = (node: unknown): Set<string> => {
   const walk = (n: unknown) => {
     if (typeof n === 'string') for (const m of n.matchAll(REFERENCE)) found.add(`${m[1]}:${m[2]}`);
     else if (Array.isArray(n)) n.forEach(walk);
-    else if (n && typeof n === 'object') for (const [k, v] of Object.entries(n)) if (k !== 'anchors') walk(v);
+    else if (n && typeof n === 'object') for (const [k, v] of Object.entries(n)) if (k !== 'anchors' && k !== 'stack') walk(v);
   };
   walk(node);
   return found;

@@ -19,9 +19,9 @@ const citing = (text: string, anchors?: Record<string, string>) =>
   vocabulary({ areas: [{ id: 'a', name: 'A', term: 'A', defined_at: null }], scopes: [{ id: 's', label: 'S', at: 'shop/views.py:3', reason: text }], anchors });
 
 describe('references', () => {
-  test('finds every file:line in strings, nested anywhere but under anchors', () => {
-    const v = citing('see shop/views.py:3 and app/Guard.java:12, templates/x.html:4', { 'old/file.py:1': 'x' });
-    expect([...references(v)].sort()).toEqual(['app/Guard.java:12', 'shop/views.py:3', 'templates/x.html:4']);
+  test('finds every file:line in strings, nested anywhere but under anchors and stack', () => {
+    const v = { ...citing('see shop/views.py:3 and app/Guard.java:12, templates/x.html:4, docs/roles.md:7', { 'old/file.py:1': 'x' }), stack: { admin_actions: ['shop/admin.py:9'] } };
+    expect([...references(v)].sort()).toEqual(['app/Guard.java:12', 'docs/roles.md:7', 'shop/views.py:3', 'templates/x.html:4']);
   });
 });
 

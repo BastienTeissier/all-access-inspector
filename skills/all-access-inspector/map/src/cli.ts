@@ -43,7 +43,10 @@ const check = (dir: string, options: Options): { code: number; stdout: string } 
     ...p.found.flatMap(f => f.missing.map(e => `capability ${f.cap.id} names ${e.join(' ')}, not in the inventory`)),
     ...p.cells.filter(c => c.state === 'partial' && !c.decision).map(c => `${name(c.capability, c.role)} is partial: decide it with map decide`),
     ...p.cells.filter(c => c.decision?.state === 'outdated').map(c => `${name(c.capability, c.role)}: decision outdated, the cell changed${c.decision?.expired ? ' (until has passed)' : ''}`),
-    ...missingTerms(dir, p.vocabulary.areas.map(a => a.term)),
+    ...missingTerms(dir, [...p.vocabulary.areas.map(a => a.term), ...p.caps.flatMap(c => (c.term ? [c.term] : []))]),
+    ...[...p.runtime.scoped, ...(p.vocabulary.scoped ?? [])]
+      .filter(s => !p.caps.some(c => c.id === s.capability) || !p.roles.some(r => r.id === s.role))
+      .map(s => `scoped ${s.capability} for ${s.role} at ${s.at}: no such capability or role on the map`),
     ...p.roles.filter(r => r.kind === 'group' && !Object.values(p.runtime.grants).some(g => g.some(x => x.role === r.id))).map(r => `role ${r.id} holds no grant`),
     ...[...new Set(Object.values(p.runtime.grants).flatMap(g => g.map(x => x.role)))].filter(id => !p.roles.some(r => r.id === id)).map(id => `grants name role ${id}, which is not a role`),
   ];
