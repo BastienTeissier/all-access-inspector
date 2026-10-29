@@ -47,7 +47,7 @@ PRD: [prd.md](./prd.md). Vocabulary: [CONTEXT.md](../../../CONTEXT.md). Decision
 - Cell = over the capability's endpoints: all yes ⇒ `pass`; all off ⇒ `off`; none yes and none unresolved ⇒ `no`; some yes and some no/off ⇒ `partial`; else ⇒ `open`. Basis = weakest of the endpoints' `who` bases and the scope's basis. HEAD rows fold into their GET as in review.
 - Scope: shown only on `pass` or `partial`; default "every record", no badge; a program can find the filter but never prove what it means, so a scope is `inferred` when the introspect or a Map Rule read the filter, `curated` when hand-written; never solid.
 - Alerts (computed only, in this order): partial with no valid decision; open `finding` decisions; `open` cells; endpoints behind no capability; agent signals on cells; review Signals (all seven named); endpoints outside expected access.
-- `map check`: exit 1 on a stale pin, an unused anchor, a duplicate of a Map Rule, a runtime/inventory mismatch, a partial with no valid decision, an outdated decision, a term not in `CONTEXT.md` when it exists (vocabulary areas and the capabilities the vocabulary names), a `group` role absent from the grants or a granted role with no role, a scoped fact naming a capability or role not on the map; exit 2 on an unreadable or schema-invalid vocabulary, runtime or log; exit 0 otherwise. Coverage and open findings printed, never failing.
+- `map check`: exit 1 on a stale pin, an unused anchor, a duplicate of a Map Rule, a runtime/inventory mismatch, a partial with no valid decision, an outdated decision, a term not in `CONTEXT.md` when it exists (vocabulary areas and the capabilities the vocabulary names), a `group` role absent from the grants (only when a Map Runtime exists: with none, nothing reads the grants) or a granted role with no role, a scoped fact naming a capability or role not on the map; exit 2 on an unreadable or schema-invalid vocabulary, runtime or log; exit 0 otherwise. Coverage and open findings printed, never failing.
 
 **Visual Design**: inventory contract + project/toolkit layouts in [prd.md § Visual](./prd.md#visual).
 
@@ -749,9 +749,10 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 
 ### Phase 9c — Skill, docs and release
 
-- [ ] **Skill**: `SKILL.md` § Map, references, summary template (CW–CY).
-- [ ] **Docs**: README Access map section; `VERSION` 0.4.0 (DB).
-- [ ] **Verify**: the Agent runs § Map on `fixtures/django-demo` from a clean copy and reaches the expected vocabulary's coverage; every README anchor resolves.
+- [x] **Skill**: `SKILL.md` § Map, references, summary template (CW–CY). Added for § Map's "Look at the map": `review append --agent` takes lines with `capability: [capability, role]`, refused when the cell is not on the map, so the Agent's signals on cells reach Alerts (UF17); the review CLI reads the cells through `map/src/data.ts`.
+- [x] **Fix**: `map check` reports a group holding no grant only when a Map Runtime exists (stacks with no introspect hand-write their roles).
+- [x] **Docs**: README Access map section; `VERSION` 0.4.0 (DB).
+- [x] **Verify**: the Agent runs § Map on `fixtures/django-demo` from a clean copy and reaches the expected vocabulary's coverage; every README anchor resolves. A subagent with no access to `fixtures/` reached 21 of 72 endpoints (the fixture: 11), found the Export orders for Clerk partial, and `introspect.py --check` exited 0. Its doc gaps fixed: link the vocabulary schema, rerun the introspect after `stack.admin_actions`, a map branch fallback. Left open: DRF `IsAdminUser` and `DjangoModelPermissions` not read by the introspect; areas missing from `CONTEXT.md` fail the check, so they stay uncovered; an `optional` sign-in shows Not signed in as `no`.
 
 ---
 ## 6. Context: Current System Architecture
