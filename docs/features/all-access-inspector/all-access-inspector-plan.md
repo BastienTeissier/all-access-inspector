@@ -743,9 +743,9 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 
 ### Phase 9b — UF18 The access map in the review app
 
-- [ ] **Pages**: `app/map/*` (CS), `saveDecision` (CT), projection (CU), History (CV).
-- [ ] **Write tests**: `apps/review/tests/e2e/map.spec.ts`.
-- [ ] **Verify**: `make test-review`; on the moi scratch copy, decide one partial in the app ⇒ one `decided` line; static page from the same files shows the same states.
+- [x] **Pages**: `app/map/*` (CS), `saveDecision` (CT), projection (CU), History (CV). The app bundle cannot reach `review/src/cli.ts` (it boots the app at module level), so `output` moved to `review/src/output.ts` and `map check` to `map/src/check.ts`.
+- [x] **Write tests**: `apps/review/tests/e2e/map.spec.ts`.
+- [x] **Verify**: `make test-review`; on the moi scratch copy, decide one partial in the app ⇒ one `decided` line; static page from the same files shows the same states. The moi map has no partial left after 9a's fixes, so a `no` cell was decided instead: one `decided` line; 3234 cells and 281 alerts identical in the app and the static page; no console error.
 
 ### Phase 9c — Skill, docs and release
 
