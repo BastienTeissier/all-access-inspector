@@ -4,7 +4,7 @@
   "discovery_mode": "runtime",
   "coverage": "complete",
   "coverage_note": null,
-  "base_script": {"stack": "nestjs", "version": "0.3.0"},
+  "base_script": {"stack": "nestjs", "version": "0.4.0"},
   "boot_environment": {"entry": "src/app.module.js#AppModule", "environ": [{"name": "NODE_ENV", "value": "production", "reason": "production value"}, {"name": "JWT_SECRET", "value": "inventory-placeholder", "reason": "secret required at boot by src/auth/jwt.strategy.ts"}], "stubs": [], "pinned": []},
   "project_dimensions": {"access_tier": ["public", "customer", "partner", "staff"]},
   "expected_access": {"access_tier": {"public": {"authentication": ["anonymous", "optional"], "authorization": ["none"]}, "customer": {"authentication": ["required"], "authorization": ["none", "rule"]}, "partner": {"authentication": ["required"], "authorization": ["none", "rule"]}, "staff": {"authentication": ["required"], "authorization": ["rule"]}}},

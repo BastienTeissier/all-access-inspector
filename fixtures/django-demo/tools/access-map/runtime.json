@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "stack": "django",
-  "base_script": {"stack": "django", "version": "0.3.0"},
+  "base_script": {"stack": "django", "version": "0.4.0"},
   "about": {"reads": "The admin registry of every mounted admin site, each ModelAdmin's class hierarchy and the project's Map Rules, as the booted settings load them.", "holds": ["Roles, grants, scopes and capabilities from the Map Rules in tools/access-map/project.py", "Every admin model page as a capability, its model as an area", "Every admin URL: which has_*_permission Django calls for it, and the first-party overrides of those methods with source and file:line", "Permissions each endpoint checks, and the stack's reading of superuser-only and staff rules"], "heuristics": ["Admin URL → which has_*_permission Django calls (from the URL suffix)", "Permissions found in override code by pattern (\"app.\" + CONSTANT)", "An override ending in `return False` → nobody; `return request.user.is_superuser` → superuser; `raise Http404` in the page view → page off", "A get_queryset override → a scope candidate"], "command": "python tools/access-map/introspect.py"},
   "roles": [
     {"id": "clerk", "kind": "group", "at": "shop/roles.py:4", "basis": "rule", "includes": [], "staff": {"at": "shop/signin.py:5"}},
