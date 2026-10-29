@@ -115,6 +115,15 @@ RECOGNITION: list[Rule] = [
         layer="global",
         raw="TenantMiddleware",
     ),
+    Rule(
+        name="order_export_admin_view",
+        evidence="shop/admin.py:20",
+        authn="required",
+        authz="rule",
+        path_prefix="/admin/shop/order/export/",
+        layer="global",
+        raw="is_staff",
+    ),
 ]
 
 ACKNOWLEDGED: list[Ack] = [

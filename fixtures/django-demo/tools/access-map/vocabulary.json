@@ -1,0 +1,65 @@
+{
+  "areas": [
+    {
+      "id": "shop.order",
+      "name": "Orders",
+      "term": "Order",
+      "defined_at": "shop/models.py:8"
+    }
+  ],
+  "roles": [
+    {
+      "id": "clerk",
+      "name": "Clerk"
+    },
+    {
+      "id": "manager",
+      "name": "Manager"
+    }
+  ],
+  "capabilities": [
+    {
+      "extends": "shop.order.view",
+      "name": "See orders"
+    },
+    {
+      "id": "export-orders",
+      "name": "Export orders",
+      "area": "shop.order",
+      "verb": "read",
+      "endpoints": [
+        [
+          "ANY",
+          "/admin/shop/order/",
+          "django.contrib.admin.options.ModelAdmin.changelist_view"
+        ],
+        [
+          "ANY",
+          "/admin/shop/order/export/",
+          "shop/admin.py"
+        ]
+      ],
+      "check": "shop.change_order",
+      "evidence": [
+        [
+          "shop/admin.py:24",
+          "if not self.has_change_permission(request):"
+        ]
+      ],
+      "reason": "The order list and its export button are one task for the people who run the shop."
+    }
+  ],
+  "stack": {
+    "admin_actions": {
+      "/admin/shop/order/export/": {
+        "action": "change",
+        "text": "Exports the orders as CSV; checks has_change_permission.",
+        "at": "shop/admin.py:24"
+      }
+    }
+  },
+  "anchors": {
+    "shop/admin.py:24": "if not self.has_change_permission(request):",
+    "shop/models.py:8": "class Order(models.Model):"
+  }
+}
