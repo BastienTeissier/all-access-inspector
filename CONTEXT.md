@@ -95,6 +95,52 @@ An on-demand Agent run that reads the handlers of unreviewed, non-`rule` Endpoin
 **Review Queue**:
 Every Endpoint without a valid Verdict, ordered by its highest Signal tier, then path and method.
 
+### Access map
+
+**Access Map**:
+The page that shows, per **Role** and per **Capability**, whether the role passes, how far its reach goes, and on what **Basis**. A view of the review app, also exported as one static page; it decides nothing the **Map Runtime**, the **Map Vocabulary** and the **Review Log** do not hold.
+_Avoid_: role matrix, permission matrix
+
+**Role**:
+Who a request can be, as the project's code defines it: a group, a role constant, a `ROLE_*`, the superuser bypass. Extracted from the code with the `file:line` that defines it, and named after the project's docs when they define it. Not signed in is the one role the toolkit always adds, since the inventory proves it per endpoint.
+_Avoid_: profile, persona, user type
+
+**Role kind**:
+How a **Role** is compared with what an endpoint lets through: `signed_in` (an account with no role), `superuser` (passes every check), `group` (anything else). Chosen per role from evidence, never from a default list.
+
+**Capability**:
+One thing a role can do in the domain's words ("Upload scanned cards"), with the endpoints that action spans. Extracted first (an admin model action, a resource verb); the Agent only names, groups and adds what no program can read. Every endpoint is meant to sit behind one.
+
+**Area**:
+A group of **Capabilities** around one domain term. The term comes from `CONTEXT.md` when the project has one, else from the code or the docs, with its `file:line`.
+
+**Scope**:
+How far a role's reach goes over the records once it passes: every record, or what a filter in the code leaves (own subsidiary, own records). Never proved by a program, so never shown as read from the code.
+
+**Cell**:
+One **Capability** for one **Role**: passes, partial, does not pass, switched off, or not resolved; plus its **Scope** and **Basis**. Computed, never written.
+
+**Partial capability**:
+A **Cell** where the role reaches some of the capability's endpoints and not others. A possible leak or a bug until a human decides it.
+
+**Basis**:
+Where a fact on the map was read: `extracted` (the base introspect), `rule` (a **Map Rule** or a Recognition Rule), `inferred` (a heuristic), `curated` (hand-written in the **Map Vocabulary**), `open` (not resolved). A cell takes the weakest basis it rests on.
+
+**Map Introspect**:
+The per-stack script, vendored like the Adapted Script, that boots the app and writes the **Map Runtime**. Its project section holds the **Map Rules**; the rest stays byte-identical to the toolkit's.
+
+**Map Rule**:
+Project code in the **Map Introspect** that reads roles, grants, scopes, role inclusions or capabilities from where the code declares them, each fact with its `file:line`. The access-map counterpart of a Recognition Rule, reviewed the same way.
+
+**Map Runtime**:
+`tools/access-map/runtime.json`: what the **Map Introspect** read. Committed and byte-stable, so a change in who passes shows in a diff.
+
+**Map Vocabulary**:
+`tools/access-map/vocabulary.json`: what no program can read, written by the Agent with the user, each entry with the reason it was not extracted and every `file:line` pinned to its line.
+
+**Capability Decision**:
+A human's judgement on one **Cell**, in the **Review Log** with the same verdicts as a **Verdict** (`safe`, `accepted`, `finding`). Outdated when the cell's reach changes.
+
 ## Relationships
 
 - One **Base Script** exists per supported stack
@@ -119,8 +165,16 @@ Every Endpoint without a valid Verdict, ordered by its highest Signal tier, then
 - A **Verdict** covers only the **Endpoints** that existed when it was given; a bulk review writes one event per **Endpoint**, never a selector
 - A `finding` closes only through an **Outdated Verdict** followed by a new `safe` one
 - An **Endpoint** leaves the **Review Queue** only through a human **Verdict**; **Triage** finding nothing does not take it out
+- A fact about access the code declares in a form a program can read is read by a **Map Rule**, never written into the **Map Vocabulary**
+- A **Role** exists on the **Access Map** only if the code defines it; a role the docs name and the code does not is reported, never invented
+- A **Partial capability** stays an alert until a **Capability Decision** that is not outdated covers it
+- The **Access Map** never changes the **Committed Inventory**, the **Map Runtime** or a **Verdict**
 
 ## Flagged ambiguities
+
+- "role" named both a group the code checks and a step of a business workflow (moi: Production Manager, the workflow's PM): resolved, a **Role** is what the code checks; a workflow role is a role only when the code checks it.
+
+- "the project ontology" for roles and capabilities: resolved as `CONTEXT.md` when it exists, else terms read from the code and the docs with their `file:line`; the Agent never writes the project's `CONTEXT.md`.
 
 - The existing Django tool identifies endpoints by URL name and drops unnamed views: rejected, an **Endpoint** is identified by method, path pattern and handler location.
 

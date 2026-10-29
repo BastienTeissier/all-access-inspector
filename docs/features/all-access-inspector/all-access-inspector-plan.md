@@ -11,7 +11,7 @@ PRD: [prd.md](./prd.md). Vocabulary: [CONTEXT.md](../../../CONTEXT.md). Decision
 - **CAN** diff against a Committed Inventory (`--check`, exit 1 + per-endpoint diff), render a table (`--table`).
 - **CAN** be fitted by the Agent: stack detect → vendor → boot (toward-production stubs) → unknown loop → Project Dimensions (propose/confirm) → commit on branch + summary. Update mode preserves existing rules.
 - **CAN** feed the security-audit skill from the committed JSON, stack-agnostic.
-- **CANNOT** evaluate rules into role matrices, inspect GraphQL/WebSocket operations, merge several apps' inventories, enforce a policy (only diffs), publish Base Scripts as packages.
+- **CANNOT** evaluate rules into role matrices in the inventory itself (the access map does it downstream, Phase 9), inspect GraphQL/WebSocket operations, merge several apps' inventories, enforce a policy (only diffs), publish Base Scripts as packages.
 - **CANNOT** (Agent) edit CI pipelines, stub a settings module, move a routing-shaping setting away from production, claim `complete` on an unsupported stack.
 
 **Business Rules**:
@@ -37,6 +37,17 @@ PRD: [prd.md](./prd.md). Vocabulary: [CONTEXT.md](../../../CONTEXT.md). Decision
 - HEAD with the same classification as its GET ⇒ one row; a Verdict on GET also appends one on HEAD.
 - Agent events (`signal_raised`, `triaged`) carry `seen`; they go outdated by the same rule; a valid human Verdict supersedes them in the queue.
 - Bulk review: one event per endpoint selected at save time, shared `batch`; selection containing an open `finding` needs explicit confirmation.
+
+**Access map (Phase 9, UF16–UF18)** — terms in CONTEXT.md § Access map, ADR 0005, ADR 0006:
+- **CAN** show, per Role and per Capability, whether the role passes, its Scope and the Basis of each fact; let a human decide a Partial capability in the Review Log; fail CI on an undecided or outdated partial, a stale pin, or a runtime that no longer matches the inventory.
+- **CANNOT** change the inventory, the Map Runtime or a Verdict; ship a role, scope or area name; let the Agent decide a cell; write the project's `CONTEXT.md`.
+- Read before you write: a fact the code declares in a form a program can read is a Map Rule (`rule`) or read by the base introspect (`extracted`); the vocabulary holds the rest (`curated`), each entry with `reason`; a vocabulary entry a Map Rule already produces ⇒ `map check` exit 1.
+- Roles: extracted from the code, each with `at`; kind `signed_in|superuser|group`; `includes` (with `at`) for a role every account of another holds; `staff` (with `at`) when a role passes `staff` checks. Not signed in (`anonymous`) is added by the toolkit, first column. Docs mapping: `CONTEXT.md`, else README/`docs/`; a role in the docs and not in the code (or the reverse) is reported.
+- Reach of one endpoint for one role, from `who`: `nobody` ⇒ off; `superuser` kind ⇒ yes; `anyone` ⇒ yes; `anonymous` ⇒ no otherwise; `signed_in` ⇒ yes; `staff` ⇒ yes when the role (or a role it includes) has `staff`, else no; `groups` ⇒ yes when the role or a role it includes is listed; `custom`, or a `who` with basis `open` ⇒ unresolved.
+- Cell = over the capability's endpoints: all yes ⇒ `pass`; all off ⇒ `off`; none yes and none unresolved ⇒ `no`; some yes and some no/off ⇒ `partial`; else ⇒ `open`. Basis = weakest of the endpoints' `who` bases and the scope's basis. HEAD rows fold into their GET as in review.
+- Scope: shown only on `pass` or `partial`; default "every record", no badge; a program can find the filter but never prove what it means, so a scope is `inferred` when the introspect or a Map Rule read the filter, `curated` when hand-written; never solid.
+- Alerts (computed only, in this order): partial with no valid decision; open `finding` decisions; `open` cells; endpoints behind no capability; agent signals on cells; review Signals (all seven named); endpoints outside expected access.
+- `map check`: exit 1 on a stale pin, an unused anchor, a duplicate of a Map Rule, a runtime/inventory mismatch, a partial with no valid decision, an outdated decision, a term not in `CONTEXT.md` when it exists, a `group` role absent from the grants or a granted role with no role; exit 2 on an unreadable or schema-invalid vocabulary, runtime or log; exit 0 otherwise. Coverage and open findings printed, never failing.
 
 **Visual Design**: inventory contract + project/toolkit layouts in [prd.md § Visual](./prd.md#visual).
 
@@ -91,10 +102,16 @@ No database. The "data model" is the inventory JSON contract, `schema/inventory.
   - `header(value JSON)` — one row: stack, coverage, endpoint count, whether there are dimensions, valid/outdated/orphaned counts
   - Filled only by replaying through the review package; the app never computes tiers, queue membership or queue order itself.
 
+- **Map Runtime** (Phase 9a; `tools/access-map/runtime.json`, committed, `-diff linguist-generated` in `tools/access-map/.gitattributes`; contract `schema/runtime.schema.json`). Keys in this order: `schema_version` `"1"`, `stack`, `base_script` `{stack, version}`, `about` `{reads, holds[], heuristics[], command}`, `roles[]` `{id, kind, at, basis, includes[{role, at}], staff: {at}|null}`, `grants` `{permission: [{role, at}]}`, `scopes[]` `{id, label, at, basis}`, `scoped[]` `{capability, role, scope, at, basis}`, `capabilities[]` `{id, area, term, verb: read|write, endpoints[[method, path, handler_key]], check, at, basis}`, `endpoints[]` `{method, path, handler, resource?, layers[], permissions[], verdict, fallback, notes[[basis, text]]}` (moi prototype's `codenames` renamed `permissions`, `group` renamed `role`), `snippets` `{file:line: source}`. Serialisation: like the inventory: sorted (`roles` by id, `endpoints` by path, method, handler; object keys in schema order), 2-space indent, `\n`-terminated, no timestamps, no absolute paths, no counts that depend on the run.
+- **Map Vocabulary** (`tools/access-map/vocabulary.json`, committed; contract `schema/vocabulary.schema.json`): `areas[]` `{id, name, term, defined_at}`; `roles[]` `{id, name?, doc_at?}` naming extracted roles, or a full hand-written role `{id, kind, at, reason, includes?, staff?}` on a stack with no introspect; `capabilities[]` either `{extends: <extracted id>, name, sub?, area?}` or `{id, name, sub?, area, verb, endpoints, check, evidence[[file:line, text]], reason, replaces?: [ids]}`; `scopes[]`/`scoped[]` as in the runtime plus `reason`; `domains[]`, `resources[]` (unchanged from the prototype); `route_checks` `{path: [{layer, text, at, permissions?, who?}]}` (arrays only, no `_note`); `stack` (read by the introspect only); `anchors` `{file:line: trimmed text}` written by `map pin`. Removed from the prototype: `findings`, `everyone` (now `includes`), `cells` (now computed), the access-state entries of `scopes`.
+- **Capability Decision** (Review Event, `v` `2`): `{v, at, by, event: "decided", batch, capability: [capability_id, role_id], seen, verdict, reason, severity?, ticket?, until?}`; `seen` = `{state, reached: [review keys], missed: [review keys], who: {review key: [kind, basis]}}`. Outdated when `state`, `reached` or `missed` differ from the current cell, or `accepted` past `until`; orphaned when the capability or role no longer exists. `signal_raised` and `triaged` may carry `capability` instead of `endpoint` (Agent on the map). Latest per key wins, as for Verdicts.
+- **Page data** (derived, never stored): `buildData(project)` ⇒ `{project, inventory, roles, areas, cells[{capability, role, state, scope, basis, decision}], endpoints[{…, who, reach{role: yes|no|off|unresolved}}], alerts[], coverage{covered, total}, method}`; typed once in `map/src/data.ts`, the only input of both UIs.
+
 ### Modification of Existing Entities
 
 - Inventory schema: unchanged; the review package reads `schema_version` `"1"` only and exits 2 on any other.
 - Viewer: tab label Triage → Overview (Phase 5d); no data change.
+- Review Event schema (Phase 9a): `v` `2` adds `decided` and the `capability` key; `v` `1` lines unchanged; a toolkit reading only `v` `1` still exits 2 "written by a newer toolkit". `replay` returns `decisions` beside `rows` and `orphans`.
 - security-audit skill: `references/django-access-inspector.md` + `scripts/parse_django_access_inspector.sh` removed, replaced by `references/access-inspector.md` + `scripts/parse_access_inspector.sh` (UF6).
 
 ### Relationships
@@ -332,6 +349,75 @@ Next.js App Router, server components + server actions, no client data fetching 
 **Changes**: `install-review` (pnpm in `review/` and `apps/review/`), `test-review` (vitest in both, then Playwright e2e), `typecheck-review`; `test`, `check-all` include them; CI job `review` on Node 24 + pnpm, mirror of the `nestjs` job.
 
 
+### Access map (Phase 9; ⚪ = from the moi prototype, `chore/access-inspector-refit` 79b814b6, `.claude/skills/all-access-inspector/`, never committed)
+
+#### CA. `schema/runtime.schema.json` 🟢 ⚪ — rewritten to §2 Map Runtime (roles, includes, staff, scopes, scoped, capabilities; `permissions`, `role`).
+
+#### CB. `schema/vocabulary.schema.json` 🟢 — §2 Map Vocabulary; `reason` required on every hand-written role, grant, scope and capability.
+
+#### CC. `schema/review-event.schema.json` 🔵 — `v` 2, `decided`, `capability` key on `decided`/`signal_raised`/`triaged`.
+
+#### CD. `review/src/log.ts`, `replay.ts`, `append.ts`, `cli.ts` 🔵
+**Changes**: validate and serialise `v` 2 lines (hand-written validation, like `v` 1; ajv only in tests); `replay` ⇒ `{rows, orphans, decisions}` with decisions `valid|outdated|orphaned` against a cell fingerprint passed in by the map (the review package knows nothing of cells); `appendDecision()` shares the `O_APPEND` path; `output` exported from `cli.ts` (prototype one-liner).
+
+### Django Map Introspect — `base-scripts/django/access_map/` (vendored as `tools/access-map/`)
+
+Split of the prototype's 523-line `introspect.py` so no file passes the Base Script's largest (332 lines), project section in its own file like `boot.py`/`dimensions.py`/`rules.py`.
+
+#### CE. `introspect.py` 🟢 ⚪ — entry: boot through the Adapted Script's `boot.py`, run the Map Rules and `admin.py`, write `runtime.json`; `--check` regenerates in memory and diffs against the committed file (exit 0 / 1 with a per-key diff / 2 on boot failure or missing inventory).
+
+#### CF. `project.py` 🟢 ⚪ — the project section only: `FIRST_PARTY`, `CONSTANT_FILES`, `SUPERUSER_RULES`, `SIGNED_IN_RULES`, and the Map Rules `roles()`, `includes()`, `staff()`, `grants()`, `scopes()`, `capabilities()`, each returning facts with `at`. Shipped empty with commented examples (Django `Group` grants dict, a sign-in adapter adding a group, a `get_queryset` filter on the user's subsidiary); no moi value.
+
+#### CG. `admin.py` 🟢 ⚪ — what the admin registry enforces: per admin URL the `has_*_permission` Django calls, first-party overrides with source and `file:line`, the page view, `formfield_for_manytomany`, `save_related`; `get_queryset` overrides as scope candidates (`inferred`); each registered `ModelAdmin` ⇒ an area (model name as term) and its actions ⇒ extracted capabilities; `vocabulary.stack.admin_actions` for custom URLs.
+
+#### CH. `runtime.py` 🟢 — §2 serialisation and the `--check` diff, mirroring `access_inspector/inventory.py`.
+
+### Map package — `map/` (ships with the skill; `node <skill>/map/src/cli.ts`, no install)
+
+#### CI. `map/src/runtime.ts` ⚪ — load and validate `tools/access-map/runtime.json` (path moved out of `out/`); empty runtime with a note when the stack has no introspect.
+
+#### CJ. `map/src/vocabulary.ts` ⚪ — load and validate; `pin`, `staleReferences` (prototype); terms checked against `CONTEXT.md` when it exists; duplicates of Map Rules.
+
+#### CK. `map/src/roles.ts` 🟢 — role list: `anonymous`, then runtime roles merged with vocabulary names and docs, `superuser` last; `includes` closure; `reach(who, role)` per §1.
+
+#### CL. `map/src/cells.ts` 🟢 — capability list (extracted, `extends`, hand-written, `replaces`); cell state, scope and basis per §1; fingerprint for decisions; decisions joined from `replay`.
+
+#### CM. `map/src/join.ts` ⚪ — per-endpoint layers and `who` (prototype order), wording stack-neutral ("holds <permission>", Django phrasing only from `runtime.about`), all dimensions passed through (no `access_tier` / `module` by name).
+
+#### CN. `map/src/alerts.ts` 🟢 — §1 Alerts, every review Signal labelled.
+
+#### CO. `map/src/data.ts` 🟢 — `buildData(project)` ⇒ §2 Page data, and its type; the only input of `page.html` and the app pages.
+
+#### CP. `map/src/cli.ts` ⚪ — `build [--out]`, `check`, `pin`, `decide <capability> <role> --verdict … --reason …`; exit codes per §1.
+
+#### CQ. `map/page.html` ⚪ — draws Page data only: title and heading from the project, no default selection, no `localStorage` marks, no `reaches()`/`cell()`; basis borders (solid, ≈, dotted ✎, dashed) with the basis in each `aria-label`; one legend for all tabs; decisions read-only.
+
+#### CR. `map/package.json`, `tsconfig.json`, `vitest.config.ts`, `pnpm-workspace.yaml` ⚪ — mirror `review/`.
+
+### Review app — map pages (Phase 9b)
+
+#### CS. `apps/review/app/map/page.tsx`, `cell-panel.tsx`, `routes.tsx` 🟢 — tabs as `?tab=alerts|roles|routes|method`, filters as URL params; cell panel with reached/missed endpoints, decision history and `VerdictForm`; an endpoint opens the existing endpoint panel; map entry disabled when `tools/access-map/` is absent.
+
+#### CT. `apps/review/app/actions.ts` 🔵 — `saveDecision(capability, role, form)` through CD's `appendDecision`; next undecided partial selected after a save.
+
+#### CU. `apps/review/lib/projection.ts` 🔵 — `buildData` result cached per request on the sizes and mtimes of inventory, runtime, vocabulary and log; refreshed when one changes.
+
+#### CV. `apps/review/app/history/page.tsx` 🔵 — decisions beside Verdicts in their batch; orphaned decisions.
+
+### Skill (Phase 9c)
+
+#### CW. `SKILL.md` 🔵 ⚪ — description adds the map; `## Map` rewritten: hard rule "read before you write"; steps: vendor the introspect and write Map Rules (shown with evidence before saving), extract roles and map them to the docs, write the vocabulary for the rest with reasons, `pin`/`check`/`build`, summary with coverage, partials and "could be extracted".
+
+#### CX. `references/{django,nestjs,spring,symfony}.md` 🔵 ⚪ — `## Map introspect`: Django vendoring and a Map Rule cookbook; the others: where roles, grants and scopes live on that stack, and no introspect yet. Django `## Linters` adds `tools/access-map/`.
+
+#### CY. `assets/summary-template.md` 🔵 ⚪ — map next step, coverage, "could be extracted".
+
+#### CZ. `Makefile` 🔵, `.github/workflows/ci.yml` 🔵 — `install-review` and `test-review`/`typecheck-review` cover `map/`; Django `lint`/`typecheck`/`test-django` cover `access_map/` and the map golden.
+
+#### DA. `fixtures/django-demo/` 🔵 — a grants dict for two groups, a sign-in path adding every account to one of them, a `get_queryset` filtered by owner, a custom admin URL checking a different permission than its list (the partial), a `CONTEXT.md`; `expected/runtime.json`, `tools/access-map/vocabulary.json`, `tests/test_map_golden.py`.
+
+#### DB. `README.md` 🔵, `VERSION` 🔵 — Access map section; 0.4.0.
+
 ---
 ## 4. Test Plan
 
@@ -432,6 +518,16 @@ Review app (`apps/review/tests/e2e/`, Playwright against `review app` on a tmp c
 - `test_bulk_open_finding_confirm` (5f): selection holding a `finding` → named, nothing written until confirmed.
 - `test_orphan_copy_reason` (5f): renamed endpoint shows the orphan candidate; copy + save → new key reviewed, orphan still in History.
 - `test_localhost_only`: server bound to `127.0.0.1`.
+
+Access map (Phase 9):
+- `test_map_golden` (`fixtures/django-demo`, pytest): `introspect.py` writes `expected/runtime.json` byte for byte; twice and from another cwd ⇒ identical; `--check` clean ⇒ 0; a removed grant ⇒ 1 with the diff; boot failure ⇒ 2.
+- `test_map_rules` (Base Script pytest, no boot): each commented example in `project.py`, uncommented on a sample, returns facts with `at`; `runtime.py` serialisation and diff.
+- `map/tests/roles.spec.ts`: reach table of §1 for every `who` kind × role kind, `includes` transitive, `staff` through an included role; no hard-coded role id.
+- `map/tests/cells.spec.ts`: pass, partial, no, off, open; weakest basis; scope only on pass/partial; fingerprint stable under reordering.
+- `map/tests/vocabulary.spec.ts` ⚪: pin/stale (prototype) + term absent from `CONTEXT.md` ⇒ problem; duplicate of a Map Rule ⇒ problem; schema-invalid ⇒ `VocabularyError`.
+- `map/tests/cli.spec.ts`: exit codes of §1 on `fixtures/django-demo` copies (stale pin, runtime mismatch, undecided partial, outdated decision ⇒ 1; invalid vocabulary ⇒ 2; decided ⇒ 0); `decide` refusals (no reason, `finding` without severity, unknown capability or role) ⇒ 2, log unchanged.
+- `review/tests/replay.spec.ts` 🔵: `decided` valid / outdated (fingerprint changed, `until` passed) / orphaned; `v` 2 lines validated by ajv against the schema.
+- `apps/review/tests/e2e/map.spec.ts` (9b): decide the fixture's partial `finding` high ⇒ one line, alert moves to open findings, "1 event not committed"; the static page built from the same files shows the same cell states and alert count (Playwright on both).
 
 Triage (not automated, like the Agent): manual run on `fixtures/django-demo` then moi; acceptance in Phase 5d Verify.
 
@@ -632,6 +728,30 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
   - Table framework → Base Script; what is kept (inventory, rules engine, dimensions, table, entry) vs rewritten (boot, discovery, classify, framework builtins, each file headed with its origin); route-registry hints (FastAPI `iter_route_contexts(app.routes)`, Flask `app.url_map`, Express `app._router.stack` / `app.router.stack`, Fastify, Laravel `getRoutes()`, Micronaut, JAX-RS, Rails, ASP.NET Core, Go); mandatory `coverage: best-effort` + note naming stack and Base Script; update mode re-base when `stack` ≠ `base_script.stack`.
 - [x] **Skill branch**: `SKILL.md` step 1 fallback row, improvise or refuse when no registry and no recognisable routing, the byte-identical hard rule's exception, update mode pointer.
 - [x] **Verify (manual)**: improvised a FastAPI 0.159 sample (3 routes: open, `Depends(current_user)` parameter, router-level `require_admin`) from the django Base Script: inventory validates against the schema, `best-effort`, `--check` green, drift on removing a dependency exits 1. Found that `include_router()` is no longer flattened in `app.routes`; `unsupported.md` says to use `iter_route_contexts`.
+
+### Phase 9a — UF16, UF17 The access map: data, CLI, static page
+
+- [ ] **Contracts**: `schema/runtime.schema.json`, `schema/vocabulary.schema.json`, `review-event.schema.json` `v` 2 (CA, CB, CC).
+- [ ] **Review package**: `decided` events, `capability` key, decisions in `replay`, `appendDecision` (CD).
+- [ ] **Django Map Introspect**: port and split into `introspect.py`, `project.py`, `admin.py`, `runtime.py`; Map Rules; deterministic `runtime.json`; `--check` (CE–CH).
+- [ ] **Map package**: port `map/`, then `roles.ts`, `cells.ts`, `alerts.ts`, `data.ts`; `join.ts` stack-neutral; `cli.ts` `decide` and exit codes (CI–CP, CR).
+- [ ] **Static page**: `page.html` reduced to drawing Page data, moi strings and `localStorage` marks removed, basis borders and legend, partial state, decisions read-only (CQ).
+- [ ] **Fixture**: `fixtures/django-demo` grants, sign-in group, owner-filtered queryset, partial, `CONTEXT.md`; expected runtime and vocabulary (DA).
+- [ ] **Tooling**: Makefile and CI (CZ).
+- [ ] **Write tests**: §4 Access map, except `map.spec.ts`.
+- [ ] **Verify**: `make check-all`, `make test`; on a scratch copy of moi (never in moi): vendor the 0.4.0 introspect, move the prototype vocabulary to the new shape, `map check` lists the 5 prototype findings as cells to decide and the "could be extracted" items; `map build` page opened, no console error.
+
+### Phase 9b — UF18 The access map in the review app
+
+- [ ] **Pages**: `app/map/*` (CS), `saveDecision` (CT), projection (CU), History (CV).
+- [ ] **Write tests**: `apps/review/tests/e2e/map.spec.ts`.
+- [ ] **Verify**: `make test-review`; on the moi scratch copy, decide one partial in the app ⇒ one `decided` line; static page from the same files shows the same states.
+
+### Phase 9c — Skill, docs and release
+
+- [ ] **Skill**: `SKILL.md` § Map, references, summary template (CW–CY).
+- [ ] **Docs**: README Access map section; `VERSION` 0.4.0 (DB).
+- [ ] **Verify**: the Agent runs § Map on `fixtures/django-demo` from a clean copy and reaches the expected vocabulary's coverage; every README anchor resolves.
 
 ---
 ## 6. Context: Current System Architecture
