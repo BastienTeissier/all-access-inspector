@@ -47,7 +47,7 @@ PRD: [prd.md](./prd.md). Vocabulary: [CONTEXT.md](../../../CONTEXT.md). Decision
 - Cell = over the capability's endpoints: all yes ⇒ `pass`; all off ⇒ `off`; none yes and none unresolved ⇒ `no`; some yes and some no/off ⇒ `partial`; else ⇒ `open`. Basis = weakest of the endpoints' `who` bases and the scope's basis. HEAD rows fold into their GET as in review.
 - Scope: shown only on `pass` or `partial`; default "every record", no badge; a program can find the filter but never prove what it means, so a scope is `inferred` when the introspect or a Map Rule read the filter, `curated` when hand-written; never solid.
 - Alerts (computed only, in this order): partial with no valid decision; open `finding` decisions; `open` cells; endpoints behind no capability; agent signals on cells; review Signals (all seven named); endpoints outside expected access.
-- `map check`: exit 1 on a stale pin, an unused anchor, a duplicate of a Map Rule, a runtime/inventory mismatch, a partial with no valid decision, an outdated decision, a term not in `CONTEXT.md` when it exists, a `group` role absent from the grants or a granted role with no role; exit 2 on an unreadable or schema-invalid vocabulary, runtime or log; exit 0 otherwise. Coverage and open findings printed, never failing.
+- `map check`: exit 1 on a stale pin, an unused anchor, a duplicate of a Map Rule, a runtime/inventory mismatch, a partial with no valid decision, an outdated decision, a term not in `CONTEXT.md` when it exists (vocabulary areas and extracted capabilities), a `group` role absent from the grants or a granted role with no role, a scoped fact naming a capability or role not on the map; exit 2 on an unreadable or schema-invalid vocabulary, runtime or log; exit 0 otherwise. Coverage and open findings printed, never failing.
 
 **Visual Design**: inventory contract + project/toolkit layouts in [prd.md § Visual](./prd.md#visual).
 
@@ -366,7 +366,7 @@ Split of the prototype's 523-line `introspect.py` so no file passes the Base Scr
 
 #### CE. `introspect.py` 🟢 ⚪ — entry: boot through the Adapted Script's `boot.py`, run the Map Rules and `admin.py`, write `runtime.json`; `--check` regenerates in memory and diffs against the committed file (exit 0 / 1 with a per-key diff / 2 on boot failure or missing inventory).
 
-#### CF. `project.py` 🟢 ⚪ — the project section only: `FIRST_PARTY`, `CONSTANT_FILES`, `SUPERUSER_RULES`, `SIGNED_IN_RULES`, and the Map Rules `roles()`, `includes()`, `staff()`, `grants()`, `scopes()`, `capabilities()`, each returning facts with `at`. Shipped empty with commented examples (Django `Group` grants dict, a sign-in adapter adding a group, a `get_queryset` filter on the user's subsidiary); no moi value.
+#### CF. `project.py` 🟢 ⚪ — the project section only: `FIRST_PARTY`, `CONSTANT_FILES`, `SUPERUSER_RULES`, `SIGNED_IN_RULES`, `STAFF_RULES`, and the Map Rules `roles()`, `includes()`, `staff()`, `grants()`, `scopes()`, `capabilities()`, each returning facts with `at`. Shipped empty with commented examples (Django `Group` grants dict, a sign-in adapter adding a group, a `get_queryset` filter on the user's subsidiary); no moi value.
 
 #### CG. `admin.py` 🟢 ⚪ — what the admin registry enforces: per admin URL the `has_*_permission` Django calls, first-party overrides with source and `file:line`, the page view, `formfield_for_manytomany`, `save_related`; `get_queryset` overrides as scope candidates (`inferred`); each registered `ModelAdmin` ⇒ an area (model name as term) and its actions ⇒ extracted capabilities; `vocabulary.stack.admin_actions` for custom URLs.
 
@@ -739,7 +739,7 @@ Phases follow the UF slicing. Phase 0 is the contract every UF depends on. Phase
 - [x] **Fixture**: `fixtures/django-demo` grants, sign-in group, owner-filtered queryset, partial, `CONTEXT.md`; expected runtime and vocabulary (DA).
 - [x] **Tooling**: Makefile and CI (CZ).
 - [x] **Write tests**: §4 Access map, except `map.spec.ts`.
-- [ ] **Verify**: `make check-all`, `make test`; on a scratch copy of moi (never in moi): vendor the 0.4.0 introspect, move the prototype vocabulary to the new shape, `map check` lists the 5 prototype findings as cells to decide and the "could be extracted" items; `map build` page opened, no console error.
+- [x] **Verify**: `make check-all`, `make test`; on a scratch copy of moi (never in moi): vendor the 0.4.0 introspect, move the prototype vocabulary to the new shape, `map check` lists partial cells to decide and the "could be extracted" items; the 5 prototype findings (a role reaching too much) come out as `pass` cells and are recorded with `map decide --verdict finding`; `map build` page opened, no console error. Fixed after the moi run: a role takes the scope of a role it includes when it has none of its own; `.md` references pinned, `stack` left out of pin; custom admin URLs of `stack.admin_actions` become extracted capabilities; a capability's `check` names the override that decides it.
 
 ### Phase 9b — UF18 The access map in the review app
 
