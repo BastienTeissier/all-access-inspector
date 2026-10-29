@@ -122,9 +122,39 @@ Typical shape: `access_tier` with `public`, `customer`, `staff`. Write assignmen
 
 Each value then gets an expected access in `EXPECTED`, keyed like `DIMENSIONS`: the `authentication` and `authorization` values its endpoints may have. Typical: `public` anonymous or optional, none; `customer` required, none or rule; `staff` required, rule. Derive it from what the value means; an endpoint outside it is a finding for the team, not a reason to move the endpoint.
 
+## Map introspect
+
+Copy every `*.py` of `<skill>/base-scripts/django/access_map/` except `__init__.py` into `tools/access-map/`, and write `tools/access-map/.gitattributes` with the line `runtime.json -diff linguist-generated`. It boots Django through the Adapted Script's `boot.py`, so the Boot Environment is pinned once. Run it as `<run> python tools/access-map/introspect.py`, from the directory that holds `manage.py`: it writes `tools/access-map/runtime.json`. `--check` regenerates it in memory and exits 1 with a per-key diff when it differs from the committed file, 2 when the boot fails or the inventory is missing. Project code goes only in the project section of `project.py`; the other files stay byte-identical to the Base Script.
+
+What it reads with no Map Rule:
+
+- the superuser role, from Django's `is_superuser` bypass;
+- each registered `ModelAdmin` as an area (its model name as the term) and its pages as extracted capabilities;
+- per admin URL, the `has_*_permission` Django calls, the first-party overrides of those methods and of the page view, `formfield_for_manytomany` and `save_related`, with source and `file:line`. An override ending in `return False` lets nobody through, one ending in `return request.user.is_superuser` only a superuser; a permission found in override code by pattern makes the badge `inferred`;
+- each first-party `get_queryset` override, as a scope candidate (`inferred`).
+
+The project section of `project.py`:
+
+- `FIRST_PARTY`: the top-level packages whose admin classes and overrides are the project's own. Empty reads every module under the project root and outside site-packages.
+- `CONSTANT_FILES`: files holding `NAME = "codename"` constants, so a `"app." + NAME` in an override resolves to the permission it checks.
+- `SUPERUSER_RULES`, `SIGNED_IN_RULES`, `STAFF_RULES`: the Recognition Rule names of `tools/access-inspector/rules.py` that end in superusers only, let any signed-in user through, or let staff through.
+- The Map Rules, each returning facts with `at` from `line_of(ROOT, "<file>", "<text on the line>")`.
+
+Map Rule cookbook (each function's docstring holds the example as code):
+
+| The code declares | Map Rule |
+|---|---|
+| a dict of group → permissions, a data migration creating groups | `roles()` with kind `group`, `grants()` one fact per permission |
+| a sign-in adapter or signal adding every account to a group | `includes()`: every other role includes that group |
+| a sign-in path setting `is_staff = True` for every account | `staff()` on the role every account holds |
+| a `get_queryset` filter on the user's own records, the same everywhere | `scopes()`, then `scoped()` per capability and role it narrows |
+| a view guarded by one permission, outside the admin | `capabilities()` with its endpoints and `check` |
+
+A custom admin URL the registry cannot map to a permission action shows as not resolved until the vocabulary maps it: `"stack": {"admin_actions": {"/admin/shop/order/export/": {"action": "change", "text": "what it does and checks", "at": "shop/admin.py:24"}}}`. It then becomes an extracted capability.
+
 ## Linters
 
-Exclude `tools/access-inspector/` from:
+Exclude `tools/access-inspector/` and `tools/access-map/` from:
 
 - ruff: `extend-exclude` under `[tool.ruff]` in `pyproject.toml`, or in `ruff.toml`;
 - mypy: `exclude` under `[tool.mypy]`, or in `mypy.ini` / `setup.cfg`;
