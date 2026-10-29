@@ -58,7 +58,6 @@ export const cellChanged = (seen: CellSeen, now: CellSeen): boolean =>
 
 const later = <T extends { at: string; line: number }>(a: T | undefined, b: T): T => (!a || b.at > a.at || (b.at === a.at && b.line > a.line) ? b : a);
 
-/** `today` is YYYY-MM-DD; an `accepted` Verdict is outdated the day after its `until`. */
 /** The latest decision and agent event per cell; a decision on a cell that no longer exists is orphaned. */
 export const decide = (cells: Cells, events: LoggedCell[], today: string): { decisions: Decision[]; agents: CellAgent[] } => {
   const decided = new Map<string, Decided & LoggedCell>();
@@ -82,6 +81,7 @@ export const decide = (cells: Cells, events: LoggedCell[], today: string): { dec
   return { decisions, agents };
 };
 
+/** `today` is YYYY-MM-DD; an `accepted` Verdict is outdated the day after its `until`. */
 export const replay = (inventory: Inventory, events: Logged[], today: string): { rows: Row[]; orphans: Orphan[] } => {
   const expected = inventory.expected_access;
   const reviewed = new Map<string, Reviewed & Logged>();
