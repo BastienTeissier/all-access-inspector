@@ -1,0 +1,460 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/BastienTeissier/all-access-inspector/schema/vocabulary.schema.json",
+  "title": "Map Vocabulary",
+  "description": "tools/access-map/vocabulary.json: what the code does not declare in a form a program can read, written by hand. Every hand-written role, scope, scoped grant and capability carries a reason; every file:line is pinned in anchors by map pin.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "areas",
+    "roles",
+    "capabilities"
+  ],
+  "properties": {
+    "areas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "term",
+          "defined_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "term": {
+            "description": "The CONTEXT.md term this area is about.",
+            "type": "string",
+            "minLength": 1
+          },
+          "defined_at": {
+            "description": "file:line that defines the term, or null.",
+            "anyOf": [
+              {
+                "$ref": "#/$defs/at"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "roles": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "description": "Names a role the Map Runtime extracted, and where the docs describe it.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "doc_at": {
+                "$ref": "#/$defs/at"
+              }
+            }
+          },
+          {
+            "description": "A role written by hand, on a stack with no introspect or a role no Map Rule can read.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "at",
+              "reason"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "doc_at": {
+                "$ref": "#/$defs/at"
+              },
+              "kind": {
+                "enum": [
+                  "signed_in",
+                  "superuser",
+                  "group"
+                ]
+              },
+              "at": {
+                "$ref": "#/$defs/at"
+              },
+              "reason": {
+                "$ref": "#/$defs/text"
+              },
+              "includes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "role",
+                    "at"
+                  ],
+                  "properties": {
+                    "role": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "at": {
+                      "$ref": "#/$defs/at"
+                    }
+                  }
+                }
+              },
+              "staff": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "at"
+                ],
+                "properties": {
+                  "at": {
+                    "$ref": "#/$defs/at"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "description": "Names an extracted capability.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "extends",
+              "name"
+            ],
+            "properties": {
+              "extends": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sub": {
+                "type": "string"
+              },
+              "area": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          {
+            "description": "A capability written by hand.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "area",
+              "verb",
+              "endpoints",
+              "check",
+              "evidence",
+              "reason"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sub": {
+                "type": "string"
+              },
+              "area": {
+                "type": "string",
+                "minLength": 1
+              },
+              "verb": {
+                "enum": [
+                  "read",
+                  "write"
+                ]
+              },
+              "endpoints": {
+                "description": "Method and path, or method, path and handler.",
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "minItems": 2,
+                  "maxItems": 3
+                }
+              },
+              "check": {
+                "type": "string"
+              },
+              "evidence": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "$ref": "#/$defs/at"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ],
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              },
+              "reason": {
+                "$ref": "#/$defs/text"
+              },
+              "replaces": {
+                "description": "Extracted capabilities this one replaces.",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "scopes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "label",
+          "at",
+          "reason"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "at": {
+            "$ref": "#/$defs/at"
+          },
+          "reason": {
+            "$ref": "#/$defs/text"
+          }
+        }
+      }
+    },
+    "scoped": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "capability",
+          "role",
+          "scope",
+          "at",
+          "reason"
+        ],
+        "properties": {
+          "capability": {
+            "type": "string",
+            "minLength": 1
+          },
+          "role": {
+            "type": "string",
+            "minLength": 1
+          },
+          "scope": {
+            "type": "string",
+            "minLength": 1
+          },
+          "at": {
+            "$ref": "#/$defs/at"
+          },
+          "reason": {
+            "$ref": "#/$defs/text"
+          }
+        }
+      }
+    },
+    "domains": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contains": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "prefixes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "match",
+          "label"
+        ],
+        "properties": {
+          "match": {
+            "description": "A regular expression tried against the path; $1… in label are its groups.",
+            "type": "string",
+            "minLength": 1
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "route_checks": {
+      "description": "Path → checks made inside a handler body that neither the inventory nor the introspect can see.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "layer",
+            "text",
+            "at"
+          ],
+          "properties": {
+            "layer": {
+              "enum": [
+                "permission",
+                "scope",
+                "view",
+                "write",
+                "body"
+              ]
+            },
+            "text": {
+              "$ref": "#/$defs/text"
+            },
+            "at": {
+              "$ref": "#/$defs/at"
+            },
+            "permissions": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "who": {
+              "enum": [
+                "anyone",
+                "signed_in",
+                "staff",
+                "groups",
+                "superuser",
+                "nobody",
+                "custom"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "stack": {
+      "description": "Read by the stack's introspect only.",
+      "type": "object"
+    },
+    "anchors": {
+      "description": "file:line → the trimmed text of that line, written by map pin.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "$defs": {
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "at": {
+      "description": "file:line relative to the project root.",
+      "type": "string",
+      "pattern": "^[^\\s:]+:\\d+$"
+    }
+  }
+}
