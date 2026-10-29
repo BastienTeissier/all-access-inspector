@@ -23,7 +23,8 @@ export const check = (dir: string, options: Options = {}): { code: number; stdou
     ...[...p.runtime.scoped, ...(p.vocabulary.scoped ?? [])]
       .filter(s => !p.caps.some(c => c.id === s.capability) || !p.roles.some(r => r.id === s.role))
       .map(s => `scoped ${s.capability} for ${s.role} at ${s.at}: no such capability or role on the map`),
-    ...p.roles.filter(r => r.kind === 'group' && !Object.values(p.runtime.grants).some(g => g.some(x => x.role === r.id))).map(r => `role ${r.id} holds no grant`),
+    // With no Map Runtime nothing reads the grants, so a group holding none is not a problem.
+    ...p.roles.filter(r => r.kind === 'group' && !p.note && !Object.values(p.runtime.grants).some(g => g.some(x => x.role === r.id))).map(r => `role ${r.id} holds no grant`),
     ...[...new Set(Object.values(p.runtime.grants).flatMap(g => g.map(x => x.role)))].filter(id => !p.roles.some(r => r.id === id)).map(id => `grants name role ${id}, which is not a role`),
   ];
   const covered = new Set(p.found.flatMap(f => f.found)).size;

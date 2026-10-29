@@ -1,7 +1,7 @@
 // The map CLI run as a user runs it, inside a copy of fixtures/django-demo: one test per scenario of test.md.
 
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -166,4 +166,14 @@ test('A named capability term absent from CONTEXT.md and a scoped fact on no rol
   expect(result.status).toBe(1);
   expect(result.out).toContain('term "Product" is not in CONTEXT.md');
   expect(result.out).toContain('scoped export-orders for cashier at shop/admin.py:24: no such capability or role on the map');
+});
+
+test('A group role holding no grant fails the check, unless no Map Introspect reads the grants', () => {
+  editJson('tools/access-map/vocabulary.json', data => {
+    data.roles?.push({ id: 'auditor', kind: 'group', at: 'shop/admin.py:24', reason: 'No Map Rule reads it.' });
+  });
+  map('pin', '.');
+  expect(map('check', '.')).toMatchObject({ status: 1, out: expect.stringContaining('role auditor holds no grant') });
+  rmSync(join(project, 'tools', 'access-map', 'runtime.json'));
+  expect(map('check', '.').out).not.toContain('holds no grant');
 });
