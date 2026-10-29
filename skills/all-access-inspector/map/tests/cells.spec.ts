@@ -62,6 +62,14 @@ describe('cell', () => {
     expect(cell(cap, role('manager'), [list], rt, vocabulary()).scope).toBeNull();
   });
 
+  test('a role without its own scoped fact takes the scope of a role it includes', () => {
+    const rt = runtime({
+      scopes: [{ id: 'own', label: 'Their own orders', at: 'app/admin.py:3', basis: 'extracted' }],
+      scoped: [{ capability: cap.id, role: 'staff', scope: 'own', at: 'app/admin.py:3', basis: 'rule' }],
+    });
+    expect(cell(cap, role('editor', { includes: ['staff'] }), [list], rt, vocabulary()).scope).toMatchObject({ id: 'own', basis: 'inferred' });
+  });
+
   test('the fingerprint does not depend on the order of the endpoints', () => {
     const a = cell(cap, editor, [list, exported, hidden], runtime(), vocabulary()).seen;
     const b = cell(cap, editor, [hidden, exported, list], runtime(), vocabulary()).seen;

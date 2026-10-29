@@ -97,11 +97,13 @@ export const cellState = (reaches: Reach[]): CellState => {
 const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const sortKeys = (keys: Key[]): Key[] => [...keys].sort((a, b) => byText(keyText(a), keyText(b)));
 
-/** The scope narrowing a capability for a role: a Map Rule's or the introspect's (`inferred`), else hand-written (`curated`). */
-const scopeOf = (runtime: Runtime, vocabulary: Vocabulary, capability: string, role: string): Scope | null => {
-  const ruled = runtime.scoped.find(s => s.capability === capability && s.role === role);
-  const written = vocabulary.scoped?.find(s => s.capability === capability && s.role === role);
-  const id = ruled?.scope ?? written?.scope;
+/** The scope narrowing a capability for a role: a Map Rule's or the introspect's (`inferred`), else hand-written (`curated`).
+ * The role's own scoped fact first, else the first role it includes that has one. */
+const scopeOf = (runtime: Runtime, vocabulary: Vocabulary, capability: string, role: Role): Scope | null => {
+  const scopeFor = (r: string) =>
+    runtime.scoped.find(s => s.capability === capability && s.role === r)?.scope ??
+    vocabulary.scoped?.find(s => s.capability === capability && s.role === r)?.scope;
+  const id = [role.id, ...role.includes].map(scopeFor).find(Boolean);
   if (!id) return null;
   const fromRuntime = runtime.scopes.find(s => s.id === id);
   if (fromRuntime) return { ...fromRuntime, basis: weakest('inferred', fromRuntime.basis) };
@@ -113,7 +115,7 @@ const scopeOf = (runtime: Runtime, vocabulary: Vocabulary, capability: string, r
 export const cell = (cap: Capability, role: Role, endpoints: MapEndpoint[], runtime: Runtime, vocabulary: Vocabulary): Omit<Cell, 'decision'> => {
   const reaches = endpoints.map(e => reach(e.who, role));
   const state = cellState(reaches);
-  const scope = state === 'pass' || state === 'partial' ? scopeOf(runtime, vocabulary, cap.id, role.id) : null;
+  const scope = state === 'pass' || state === 'partial' ? scopeOf(runtime, vocabulary, cap.id, role) : null;
   const seen: CellSeen = {
     state,
     reached: sortKeys(endpoints.filter((_, i) => reaches[i] === 'yes').map(e => e.key)),
