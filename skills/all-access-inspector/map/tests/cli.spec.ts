@@ -142,3 +142,13 @@ test('An invalid vocabulary is an error', () => {
   expect(result.status).toBe(2);
   expect(result.out).toContain('auditor: kind: "admin"');
 });
+
+test('build writes the page with its data, and a broken log is an error', () => {
+  const result = map('build', '.');
+  expect(result.status, result.out).toBe(0);
+  const page = readFileSync(join(project, 'tools', 'access-map', 'out', 'access-map.html'), 'utf8');
+  expect(page).not.toContain('/*__DATA__*/null');
+  expect(page).toContain('"export-orders"');
+  writeFileSync(logPath(), '<<<<<<< HEAD\n');
+  expect(map('check', '.')).toMatchObject({ status: 2, out: expect.stringContaining('reviews.jsonl line 1') });
+});
