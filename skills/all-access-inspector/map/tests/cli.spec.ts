@@ -153,9 +153,11 @@ test('build writes the page with its data, and a broken log is an error', () => 
   expect(map('check', '.')).toMatchObject({ status: 2, out: expect.stringContaining('reviews.jsonl line 1') });
 });
 
-test('A capability term absent from CONTEXT.md and a scoped fact on no role fail the check', () => {
+test('A named capability term absent from CONTEXT.md and a scoped fact on no role fail the check', () => {
   writeFileSync(join(project, 'CONTEXT.md'), '- **Order**: a purchase.\n');
+  expect(map('check', '.').out).not.toContain('term "Product"');
   editJson('tools/access-map/vocabulary.json', data => {
+    data.capabilities?.push({ extends: 'shop.product.view', name: 'See products' });
     data.scopes = [{ id: 'own', label: 'Their own', at: 'shop/admin.py:24', reason: 'r' }];
     data.scoped = [{ capability: 'export-orders', role: 'cashier', scope: 'own', at: 'shop/admin.py:24', reason: 'r' }];
   });
