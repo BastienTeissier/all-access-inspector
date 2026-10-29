@@ -763,17 +763,18 @@ The full lists are under "Blind spots" in each stack reference.
 skills/all-access-inspector/
 ├── SKILL.md                     # the Agent's workflow
 ├── VERSION
-├── base-scripts/django/         # Base Script + tests (uv, pytest, ruff, mypy)
+├── base-scripts/django/         # Base Script + tests (uv, pytest, ruff, mypy); access_map/: the Map Introspect
 ├── base-scripts/nestjs/         # Base Script + tests (pnpm, vitest, tsc)
 ├── base-scripts/spring/         # Base Script + tests (Maven, JUnit), Java 21
 ├── base-scripts/symfony/        # Base Script + tests (Composer, PHPUnit)
 ├── review/                      # review CLI (Node 24, zero dependencies)
+├── map/                         # map CLI and the static page.html (Node 24)
 ├── references/                  # per-stack knowledge the Agent reads
-├── schema/                      # inventory.schema.json + canonical samples
+├── schema/                      # inventory, review event, runtime and vocabulary schemas + canonical samples
 ├── assets/                      # CI snippet templates, summary template
 └── viewer/inventory-viewer.html
 fixtures/                        # django-demo, nestjs-demo, nestjs-jest-smoke, spring-demo, spring-gradle-smoke, symfony-demo:
-                                 # fitted projects with golden inventories
+                                 # fitted projects with golden inventories; django-demo also has a fitted access map
 apps/review/                     # the Next.js review app
 docs/                            # ADRs, PRD, user flows, plan
 CONTEXT.md                       # the domain glossary
@@ -781,7 +782,9 @@ CONTEXT.md                       # the domain glossary
 
 ```bash
 make install-nestjs install-symfony install-review   # once
-make test             # Base Script unit tests + golden tests on every fixture
+pnpm --dir apps/review exec playwright install chromium   # once, for the app's e2e tests
+make test             # Base Script unit tests + golden tests on every fixture + make test-review
+make test-review      # review CLI, map CLI and review app tests, then the app's Playwright e2e
 make check-all        # ruff, mypy, deptry, tsc
 make format
 ```
@@ -789,6 +792,7 @@ make format
 - Java and PHP run in Docker (`eclipse-temurin:21-jdk`, `composer:2`) with their caches in volumes, so you need neither on your machine. CI, which has them, sets `SPRING_RUN=` and `SYMFONY_RUN=` to run them directly.
 - The fixtures vendor the Base Script. A golden test checks that each vendored copy matches the Base Script outside its project section, so copy changes into the fixtures.
 - After a change in classification, regenerate the fixture goldens (`expected/inventory.json`) by running the script in the fixture and moving the output into `expected/`. Review that diff like any inventory diff.
+- The same goes for the Map Introspect: `fixtures/django-demo/expected/runtime.json` is checked against a fresh run, and `tools/access-map/runtime.json` must stay identical to it.
 - Keep the Core Classification closed. A new framework construct becomes a Built-in Rule, never a new value.
 
-Design decisions: [ADR 0001: the Agent fits once, the script runs forever](docs/adr/0001-agent-fits-once-script-runs-forever.md), [ADR 0002: runtime discovery is the source of truth](docs/adr/0002-runtime-discovery-is-the-source-of-truth.md), [ADR 0003: the Adapted Script is vendored](docs/adr/0003-adapted-script-is-vendored.md). Vocabulary: [`CONTEXT.md`](CONTEXT.md).
+Design decisions: [ADR 0001: the Agent fits once, the script runs forever](docs/adr/0001-agent-fits-once-script-runs-forever.md), [ADR 0002: runtime discovery is the source of truth](docs/adr/0002-runtime-discovery-is-the-source-of-truth.md), [ADR 0003: the Adapted Script is vendored](docs/adr/0003-adapted-script-is-vendored.md), [ADR 0004: review state is an event log](docs/adr/0004-review-state-is-an-event-log.md), [ADR 0005: access facts are read before they are written](docs/adr/0005-access-facts-are-read-before-they-are-written.md), [ADR 0006: the access map is a view of the review app](docs/adr/0006-the-access-map-is-a-view-of-the-review-app.md). Vocabulary: [`CONTEXT.md`](CONTEXT.md).
