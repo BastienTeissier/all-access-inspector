@@ -3,7 +3,7 @@
 import { execFileSync } from 'node:child_process';
 
 import { type Endpoint, type Inventory, type Key, keyOf, keyText, seenOf } from './inventory.ts';
-import { type Event, type Reviewed, SEVERITIES, VERDICTS, VERSION, append, newBatch, now, problem } from './log.ts';
+import { type CellEvent, type CellKey, type CellSeen, type Event, MAP_VERSION, type Reviewed, SEVERITIES, VERDICTS, VERSION, append, newBatch, now, problem } from './log.ts';
 import { Refused, load } from './project.ts';
 import type { Row } from './replay.ts';
 
@@ -94,6 +94,30 @@ export const appendBulk = (project: string, values: Values, keys: Key[]): { even
   const events = reviewed(project, inventory, endpoints, values, batch);
   append(project, events);
   return { events: events.length, batch };
+};
+
+/**
+ * One Capability Decision on a cell, as the map computes it now; the map checks the capability and the role exist.
+ * Refused, and nothing written, on the first problem.
+ */
+export const appendDecision = (project: string, values: Values, capability: CellKey, seen: CellSeen): string => {
+  const verdict = checkVerdict(values);
+  const event: Record<string, unknown> = {
+    v: MAP_VERSION,
+    at: now(),
+    by: gitEmail(project),
+    event: 'decided',
+    batch: null,
+    capability,
+    seen,
+    verdict,
+    reason: values.reason ?? '',
+  };
+  for (const k of ['severity', 'ticket', 'until']) if (values[k] !== undefined) event[k] = values[k];
+  const wrong = problem(event);
+  if (wrong) throw new Refused(wrong);
+  append(project, [event as unknown as CellEvent]);
+  return `decided ${verdict}: ${capability[0]} for ${capability[1]}\n`;
 };
 
 export const appendAgent = (project: string, model: string | undefined, input: string) => {

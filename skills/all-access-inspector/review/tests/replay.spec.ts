@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'vitest';
 
-import { replay } from '../src/replay.ts';
+import type { Key } from '../src/inventory.ts';
+import type { CellSeen, Decided, LoggedCell } from '../src/log.ts';
+import { type Cells, cellText, decide, replay } from '../src/replay.ts';
 import { queue } from '../src/tiers.ts';
 import { agentEvent, axis, endpoint, inventory, reviewed } from './build.ts';
 
@@ -161,5 +163,58 @@ describe('sibling', () => {
       [],
     ).rows;
     expect(rows.flatMap(r => r.signals.map(s => s.id))).not.toContain('sibling');
+  });
+});
+
+describe('Capability Decisions', () => {
+  const list: Key = ['GET', '/orders/', 'shop/admin.py'];
+  const exportKey: Key = ['GET', '/orders/export/', 'shop/admin.py'];
+  const cell = (extra: Partial<CellSeen> = {}): CellSeen => ({ state: 'partial', reached: [list], missed: [exportKey], who: {}, ...extra });
+  let line = 0;
+  const decided = (extra: Partial<Decided> = {}): Decided & LoggedCell => ({
+    v: 2,
+    at: '2026-10-01T10:00:00Z',
+    by: 'reviewer@example.com',
+    event: 'decided',
+    batch: null,
+    capability: ['export-orders', 'clerk'],
+    seen: cell(),
+    verdict: 'accepted',
+    reason: 'Clerks export through a manager',
+    ...extra,
+    line: ++line,
+  });
+  const cells = (seen: CellSeen): Cells => new Map([[cellText(['export-orders', 'clerk']), seen]]);
+  const state = (now: Cells, ...events: LoggedCell[]) => decide(now, events, TODAY).decisions.map(d => d.state);
+
+  test('valid while the cell is what was decided, in any order', () => {
+    expect(state(cells(cell({ reached: [list], missed: [exportKey], who: { x: ['groups', 'rule'] } })), decided())).toEqual(['valid']);
+    expect(state(cells(cell({ reached: [list, exportKey].reverse().slice(1), missed: [exportKey] })), decided())).toEqual(['valid']);
+  });
+
+  test('outdated when the state, the reached or the missed endpoints change', () => {
+    expect(state(cells(cell({ state: 'pass', reached: [list, exportKey], missed: [] })), decided())).toEqual(['outdated']);
+    expect(state(cells(cell({ missed: [exportKey, ['POST', '/orders/export/', 'shop/admin.py']] })), decided())).toEqual(['outdated']);
+  });
+
+  test('outdated when an accepted decision passes its until', () => {
+    const [d] = decide(cells(cell()), [decided({ until: '2026-10-14' })], TODAY).decisions;
+    expect([d!.state, d!.expired]).toEqual(['outdated', true]);
+    expect(state(cells(cell()), decided({ until: TODAY }))).toEqual(['valid']);
+  });
+
+  test('orphaned when the capability or the role is gone', () => {
+    expect(state(new Map(), decided())).toEqual(['orphaned']);
+  });
+
+  test('the latest decision wins', () => {
+    const late = decided({ at: '2026-10-02T10:00:00Z', verdict: 'finding', severity: 'high' });
+    expect(decide(cells(cell()), [late, decided()], TODAY).decisions.map(d => d.decision)).toEqual([late]);
+  });
+
+  test('an agent event counts until a valid decision settles the cell', () => {
+    const signal = { ...decided(), event: 'signal_raised', reason: 'odd', evidence: 'shop/admin.py:3' } as unknown as LoggedCell;
+    expect(decide(cells(cell()), [signal], TODAY).agents).toHaveLength(1);
+    expect(decide(cells(cell()), [signal, decided()], TODAY).agents).toHaveLength(0);
   });
 });

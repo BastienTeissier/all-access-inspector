@@ -45,7 +45,7 @@ const detail = (row: Row): string => {
  * or its check changed since. `triage` says whether Triage reads the row: no valid Verdict, no authorization rule
  * deciding it alone, and no Agent read that still counts.
  */
-const output = (row: Row) => ({
+export const output = (row: Row) => ({
   key: row.key,
   method: row.method,
   head: row.head,

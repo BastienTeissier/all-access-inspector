@@ -5,13 +5,14 @@ import { join } from 'node:path';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { describe, expect, test } from 'vitest';
 
-import { type Event, parseLog, readLog, serialize } from '../src/log.ts';
+import { type CellEvent, type Event, parseLog, readLog, serialize } from '../src/log.ts';
 
 const SAMPLES = join(import.meta.dirname, 'samples');
 const SCHEMA = join(import.meta.dirname, '..', '..', 'schema', 'review-event.schema.json');
 
 const lines = (name: string) => readFileSync(join(SAMPLES, name), 'utf8').split('\n').filter(Boolean);
 const valid = lines('django-demo.reviews.jsonl');
+const decided = lines('decided.jsonl');
 const invalid = lines('invalid.jsonl');
 
 /** The same object with its keys in reverse order, at every level: serialize must not depend on input order. */
@@ -21,6 +22,12 @@ const shuffled = (x: unknown): unknown =>
 test('every event type serialises to its sample line', () => {
   expect(new Set(valid.map(l => (JSON.parse(l) as Event).event))).toEqual(new Set(['reviewed', 'signal_raised', 'triaged']));
   for (const line of valid) expect(serialize(shuffled(JSON.parse(line)) as Event)).toBe(`${line}\n`);
+});
+
+test('every event on a capability serialises to its sample line, and is read apart from the endpoints', () => {
+  for (const line of decided) expect(serialize(shuffled(JSON.parse(line)) as CellEvent)).toBe(`${line}\n`);
+  const log = parseLog(decided.join('\n'));
+  expect([log.events.length, log.cells.map(e => e.event), log.errors]).toEqual([0, ['decided', 'decided', 'signal_raised', 'triaged'], []]);
 });
 
 test('the optional fields are left out, never null', () => {
@@ -37,27 +44,27 @@ describe('readLog errors', () => {
 
   test('a newer version, a finding without severity', () => {
     const event = JSON.parse(valid[7]!) as Record<string, unknown>;
-    expect(parseLog(JSON.stringify({ ...event, v: 2 })).errors[0]!.message).toContain('newer toolkit');
+    expect(parseLog(JSON.stringify({ ...event, v: 3 })).errors[0]!.message).toContain('newer toolkit');
     const { severity: _, ...noSeverity } = event;
     expect(parseLog(JSON.stringify(noSeverity)).errors[0]!.message).toContain('needs a severity');
   });
 
   test('a missing file is an empty log', () => {
-    expect(readLog(mkdtempSync(join(tmpdir(), 'review-')))).toEqual({ events: [], errors: [] });
+    expect(readLog(mkdtempSync(join(tmpdir(), 'review-')))).toEqual({ events: [], cells: [], errors: [] });
   });
 });
 
 describe('the schema and the CLI agree', () => {
   const validate = new Ajv2020({ allErrors: true }).compile(JSON.parse(readFileSync(SCHEMA, 'utf8')));
 
-  test.each(valid.map((line, i) => [i + 1, line]))('valid line %i', (_, line) => {
+  test.each([...valid, ...decided].map((line, i) => [i + 1, line]))('valid line %i', (_, line) => {
     expect(validate(JSON.parse(line)), JSON.stringify(validate.errors)).toBe(true);
     expect(parseLog(line).errors).toEqual([]);
   });
 
   /** The refusal each line of invalid.jsonl must get, in file order: one rule broken per line. */
   const REFUSALS = [
-    'written by a newer toolkit',
+    'an event on an endpoint is v 1',
     'unexpected field extra',
     'at must be',
     'by is required',
@@ -78,6 +85,12 @@ describe('the schema and the CLI agree', () => {
     'reason is required',
     'unexpected field reason',
     'unknown event',
+    'an event on a capability is v 2',
+    'capability must be [capability, role]',
+    'seen must hold state, reached, missed, who',
+    'seen.reached and seen.missed must be lists',
+    'reason is required',
+    'a finding needs a severity',
   ];
 
   test.each(invalid.map((line, i) => [i + 1, line, REFUSALS[i] ?? 'missing from REFUSALS'] as const))('invalid line %i', (_, line, refusal) => {
