@@ -4,7 +4,7 @@
   "discovery_mode": "runtime",
   "coverage": "complete",
   "coverage_note": null,
-  "base_script": {"stack": "spring", "version": "0.3.0"},
+  "base_script": {"stack": "spring", "version": "0.4.0"},
   "boot_environment": {"entry": "com.theodo.ms.SampleApplication", "environ": [], "stubs": [{"target": "com.theodo.ms.payments.PaymentClient", "reason": "payment gateway reachable from production only"}], "pinned": [{"setting": "spring.profiles.active", "value": "prod", "reason": "production profile"}, {"setting": "app.jwt-secret", "value": "inventory-placeholder", "reason": "secret required at boot by src/main/java/com/theodo/ms/security/SecurityConfig.java:19"}]},
   "project_dimensions": {"access_tier": ["public", "customer", "staff"]},
   "expected_access": {"access_tier": {"public": {"authentication": ["anonymous", "optional"], "authorization": ["none"]}, "customer": {"authentication": ["required"], "authorization": ["none", "rule"]}, "staff": {"authentication": ["required"], "authorization": ["rule"]}}},
