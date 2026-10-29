@@ -55,7 +55,7 @@ Branch `{{branch}}`, commit `{{sha}}`. Base Script {{stack}} {{version}}. Discov
 ## Next steps
 
 - Review the commit: each rule's evidence and each stub is the trust gate.
-- See the inventory: open `{{skill}}/viewer/inventory-viewer.html` and load `tools/access-inspector/inventory.json`.
+- See the inventory: open `{{skill}}/viewer/inventory-viewer.html` and load `tools/access-inspector/inventory.json`. It lists endpoints, not roles.
 - Wire `tools/access-inspector/ci-snippet.{{ext}}` into CI; it runs `{{check command}}`.
-- Access map: ask for it once the inventory is reviewed; CI then runs `introspect.py --check` (Django) and `node {{skill}}/map/src/cli.ts check .`.
+- Access map (who passes per role and per capability, with Alerts, Roles, Routes and How it's built tabs): once this fit is committed, ask `/all-access-inspector build the access map`; CI then runs `introspect.py --check` (Django) and `node {{skill}}/map/src/cli.ts check .`.
 - Questions left open: {{none | list}}
