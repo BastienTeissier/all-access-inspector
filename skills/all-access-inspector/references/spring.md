@@ -115,6 +115,17 @@ As for any stack: path prefix groups that share a chain or an entry (`/api/admin
 
 Each value then gets an expected access in `EXPECTED`, keyed like `DIMENSIONS`. Typical: `public` anonymous or optional, none; `customer` required, none or rule; `staff` required, rule.
 
+## Map introspect
+
+No Map Introspect ships for Spring yet: `tools/access-map/` holds only `vocabulary.json`, the runtime is empty, and the page's "How it's built" tab says so. Every fact is hand-written (dotted ✎), each with its `at` and `reason`: a role is `{"id", "kind", "at", "reason", "includes"?, "staff"?}` in the vocabulary's `roles`. The map does not guess which role a route rule names, so an endpoint guarded by a role rule shows as not resolved (dashed) until an introspect reads the grants. List each fact below that the project declares in a readable form under "could be extracted" in the summary.
+
+Where roles, grants and scopes live on Spring:
+
+- Roles: the `ROLE_*` authorities in `hasRole`, `hasAuthority`, `@PreAuthorize`, `@Secured` and `@RolesAllowed`, and where `UserDetails` loads them (`getAuthorities()`, a role table or enum).
+- Inclusions: a `RoleHierarchy` bean (`ROLE_ADMIN > ROLE_USER`), and the authorities every account is given at sign-in.
+- Superuser: an authority the hierarchy places above every other, or a custom `PermissionEvaluator` that returns true for it.
+- Scopes: `@PostFilter`, repository queries on the principal (`:#{principal.id}`), Hibernate filters, a tenant resolver.
+
 ## Linters
 
 Exclude `src/test/java/accessinspector/` from Checkstyle (`<excludes>` or a suppression), PMD and SpotBugs (`excludeFilterFile`), Spotless (`targetExclude`), and from JaCoCo coverage thresholds (`<excludes>accessinspector/**</excludes>`). The vendored files follow the toolkit's style, not the project's.

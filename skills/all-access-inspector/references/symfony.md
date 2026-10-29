@@ -112,6 +112,17 @@ As for any stack: path prefixes that share a firewall or an `access_control` ent
 
 Each value then gets an expected access in `expected()`, keyed like `DIMENSIONS`. Typical: `public` anonymous or optional, none; `user` required, none or rule; `staff` required, rule.
 
+## Map introspect
+
+No Map Introspect ships for Symfony yet: `tools/access-map/` holds only `vocabulary.json`, the runtime is empty, and the page's "How it's built" tab says so. Every fact is hand-written (dotted ✎), each with its `at` and `reason`: a role is `{"id", "kind", "at", "reason", "includes"?, "staff"?}` in the vocabulary's `roles`. The map does not guess which role a route rule names, so an endpoint guarded by a role rule shows as not resolved (dashed) until an introspect reads the grants. List each fact below that the project declares in a readable form under "could be extracted" in the summary.
+
+Where roles, grants and scopes live on Symfony:
+
+- Roles: the `ROLE_*` names in `access_control`, `#[IsGranted]`, `is_granted()` and API Platform `security` expressions, and the user class's `getRoles()`.
+- Inclusions: `role_hierarchy` in `config/packages/security.yaml`, and `ROLE_USER`, which `getRoles()` conventionally adds to every account.
+- Superuser: the top of `role_hierarchy` (often `ROLE_SUPER_ADMIN`), or a voter that grants it every attribute.
+- Scopes: voters that compare the subject's owner with the user, Doctrine SQL filters, API Platform `QueryCollectionExtensionInterface` and `QueryItemExtensionInterface` extensions.
+
 ## Linters
 
 Exclude `tools/access-inspector/` from PHPStan (`excludePaths`), Psalm (`<ignoreFiles>`), PHP-CS-Fixer (`->exclude('tools/access-inspector')` on the finder), PHP_CodeSniffer (`<exclude-pattern>`), Rector (`->withSkip`) and Deptrac. The vendored files follow the toolkit's style, not the project's.
