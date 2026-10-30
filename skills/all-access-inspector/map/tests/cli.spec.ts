@@ -1,7 +1,7 @@
 // The map CLI run as a user runs it, inside a copy of fixtures/django-demo: one test per scenario of test.md.
 
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -10,6 +10,7 @@ import { beforeEach, expect, test } from 'vitest';
 import { buildData } from '../src/data.ts';
 
 const CLI = join(import.meta.dirname, '..', 'src', 'cli.ts');
+const REVIEW_CLI = join(import.meta.dirname, '..', '..', 'review', 'src', 'cli.ts');
 const FIXTURE = join(import.meta.dirname, '..', '..', '..', '..', 'fixtures', 'django-demo');
 
 let project: string;
@@ -24,11 +25,13 @@ beforeEach(() => {
   writeFileSync(gitconfig, '[user]\n\temail = reviewer@example.com\n');
 });
 
-const map = (...args: string[]) => {
+const run = (cli: string, args: string[], input?: string) => {
   const env = { ...process.env, GIT_CONFIG_GLOBAL: gitconfig, GIT_CONFIG_NOSYSTEM: '1' };
-  const result = spawnSync(process.execPath, [CLI, ...args], { cwd: project, env, encoding: 'utf8' });
+  const result = spawnSync(process.execPath, [cli, ...args], { cwd: project, env, encoding: 'utf8', input });
   return { status: result.status, out: result.stdout + result.stderr };
 };
+
+const map = (...args: string[]) => run(CLI, args);
 
 const logPath = () => join(project, 'tools', 'access-inspector', 'reviews.jsonl');
 const log = () => (existsSync(logPath()) ? readFileSync(logPath(), 'utf8') : '');
@@ -166,4 +169,33 @@ test('A named capability term absent from CONTEXT.md and a scoped fact on no rol
   expect(result.status).toBe(1);
   expect(result.out).toContain('term "Product" is not in CONTEXT.md');
   expect(result.out).toContain('scoped export-orders for cashier at shop/admin.py:24: no such capability or role on the map');
+});
+
+test('A group role holding no grant fails the check, unless no Map Introspect reads the grants', () => {
+  editJson('tools/access-map/vocabulary.json', data => {
+    data.roles?.push({ id: 'auditor', kind: 'group', at: 'shop/admin.py:24', reason: 'No Map Rule reads it.' });
+  });
+  map('pin', '.');
+  expect(map('check', '.')).toMatchObject({ status: 1, out: expect.stringContaining('role auditor holds no grant') });
+  rmSync(join(project, 'tools', 'access-map', 'runtime.json'));
+  expect(map('check', '.').out).not.toContain('holds no grant');
+});
+
+test('The Agent raises a signal on a cell through review append, shown under Alerts', () => {
+  const lines = [
+    { event: 'signal_raised', capability: ['export-orders', 'clerk'], reason: 'The export button is in the list a clerk sees.', evidence: 'shop/admin.py:24' },
+    { event: 'triaged', capability: ['shop.order.view', 'manager'] },
+  ];
+  const result = run(REVIEW_CLI, ['append', '.', '--agent', '--model', 'm'], lines.map(l => JSON.stringify(l)).join('\n'));
+  expect(result.status, result.out).toBe(0);
+  const added = log().trimEnd().split('\n').map(l => JSON.parse(l));
+  expect(added).toEqual([
+    expect.objectContaining({ v: 2, event: 'signal_raised', by: 'agent:m', capability: ['export-orders', 'clerk'], seen: expect.objectContaining({ state: 'partial' }) }),
+    expect.objectContaining({ v: 2, event: 'triaged', capability: ['shop.order.view', 'manager'] }),
+  ]);
+  expect(buildData(project).alerts).toContainEqual(expect.objectContaining({ kind: 'agent', cell: ['export-orders', 'clerk'] }));
+  const before = log();
+  const refused = run(REVIEW_CLI, ['append', '.', '--agent', '--model', 'm'], JSON.stringify({ event: 'triaged', capability: ['export-orders', 'cashier'] }));
+  expect(refused).toMatchObject({ status: 2, out: expect.stringContaining('stdin line 1: no cell export-orders for cashier on the access map') });
+  expect(log()).toBe(before);
 });

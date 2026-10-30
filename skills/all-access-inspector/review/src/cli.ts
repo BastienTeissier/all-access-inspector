@@ -3,20 +3,36 @@
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 
+import { project as mapProject } from '../../map/src/data.ts';
 import { type App, prepare, serve } from './app.ts';
-import { appendAgent, appendVerdict } from './append.ts';
+import { type CellsNow, appendAgent, appendVerdict } from './append.ts';
 import { InventoryError, classification } from './inventory.ts';
+import type { CellSeen } from './log.ts';
 import { output } from './output.ts';
 import { Refused, load } from './project.ts';
-import type { Row } from './replay.ts';
+import { type Row, cellText } from './replay.ts';
 import { TIERS, queue } from './tiers.ts';
 
 const USAGE = `usage:
   review status <project> [--json]
   review append <project> --verdict safe|accepted|finding --reason <text> [--severity low|medium|high] [--ticket <url>] [--until YYYY-MM-DD] [--handler <handler>] <METHOD> <path>
-  review append <project> --agent --model <id>   (events as JSON lines on stdin)
+  review append <project> --agent --model <id>   (events as JSON lines on stdin, on an endpoint or a cell of the access map)
   review app <project>   (the local review app, from a checkout of the toolkit)
 <project> is the directory holding tools/access-inspector/inventory.json.`;
+
+/** The access map's cells, built on the first line that names one; a map that cannot be built refuses the append. */
+const cellsNow = (dir: string): CellsNow => {
+  let cells: Map<string, CellSeen> | undefined;
+  return cell => {
+    try {
+      cells ??= new Map(mapProject(dir).cells.map(c => [cellText([c.capability, c.role]), c.seen]));
+    } catch (error) {
+      if (error instanceof Refused || error instanceof InventoryError) throw error;
+      throw new Refused(`the access map cannot be built: ${(error as Error).message}`);
+    }
+    return cells.get(cellText(cell));
+  };
+};
 
 const zones = (row: Row) => Object.values(row.dimensions).join(',');
 
@@ -86,7 +102,7 @@ export const main = (argv: string[], stdin: () => string): { code: number; stdou
     if (command === 'status' && !rest.length) return { code: 0, stdout: status(project, values.json === true), stderr: '' };
     if (command === 'append' && values.agent) {
       if (values.verdict !== undefined) throw new Refused('--agent never gives a Verdict: it appends signal_raised or triaged only');
-      return { code: 0, stdout: appendAgent(project, values.model, stdin()), stderr: '' };
+      return { code: 0, stdout: appendAgent(project, values.model, stdin(), cellsNow(project)), stderr: '' };
     }
     if (command === 'append') return { code: 0, stdout: appendVerdict(project, values, rest), stderr: '' };
     if (command === 'app' && !rest.length) return { code: 0, stdout: '', stderr: '', app: prepare(project) };

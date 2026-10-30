@@ -1,6 +1,6 @@
 ---
 name: all-access-inspector
-description: Fit the All Access Inspector to a project, so it can regenerate and CI-check the inventory of every HTTP endpoint with its authentication and authorization, deterministically and without an LLM. Use when asked to inventory endpoints or access control, to fit or update tools/access-inspector/, to resolve its unknowns, or to triage the inventory: read the handlers the review queue has not cleared and point at the ones a human should look at first.
+description: Fit the All Access Inspector to a project, so it can regenerate and CI-check the inventory of every HTTP endpoint with its authentication and authorization, deterministically and without an LLM. Use when asked to inventory endpoints or access control, to fit or update tools/access-inspector/, to resolve its unknowns, to triage the inventory: read the handlers the review queue has not cleared and point at the ones a human should look at first, or to build the access map: per role and per capability, whether the role passes, how far over the records, and where each fact was read.
 ---
 
 # All Access Inspector
@@ -95,7 +95,7 @@ Exit 2 naming an endpoint means a rule misses it. Extend the rules; never add a 
 1. Run `<inspect> --table` and show the user the result, or a summary of it when it is long.
 2. Run `<inspect>` to write `tools/access-inspector/inventory.json`, then `<inspect> --check`. It must exit 0.
 3. Pick the template in `<skill>/assets/ci-snippets/` that matches the project's CI: `github-actions.yml` when `.github/workflows/` exists, `gitlab-ci.yml` for `.gitlab-ci.yml`, `generic.sh` otherwise. Fill `{{setup}}`, `{{install}}` and `{{check}}` from the project's own test job, then write it as `tools/access-inspector/ci-snippet.<ext>` and check it parses. Do not touch the pipeline.
-4. Tell the user how to look at the result: open `<skill>/viewer/inventory-viewer.html` in a browser and load `tools/access-inspector/inventory.json` (file picker or drag-and-drop). Give the absolute path of both. Nothing is copied into the project.
+4. Tell the user how to look at the result: open `<skill>/viewer/inventory-viewer.html` in a browser and load `tools/access-inspector/inventory.json` (file picker or drag-and-drop). Give the absolute path of both. Nothing is copied into the project. The viewer shows the inventory only. Say that who passes per role and per capability (the access map, with its Alerts, Roles, Routes and How it's built tabs) comes once the fit is committed, by asking for the access map (§ Map).
    Then run `node <skill>/review/src/cli.ts status <project>` and show the user its header and tier counts: that is where their review starts. Never append a Verdict yourself: only the user gives one.
 5. Find every linter and type checker the project's CI or pre-commit hook runs over the whole tree. Exclude `tools/access-inspector/` in each one's configuration, as the reference's "Linters" says, then run them: they must pass as they did before the fit.
 
@@ -149,3 +149,45 @@ The user asks you to triage the inventory. The deterministic tiers see only the 
 7. Print a summary: the endpoints you read, the files that changed (`reviews.jsonl`, and `.gitattributes` when the CLI created it), every Signal you raised with its reason, and every row you skipped with why. Tell the user to run `<review> status <project>`: a Signal lifts its row to tier 7, "suggested by the agent", unless the row already sits in a higher tier, where it shows beside the other Signals.
 
 Never give a Verdict, never edit the inventory or the Adapted Script, and never commit. Only `reviews.jsonl` changes, plus `tools/access-inspector/.gitattributes` on the first run in a project (the CLI adds its `merge=union` line). The user commits both.
+
+## Map
+
+The user asks for the access map: per Role and per Capability, whether the role passes, its Scope, and the Basis of each fact. `<map>` below is `node <skill>/map/src/cli.ts` (Node 24.2 or later), and `<project>` is the app root. The map joins four sources and decides nothing itself:
+
+| Source | Where | Who writes it |
+|---|---|---|
+| Endpoint Inventory and Review Log | `tools/access-inspector/` | the Adapted Script, the reviewers |
+| Map Runtime | `tools/access-map/runtime.json`, committed | the stack's Map Introspect, when it has one (today: Django) |
+| Map Vocabulary | `tools/access-map/vocabulary.json`, committed | you, with the user |
+| page | `<skill>/map/page.html` | the toolkit; never copied into the project |
+
+Hard rules for the map, besides the ones above:
+
+- Read before you write. A fact the code declares in a form a program can read (a dict, an enum, a config file, an annotation, a filter used the same way everywhere) is a Map Rule in the introspect's project section, with its `file:line`. The vocabulary holds only what no program can read, each entry with the `reason` it was not extracted. `map check` fails on a vocabulary entry a Map Rule already produces.
+- Add no role the code does not define. Not signed in is added by the toolkit.
+- Whether a role passes a capability is computed. Never write it, and never write a `who` into a route check that the cited line does not settle.
+- Never decide a cell. A Capability Decision is a human's, through `<map> decide` or the review app.
+- Never write the project's `CONTEXT.md`, and never edit a pinned anchor by hand: fix the reference at its source, then pin again.
+
+1. Check that `tools/access-inspector/inventory.json` is committed. If it is not, fit the project first and stop.
+2. Read the stack reference's "Map introspect". When the stack has one, vendor it into `tools/access-map/` as it says, and exclude `tools/access-map/` from the linters as the reference's "Linters" says. When it has none, the runtime stays empty, every fact goes in the vocabulary, and you keep a list of the facts you saw in a readable form ("could be extracted").
+3. Read the roles from the code, where the reference's "Map introspect" says they live: groups and their grants, the superuser bypass, what the sign-in assigns to every account, who passes staff checks. Give each a kind (`signed_in`, `superuser`, `group`) from evidence. Write them as Map Rules (`roles()`, `includes()`, `staff()`, `grants()`), then the scopes and capabilities the code declares uniformly (`scopes()`, `scoped()`, `capabilities()`). Show the user each Map Rule with its evidence before saving it, as for a Recognition Rule. Run the introspect, then its `--check`: it must exit 0.
+4. Map each role and each area to the project's docs: `CONTEXT.md` when it exists, else the README or `docs/`, else the defining model or class, always as a `file:line` (`doc_at` on a role, `defined_at` on an area). Report every role the docs name and the code does not, and the reverse. When the project has no `CONTEXT.md`, propose starting one in the summary.
+5. Write the vocabulary with the user, only for what no program read, each entry with its `reason`: capability names in the glossary's words (`extends` an extracted capability), capabilities one action spans or outside any pattern (`endpoints`, `check`, `evidence`, `replaces`), scopes not read by a rule, checks inside handler bodies (`route_checks`), `domains` and `resources`, and the stack section the reference names. The shapes are in `<skill>/schema/vocabulary.schema.json`. When the stack section feeds the introspect (Django `stack.admin_actions`), run the introspect again. Ask with AskUserQuestion when a name or a grouping is the team's call.
+6. Run `<map> pin <project>`, which records the text of every `file:line` the vocabulary cites, then `<map> check <project>`. Exit 2 names an invalid file: fix it. Exit 1 lists the problems: fix each one except the partial capabilities, which the user decides. Leave those listed.
+7. Run `<map> build <project>` and give the user the absolute path of `tools/access-map/out/access-map.html`. Propose ignoring `tools/access-map/out/`. Tell them the same map, with a decision form on each cell, is the review app's Access map (`node <skill>/review/src/cli.ts app <project>`).
+8. Branch (fallback `access-map/fit`) and commit as in step 8 of the fit: stage `tools/access-map/` without `out/`, plus the linter exclusions. The body lists every Map Rule and every vocabulary entry with its reason.
+9. Print the "Access map" part of `<skill>/assets/summary-template.md`: the coverage `map check` prints, the partial capabilities left for the user to decide, the docs mismatches, and the "could be extracted" list.
+
+### Look at the map
+
+The user asks you to look at the access map. For each cell in scope (the partial and open ones, or the ones the user names), read the capability's `check` and its endpoints in `runtime.json` and `vocabulary.json`, then the code they cite: does the role reach what it should, and only that? Append one event per cell you read, in one call:
+
+```bash
+node <skill>/review/src/cli.ts append <project> --agent --model <your model id> <<'EOF2'
+{"event":"signal_raised","capability":["export-orders","clerk"],"reason":"…","evidence":"shop/admin.py:24"}
+{"event":"triaged","capability":["shop.order.view","manager"]}
+EOF2
+```
+
+A Signal shows under Alerts as an Agent signal. It never decides the cell: never append `decided`, and never run `<map> decide`.
