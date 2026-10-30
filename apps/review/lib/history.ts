@@ -1,13 +1,16 @@
-// The Review Log as History shows it: one group per batch, a single event (no batch) as a group of its own; and the
-// orphaned Verdicts an unreviewed endpoint may have been.
+// The Review Log as History shows it: one group per batch, a single event (no batch) as a group of its own, Capability
+// Decisions beside Verdicts; and the orphaned Verdicts an unreviewed endpoint may have been.
 
 import { handlerFile } from '../../../skills/all-access-inspector/review/src/inventory.ts';
-import type { Logged } from '../../../skills/all-access-inspector/review/src/log.ts';
+import type { Logged, LoggedCell } from '../../../skills/all-access-inspector/review/src/log.ts';
 import type { Orphan, Row } from '../../../skills/all-access-inspector/review/src/replay.ts';
 
-/** One event in a line: the Verdict and its reason, or the Agent's read. */
-export const eventText = (e: Logged): string =>
-  e.event === 'reviewed'
+/** An event on an endpoint or on a cell of the access map. */
+export type Entry = Logged | LoggedCell;
+
+/** One event in a line: the Verdict or the Decision and its reason, or the Agent's read. */
+export const eventText = (e: Entry): string =>
+  e.event === 'reviewed' || e.event === 'decided'
     ? `${e.verdict}${e.severity ? ` (${e.severity})` : ''}: ${e.reason}`
     : e.event === 'signal_raised'
       ? `signal: ${e.reason} (${e.evidence})`
@@ -18,11 +21,11 @@ export interface Group {
   by: string;
   /** Its newest event's. */
   at: string;
-  events: Logged[];
+  events: Entry[];
 }
 
 /** `events` newest first, grouped by batch in the order their newest event comes. */
-export const groups = (events: Logged[]): Group[] => {
+export const groups = (events: Entry[]): Group[] => {
   const byBatch = new Map<string, Group>();
   const out: Group[] = [];
   for (const e of events) {
@@ -38,10 +41,10 @@ export const groups = (events: Logged[]): Group[] => {
   return out;
 };
 
-/** The group's events an endpoint at a time, as the queue counts them: a HEAD reviewed with its GET is not one more. */
-export const endpoints = (group: Group): Logged[] => {
-  const gets = new Set(group.events.filter(e => e.endpoint[0] === 'GET').map(e => `${e.endpoint[1]} ${e.endpoint[2]}`));
-  return group.events.filter(e => e.endpoint[0] !== 'HEAD' || !gets.has(`${e.endpoint[1]} ${e.endpoint[2]}`));
+/** The group's events an endpoint or a cell at a time, as the queue counts them: a HEAD reviewed with its GET is not one more. */
+export const endpoints = (group: Group): Entry[] => {
+  const gets = new Set(group.events.flatMap(e => ('endpoint' in e && e.endpoint[0] === 'GET' ? [`${e.endpoint[1]} ${e.endpoint[2]}`] : [])));
+  return group.events.filter(e => !('endpoint' in e) || e.endpoint[0] !== 'HEAD' || !gets.has(`${e.endpoint[1]} ${e.endpoint[2]}`));
 };
 
 /** Groups shown on one page of History: the log only grows, a round of Triage or a bulk review adds a group. */
@@ -57,7 +60,7 @@ export const page = (all: Group[], given: string | null): { n: number; groups: G
 export const kinds = (group: Group): string => {
   const counts = new Map<string, number>();
   for (const e of endpoints(group)) {
-    const kind = e.event === 'reviewed' ? e.verdict : e.event;
+    const kind = e.event === 'reviewed' || e.event === 'decided' ? e.verdict : e.event;
     counts.set(kind, (counts.get(kind) ?? 0) + 1);
   }
   return [...counts].map(([kind, n]) => (n === 1 ? kind : `${kind} ×${n}`)).join(' · ');
@@ -78,4 +81,15 @@ export const candidates = (row: Row, lost: Orphan[]): Orphan[] => {
   if (row.state === 'valid') return [];
   const here = handlerFile(row.handler);
   return lost.filter(o => o.key[1] === row.path || (here !== null && handlerFile(o.verdict.seen.handler) === here));
+};
+
+/** The latest Decision on each cell the map no longer has: shown, never re-attached (UF17). */
+export const orphanedDecisions = (events: Entry[], cells: { capability: string; role: string }[]): LoggedCell[] => {
+  const known = new Set(cells.map(c => JSON.stringify([c.capability, c.role])));
+  const latest = new Map<string, LoggedCell>();
+  for (const e of events) {
+    const key = 'capability' in e ? JSON.stringify(e.capability) : null;
+    if (key && e.event === 'decided' && !known.has(key) && !latest.has(key)) latest.set(key, e);
+  }
+  return [...latest.values()];
 };

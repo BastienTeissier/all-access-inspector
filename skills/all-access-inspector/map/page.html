@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Access Map</title>
+<style>
+/* The access map: draws Page data only (map/src/data.ts). No state is kept: decisions are made with `map decide`. */
+:root {
+  --bg: #f5f6f4; --surface: #ffffff; --ink: #1b2422; --muted: #5d6a66; --line: #d9dfdc; --hover: #eef2f0;
+  --accent: #1f6f63; --accent-soft: #dcefe9;
+  --pass: #1f6f63; --pass-bg: #dcefe9; --partial: #9a5b07; --partial-bg: #fdf1df; --no-bg: #eceeed; --off: #8a5a5a; --off-bg: #f6e9e9; --open: #3c5596; --open-bg: #e7ecf7;
+  --crit: #a2302a; --crit-bg: #fbe4e2; --warn: #9a5b07; --warn-bg: #fdf1df; --info: #3c5596; --info-bg: #e7ecf7;
+  --f-display: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111615; --surface: #18201e; --ink: #e3ebe8; --muted: #93a39e; --line: #2c3734; --hover: #1f2926;
+  --accent: #5cc2b0; --accent-soft: #1d3632;
+  --pass: #5cc2b0; --pass-bg: #1f3f39; --partial: #f0b75a; --partial-bg: #3f2f14; --no-bg: #262b2a; --off: #d18f8f; --off-bg: #3a2626; --open: #9fb3ee; --open-bg: #242d44;
+  --crit: #f08a83; --crit-bg: #3a1a18; --warn: #f0b75a; --warn-bg: #33270f; --info: #9fb3ee; --info-bg: #1c2540; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111615; --surface: #18201e; --ink: #e3ebe8; --muted: #93a39e; --line: #2c3734; --hover: #1f2926;
+  --accent: #5cc2b0; --accent-soft: #1d3632;
+  --pass: #5cc2b0; --pass-bg: #1f3f39; --partial: #f0b75a; --partial-bg: #3f2f14; --no-bg: #262b2a; --off: #d18f8f; --off-bg: #3a2626; --open: #9fb3ee; --open-bg: #242d44;
+  --crit: #f08a83; --crit-bg: #3a1a18; --warn: #f0b75a; --warn-bg: #33270f; --info: #9fb3ee; --info-bg: #1c2540; color-scheme: dark }
+
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14px; line-height: 1.45; }
+.wrap { max-width: 1400px; margin: 0 auto; padding: 24px 20px 64px; display: grid; gap: 24px; }
+h1, h2, h3, h4 { font-family: var(--f-display); font-weight: 600; margin: 0; }
+h1 { font-size: 1.9rem; }
+h2 { font-size: 1.15rem; }
+.eyebrow { font-family: var(--f-display); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; color: var(--muted); }
+.mono, code, pre { font-family: var(--f-mono); font-size: 0.8rem; }
+.muted { color: var(--muted); }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+ul { margin: 0; padding: 0; list-style: none; }
+
+header.top { display: flex; flex-wrap: wrap; gap: 16px 40px; align-items: end; justify-content: space-between; }
+header.top p { margin: 6px 0 0; max-width: 70ch; color: var(--muted); }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 28px; font-variant-numeric: tabular-nums; }
+.fact b { display: block; font-family: var(--f-display); font-size: 1.4rem; }
+.fact span { color: var(--muted); font-size: 0.8rem; }
+
+/* one legend for every tab */
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.82rem; color: var(--muted); align-items: center; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+
+/* tabs */
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); }
+.tabs button { border: 0; background: none; padding: 10px 14px; cursor: pointer; font-family: var(--f-display); font-size: 1rem; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs .cnt { display: inline-block; min-width: 1.4em; padding: 0 5px; margin-left: 6px; border-radius: 9px; background: var(--crit-bg); color: var(--crit); font-size: 0.72rem; font-family: var(--f-body); font-weight: 600; }
+
+/* state chips; the border says the basis: solid read or ruled, ≈ inferred, dotted ✎ hand-written, dashed not resolved */
+.chip { display: inline-block; min-width: 2.6em; padding: 1px 6px; border-radius: 3px; border: 1px solid currentColor; font-family: var(--f-display); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; text-align: center; }
+.c-pass { background: var(--pass-bg); color: var(--pass); }
+.c-partial { background: var(--partial-bg); color: var(--partial); }
+.c-no { background: var(--no-bg); color: var(--muted); font-weight: 400; }
+.c-off { background: var(--off-bg); color: var(--off); text-decoration: line-through; }
+.c-open { background: var(--open-bg); color: var(--open); }
+.b-inferred::after { content: " ≈"; }
+.b-curated { border-style: dotted; }
+.b-curated::after { content: " ✎"; }
+.b-open { border-style: dashed; }
+
+/* alerts */
+.groups { display: grid; gap: 12px; max-width: 1180px; }
+.group { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.group > summary { cursor: pointer; padding: 10px 14px; display: flex; gap: 12px; align-items: baseline; }
+.group > summary .n { color: var(--muted); font-size: 0.82rem; }
+.group li button { width: 100%; display: flex; gap: 12px; border: 0; border-top: 1px solid var(--line); background: none; text-align: left; padding: 7px 14px; cursor: pointer; overflow-wrap: anywhere; }
+.group li button:hover { background: var(--hover); }
+.group li .lbl { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+
+/* matrix */
+.board { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; align-items: start; }
+.scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+table.matrix { border-collapse: separate; border-spacing: 0; width: 100%; }
+.matrix th, .matrix td { border-bottom: 1px solid var(--line); }
+.matrix thead th { vertical-align: bottom; padding: 10px 4px 8px; background: var(--surface); font-family: var(--f-display); font-weight: 500; font-size: 0.82rem; }
+.matrix th.cap, .matrix td.cap { position: sticky; left: 0; background: var(--surface); text-align: left; padding: 8px 12px; min-width: 220px; }
+.matrix td.cap .sub { font-size: 0.76rem; color: var(--muted); }
+.verb { font-family: var(--f-mono); font-size: 0.68rem; padding: 0 4px; border-radius: 3px; border: 1px solid var(--line); color: var(--muted); margin-left: 4px; }
+.verb.write { color: var(--warn); border-color: currentColor; }
+.matrix td.cell { text-align: center; padding: 0; }
+.matrix td.cell button { width: 100%; min-height: 46px; padding: 6px 4px; border: 0; background: none; cursor: pointer; position: relative; display: grid; gap: 2px; justify-items: center; }
+.matrix td.cell button:hover { background: var(--hover); }
+.matrix td.cell button.sel { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+.scope { font-size: 0.66rem; color: var(--muted); }
+.dot { position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: var(--pass); }
+.dot.finding { background: var(--crit); }
+.dot.outdated { background: none; border: 1px solid var(--warn); }
+tr.area th { text-align: left; padding: 10px 12px; background: var(--bg); }
+tr.area .count { font-weight: 400; font-size: 0.78rem; color: var(--muted); margin-left: 8px; }
+
+/* drawer */
+aside.drawer { position: sticky; top: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 18px; display: grid; gap: 14px; max-height: calc(100vh - 24px); overflow-y: auto; min-width: 0; }
+.drawer dl { margin: 0; display: grid; gap: 12px; }
+.drawer dt { font-family: var(--f-display); text-transform: uppercase; letter-spacing: 0.07em; font-size: 0.7rem; color: var(--muted); margin-bottom: 3px; }
+.drawer dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.drawer li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; margin-bottom: 4px; }
+.note { background: var(--bg); border-radius: 4px; padding: 10px 12px; font-size: 0.85rem; }
+.linkbtn { border: 1px solid var(--accent); color: var(--accent); background: none; border-radius: 5px; padding: 6px 12px; cursor: pointer; font-size: 0.85rem; justify-self: start; }
+.empty { color: var(--muted); }
+
+/* routes */
+.routes { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 20px; align-items: start; }
+.rnav { position: sticky; top: 12px; display: grid; gap: 2px; }
+.rnav button { display: flex; justify-content: space-between; gap: 8px; border: 0; background: none; text-align: left; padding: 6px 10px; border-radius: 5px; cursor: pointer; font-size: 0.88rem; }
+.rnav button[aria-current="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.rnav .n, .rcount { color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+.filters input[type="search"], .filters select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); min-width: 0; }
+.filters input[type="search"] { flex: 1 1 240px; font-family: var(--f-mono); }
+.filters label { display: inline-flex; gap: 6px; align-items: center; font-size: 0.85rem; }
+.capfilter { display: inline-flex; gap: 6px; align-items: center; background: var(--accent-soft); color: var(--accent); border-radius: 4px; padding: 3px 8px; font-size: 0.82rem; }
+.capfilter button { border: 0; background: none; cursor: pointer; color: inherit; }
+.rlist { display: grid; gap: 20px; min-width: 0; }
+.rdomain { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.rdomain h3 { font-size: 1rem; padding: 8px 12px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.rrow + .rrow { border-top: 1px solid var(--line); }
+.rrow > button { width: 100%; display: grid; grid-template-columns: 74px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; border: 0; background: none; text-align: left; padding: 8px 12px; cursor: pointer; }
+.rrow > button:hover { background: var(--hover); }
+.rrow.open > button { background: var(--accent-soft); }
+.mpill { font-family: var(--f-mono); font-size: 0.68rem; padding: 2px 5px; border-radius: 3px; border: 1px solid var(--line); text-align: center; color: var(--muted); }
+.mpill.w { color: var(--warn); border-color: currentColor; }
+.rpath { font-family: var(--f-mono); font-size: 0.82rem; overflow-wrap: anywhere; min-width: 0; }
+.rmeta { display: flex; gap: 6px; align-items: center; justify-content: end; flex-wrap: wrap; }
+.who { font-size: 0.76rem; padding: 1px 7px; border-radius: 10px; white-space: nowrap; border: 1px solid currentColor; }
+.who.anyone { background: var(--crit-bg); color: var(--crit); }
+.who.signed_in, .who.staff { background: var(--warn-bg); color: var(--warn); }
+.who.groups { background: var(--info-bg); color: var(--info); }
+.who.superuser { color: var(--ink); }
+.who.nobody { color: var(--off); }
+.who.custom { color: var(--muted); }
+.tier { font-family: var(--f-mono); font-size: 0.7rem; color: var(--muted); }
+.sig { font-size: 0.72rem; color: var(--warn); font-weight: 600; }
+.out { font-size: 0.72rem; color: var(--crit); font-weight: 600; }
+.rdetail { padding: 6px 12px 16px; display: grid; gap: 14px; border-top: 1px dashed var(--line); }
+.chain { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+.chain li { display: grid; grid-template-columns: 26px 92px minmax(0, 1fr); gap: 2px 10px; padding: 8px 0; border-bottom: 1px solid var(--line); counter-increment: step; }
+.chain li::before { content: counter(step); font-family: var(--f-mono); font-size: 0.75rem; color: var(--muted); }
+.chain .k { font-family: var(--f-display); text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.7rem; color: var(--muted); }
+.chain .d { font-size: 0.85rem; color: var(--muted); overflow-wrap: anywhere; }
+.src { font-size: 0.66rem; font-family: var(--f-mono); padding: 0 5px; border-radius: 3px; border: 1px solid var(--line); color: var(--muted); }
+.src.curated { color: var(--warn); border-color: currentColor; }
+details.snip pre { margin: 6px 0 0; padding: 10px; background: var(--bg); border-radius: 4px; overflow-x: auto; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; font-size: 0.85rem; }
+.grid2 h4 { margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.07em; font-size: 0.7rem; color: var(--muted); }
+.grid2 li { margin-bottom: 4px; overflow-wrap: anywhere; }
+.caplinks button { border: 1px solid var(--line); background: var(--surface); border-radius: 4px; padding: 3px 8px; cursor: pointer; font-size: 0.8rem; margin: 0 4px 4px 0; }
+
+/* how it's built */
+.method { display: grid; gap: 28px; max-width: 1080px; }
+.method section { display: grid; gap: 12px; }
+.method p { margin: 0; max-width: 85ch; }
+.bar { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 0.82rem; }
+.track { display: flex; height: 26px; border-radius: 4px; overflow: hidden; border: 1px solid var(--line); background: var(--surface); }
+.track span { display: grid; place-items: center; font-size: 0.72rem; font-weight: 600; color: var(--bg); overflow: hidden; white-space: nowrap; }
+.k-extracted { background: var(--pass); } .k-rule { background: var(--info); } .k-inferred { background: var(--partial); } .k-curated { background: var(--off); }
+.track .k-open { background: repeating-linear-gradient(45deg, var(--muted), var(--muted) 4px, transparent 4px, transparent 8px); color: var(--ink); }
+.counts { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.counts div { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+.counts b { display: block; font-family: var(--f-display); font-size: 1.3rem; }
+.method ul.plain { list-style: disc; padding-left: 18px; }
+pre.cmds { margin: 0; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow-x: auto; line-height: 1.7; }
+footer { font-size: 0.8rem; color: var(--muted); max-width: 90ch; }
+
+@media (max-width: 1080px) { .board { grid-template-columns: minmax(0, 1fr); } aside.drawer { position: static; max-height: none; } }
+@media (max-width: 860px) {
+  .wrap { padding-inline: 16px; }
+  .routes { grid-template-columns: minmax(0, 1fr); } .rnav { position: static; display: flex; flex-wrap: wrap; }
+  .rrow > button { grid-template-columns: 64px minmax(0, 1fr); } .rmeta { grid-column: 2; justify-content: start; }
+  .chain li { grid-template-columns: 22px minmax(0, 1fr); } .chain li > :nth-child(n+2) { grid-column: 2; }
+  .bar { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Access map</div>
+      <h1 id="title"></h1>
+      <p><b>Roles</b> shows each capability against each role. <b>Routes</b> lists every endpoint with the checks it passes through, in order. <b>How it's built</b> says where each fact comes from. <b>Alerts</b> collects what to look at first.</p>
+    </div>
+    <div class="facts" id="facts"></div>
+  </header>
+
+  <div class="legend" id="legend"></div>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" role="tab" id="tab-alerts" aria-controls="view-alerts">Alerts<span class="cnt" id="alert-count"></span></button>
+    <button type="button" role="tab" id="tab-roles" aria-controls="view-roles">Roles</button>
+    <button type="button" role="tab" id="tab-routes" aria-controls="view-routes">Routes</button>
+    <button type="button" role="tab" id="tab-method" aria-controls="view-method">How it's built</button>
+  </nav>
+
+  <div id="view-alerts" role="tabpanel" hidden><div class="groups" id="alerts"></div></div>
+
+  <div id="view-roles" role="tabpanel" hidden>
+    <div class="board">
+      <div class="scroll"><table class="matrix" id="matrix"></table></div>
+      <aside class="drawer" id="drawer" aria-live="polite"></aside>
+    </div>
+  </div>
+
+  <div id="view-routes" role="tabpanel" hidden>
+    <div class="routes">
+      <nav class="rnav" id="rnav" aria-label="Domains"></nav>
+      <div style="display:grid;gap:14px;min-width:0">
+        <div class="filters">
+          <input type="search" id="f-q" placeholder="Path, handler, permission, file…" aria-label="Search routes">
+          <select id="f-role" aria-label="Reachable by"></select>
+          <label><input type="checkbox" id="f-write"> Writes only</label>
+          <label><input type="checkbox" id="f-sig"> Has signals</label>
+          <label><input type="checkbox" id="f-out"> Outside expected</label>
+          <label><input type="checkbox" id="f-guess"> Not read from code</label>
+          <span id="f-cap"></span>
+          <span class="rcount" id="rcount"></span>
+        </div>
+        <div class="rlist" id="rlist"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-method" role="tabpanel" hidden><div class="method" id="method"></div></div>
+
+  <footer>
+    <p>Built by <span class="mono">map build</span> from <span class="mono">tools/access-inspector/inventory.json</span> and <span class="mono">reviews.jsonl</span>, the stack's <span class="mono">tools/access-map/runtime.json</span>, and the hand-written <span class="mono">tools/access-map/vocabulary.json</span>. A snapshot of the commit it was built from: decisions are recorded with <span class="mono">map decide</span>, not here.</p>
+  </footer>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const k = key => JSON.stringify(key);
+
+const STATE = { pass: ["Yes", "reaches every endpoint"], partial: ["Part", "reaches some endpoints, not all"], no: ["—", "reaches none"], off: ["Off", "switched off in code"], open: ["?", "decided in code the map cannot read"] };
+const BASIS = { extracted: "read from the code", rule: "from a reviewed recognition rule", inferred: "inferred by a heuristic", curated: "hand-written in vocabulary.json", open: "not resolved" };
+const WHO = { anyone: "anyone", signed_in: "any signed-in user", staff: "staff", groups: "groups", superuser: "superuser only", nobody: "nobody", custom: "decided in code" };
+const KINDS = { undecided: "Partial, not decided", finding: "Findings", open: "Not resolved", uncovered: "Behind no capability", agent: "Agent signals", signal: "Inspector signals", outside_expected: "Outside expected access" };
+
+const ROLES = DATA.roles;
+const CAPS = DATA.areas.flatMap(a => a.capabilities);
+const CELLS = new Map(DATA.cells.map(c => [k([c.capability, c.role]), c]));
+const EPS = DATA.endpoints;
+const EP = new Map(EPS.map(e => [k(e.key), e]));
+const capById = id => CAPS.find(c => c.id === id);
+const roleById = id => ROLES.find(r => r.id === id);
+// The endpoints of a capability: the same for every role, so read from any of its cells.
+const capEps = id => { const c = DATA.cells.find(x => x.capability === id); return c ? [...c.seen.reached, ...c.seen.missed].map(key => EP.get(k(key))).filter(Boolean) : []; };
+const capsOf = e => CAPS.filter(c => capEps(c.id).includes(e));
+
+const chip = (state, basis) => `<span class="chip c-${state} b-${basis}">${STATE[state][0]}</span>`;
+const whoName = w => w.kind === "groups" ? (w.roles || []).map(r => roleById(r)?.name ?? r).join(", ") + (w.custom ? " + code" : "") || "no group" : WHO[w.kind];
+const whoBadge = w => `<span class="who ${w.kind} b-${w.basis}" title="${esc(w.how)}" aria-label="${esc(whoName(w))}, ${esc(BASIS[w.basis])}">${esc(whoName(w))}</span>`;
+const method = e => `<span class="mpill${e.write ? " w" : ""}">${esc(e.method)}</span>`;
+
+let sel = null;
+const rf = { domain: "all", q: "", role: "", write: false, sig: false, out: false, guess: false, cap: null };
+const openRows = new Set();
+
+function renderHeader() {
+  document.title = `${DATA.project.name} access map`;
+  document.getElementById("title").textContent = `Who can do what in ${DATA.project.name}`;
+  document.getElementById("facts").innerHTML = [
+    [CAPS.length, "capabilities"], [`${DATA.coverage.covered} of ${DATA.coverage.total}`, "endpoints behind one"], [ROLES.length, "roles"], [DATA.inventory.count, "endpoints in the inventory"],
+  ].map(([b, s]) => `<div class="fact"><b>${b}</b><span>${s}</span></div>`).join("");
+  document.getElementById("legend").innerHTML = Object.entries(STATE).map(([s, [, t]]) => `<span>${chip(s, "extracted")} ${t}</span>`).join("")
+    + `<span>Border: solid read from the code or a rule · ≈ inferred · dotted ✎ hand-written · dashed not resolved</span><span><span class="dot" style="position:static"></span> decided</span>`;
+}
+
+// ---------- tabs ----------
+function showTab(t) {
+  ["alerts", "roles", "routes", "method"].forEach(v => {
+    document.getElementById("tab-" + v).setAttribute("aria-selected", t === v);
+    document.getElementById("view-" + v).hidden = t !== v;
+  });
+  if (t === "routes") renderRoutes();
+}
+["alerts", "roles", "routes", "method"].forEach(t => document.getElementById("tab-" + t).onclick = () => showTab(t));
+
+// ---------- alerts ----------
+function renderAlerts() {
+  document.getElementById("alert-count").textContent = DATA.alerts.length || "";
+  const kinds = Object.keys(KINDS).filter(kind => DATA.alerts.some(a => a.kind === kind));
+  const el = document.getElementById("alerts");
+  el.innerHTML = kinds.map((kind, i) => {
+    const list = DATA.alerts.map((a, n) => ({ a, n })).filter(x => x.a.kind === kind);
+    return `<details class="group"${i === 0 ? " open" : ""}><summary><strong>${KINDS[kind]}</strong><span class="n">${list.length}</span></summary><ul>${list.map(({ a, n }) =>
+      `<li><button type="button" data-n="${n}"><span>${esc(a.text)}</span><span class="lbl">${esc(a.label)}</span></button></li>`).join("")}</ul></details>`;
+  }).join("") || `<p class="empty">Nothing to look at.</p>`;
+  el.querySelectorAll("button[data-n]").forEach(b => b.onclick = () => {
+    const a = DATA.alerts[+b.dataset.n];
+    if (a.cell) { showTab("roles"); select(a.cell[0], a.cell[1], true); } else showRoute(k(a.endpoint));
+  });
+}
+
+// ---------- roles ----------
+function renderMatrix() {
+  let h = `<thead><tr><th class="cap">Capability</th>${ROLES.map(r => `<th scope="col" class="b-${r.basis}" title="${esc(BASIS[r.basis])}">${esc(r.name)}</th>`).join("")}</tr></thead><tbody>`;
+  DATA.areas.forEach(a => {
+    h += `<tr class="area"><th colspan="${ROLES.length + 1}">${esc(a.name)}<span class="count">${a.capabilities.length} capabilities</span></th></tr>`;
+    a.capabilities.forEach(c => {
+      h += `<tr><td class="cap"><div>${esc(c.name)}<span class="verb ${c.verb}">${c.verb}</span></div>${c.sub ? `<div class="sub">${esc(c.sub)}</div>` : ""}</td>`;
+      ROLES.forEach(r => {
+        const v = CELLS.get(k([c.id, r.id])), d = v.decision;
+        const label = `${c.name}, ${r.name}: ${STATE[v.state][1]}${v.scope ? `, ${v.scope.label}` : ""}, ${BASIS[v.basis]}${d ? `, decided ${d.verdict}${d.state === "outdated" ? " (outdated)" : ""}` : ""}`;
+        const isSel = sel && sel[0] === c.id && sel[1] === r.id;
+        h += `<td class="cell"><button type="button" class="${isSel ? "sel" : ""}" data-cap="${esc(c.id)}" data-role="${esc(r.id)}" aria-label="${esc(label)}">${chip(v.state, v.basis)}${v.scope ? `<span class="scope">${esc(v.scope.label)}</span>` : ""}${d ? `<span class="dot ${d.state === "outdated" ? "outdated" : d.verdict === "finding" ? "finding" : ""}"></span>` : ""}</button></td>`;
+      });
+      h += `</tr>`;
+    });
+  });
+  const t = document.getElementById("matrix");
+  t.innerHTML = h + `</tbody>`;
+  t.querySelectorAll("td.cell button").forEach(b => b.onclick = () => select(b.dataset.cap, b.dataset.role));
+}
+function decisionHtml(d, cap, role) {
+  if (!d) return `<span class="muted">None.</span> <code>map decide . ${esc(cap)} ${esc(role)} --verdict safe|accepted|finding --reason …</code>`;
+  return `<b>${esc(d.verdict)}${d.severity ? ` (${esc(d.severity)})` : ""}</b>${d.state === "outdated" ? ` <span class="out">outdated: the cell changed${d.expired ? ", until has passed" : ""}</span>` : ""}<br>${esc(d.reason)}<br><span class="muted">${esc(d.by)}, ${esc(d.at)}${d.until ? `, until ${esc(d.until)}` : ""}</span>${d.ticket ? `<br><a href="${esc(d.ticket)}">${esc(d.ticket)}</a>` : ""}`;
+}
+function renderDrawer() {
+  const el = document.getElementById("drawer");
+  if (!sel) { el.innerHTML = `<p class="empty">Click a cell to see why that role has that access.</p>`; return; }
+  const c = capById(sel[0]), r = roleById(sel[1]), v = CELLS.get(k(sel));
+  const ep = key => { const e = EP.get(k(key)); return e ? `<li>${method(e)}<span class="mono">${esc(e.path)}</span>${whoBadge(e.who)}</li>` : ""; };
+  el.innerHTML = `
+    <div><div class="eyebrow">${esc(DATA.areas.find(a => a.id === c.area)?.name ?? c.area)} · ${esc(r.name)}</div><h2 style="margin-top:4px">${esc(c.name)}</h2></div>
+    <div>${chip(v.state, v.basis)} ${esc(STATE[v.state][1])}, ${esc(BASIS[v.basis])}</div>
+    ${v.state === "partial" ? `<div class="note">Reaches ${v.seen.reached.length} of ${v.seen.reached.length + v.seen.missed.length} endpoints. A partial cell needs a decision.</div>` : ""}
+    <dl>
+      ${v.scope ? `<div><dt>Records</dt><dd>${esc(v.scope.label)} <code>${esc(v.scope.at)}</code> <span class="muted">${esc(BASIS[v.scope.basis])}</span></dd></div>` : ""}
+      <div><dt>Decision</dt><dd>${decisionHtml(v.decision, c.id, r.id)}</dd></div>
+      <div><dt>Enforced by</dt><dd><code>${esc(c.check)}</code>${c.at ? ` at <code>${esc(c.at)}</code>` : ""} <span class="muted">${esc(BASIS[c.basis])}</span>${c.reason ? `<br><span class="muted">${esc(c.reason)}</span>` : ""}</dd></div>
+      <div><dt>Reached (${v.seen.reached.length})</dt><dd><ul>${v.seen.reached.map(ep).join("") || `<li class="muted">none</li>`}</ul></dd></div>
+      <div><dt>Not reached (${v.seen.missed.length})</dt><dd><ul>${v.seen.missed.map(ep).join("") || `<li class="muted">none</li>`}</ul></dd></div>
+      ${r.at ? `<div><dt>Role</dt><dd><code>${esc(r.at)}</code>${r.includes.length ? ` · includes ${r.includes.map(i => esc(roleById(i)?.name ?? i)).join(", ")}` : ""}${r.staff ? " · staff" : ""}</dd></div>` : ""}
+    </dl>
+    <button type="button" class="linkbtn" id="b-routes">Show the check chain of these routes →</button>`;
+  el.querySelector("#b-routes").onclick = () => showRoutesFor(c.id);
+}
+function select(cap, role, scroll) {
+  sel = [cap, role];
+  renderMatrix(); renderDrawer();
+  if (scroll) document.querySelector("td.cell button.sel")?.scrollIntoView({ block: "center", inline: "center" });
+}
+
+// ---------- routes ----------
+const domainOf = e => e.domain ?? "(no domain)";
+function matches(e) {
+  if (rf.domain !== "all" && domainOf(e) !== rf.domain) return false;
+  if (rf.cap && !capEps(rf.cap).includes(e)) return false;
+  if (rf.write && !e.write) return false;
+  if (rf.sig && !e.signals.length) return false;
+  if (rf.out && e.inside !== false) return false;
+  if (rf.guess && ["extracted", "rule"].includes(e.who.basis)) return false;
+  if (rf.role && e.reach[rf.role] !== "yes") return false;
+  if (rf.q) {
+    const hay = [e.path, e.handler, e.method, ...e.permissions, ...e.layers.map(l => `${l.title} ${l.at ?? ""} ${l.text}`)].join(" ").toLowerCase();
+    if (!hay.includes(rf.q.toLowerCase())) return false;
+  }
+  return true;
+}
+function layerHtml(l) {
+  const snip = l.at && DATA.snippets[l.at];
+  return `<li><span class="k">${esc(l.kind)}</span><div style="min-width:0">
+    <div>${esc(l.title)}${l.value ? ` <span class="muted">· ${esc(l.value)}</span>` : ""}</div>
+    <div class="d">${esc(l.text)}${l.where ? ` (${esc(l.where)})` : ""}</div>
+    <div>${l.at ? `<code>${esc(l.at)}</code> ` : ""}<span class="src ${l.source === "curated" ? "curated" : ""}">${esc(l.source)}</span></div>
+    ${snip ? `<details class="snip"><summary class="muted">Source</summary><pre>${esc(snip)}</pre></details>` : ""}</div></li>`;
+}
+function detailHtml(e) {
+  const grants = Object.entries(e.grants), caps = capsOf(e);
+  return `<div class="rdetail">
+    <div>Who can pass: ${whoBadge(e.who)} <b>${esc(BASIS[e.who.basis])}.</b> ${esc(e.who.how)}<br><span class="muted">Handler <code>${esc(e.handler)}</code></span></div>
+    <ol class="chain">${e.layers.map(layerHtml).join("")}</ol>
+    <div class="grid2">
+      <div><h4>Permissions → roles</h4><ul>${grants.map(([p, gs]) => `<li><code>${esc(p)}</code>: ${gs.map(g => `${esc(roleById(g.role)?.name ?? g.role)} <span class="muted mono">${esc(g.at)}</span>`).join(", ") || `<span class="muted">no role: superuser only</span>`}</li>`).join("") || `<li class="muted">No permission involved.</li>`}</ul></div>
+      <div><h4>Review</h4><ul>
+        <li>Expected: ${e.inside === null ? `<span class="muted">no expectation</span>` : e.inside ? "inside ✓" : `<span class="out">outside ✗</span>`} <span class="muted">(${esc(e.authn)} / ${esc(e.authz)})</span></li>
+        <li>Tier ${e.tier}</li>
+        ${e.signals.map(s => `<li class="sig">${esc(s.id)}: <span style="font-weight:400">${esc(s.text)}</span></li>`).join("")}
+        <li>Verdict: ${e.verdict ? esc(e.verdict) : `<span class="muted">none yet</span>`}</li>
+      </ul></div>
+      <div><h4>Capabilities</h4><div class="caplinks">${caps.map(c => `<button type="button" data-cap="${esc(c.id)}">${esc(c.name)} ↗</button>`).join("") || `<span class="muted">Behind no capability.</span>`}</div></div>
+    </div></div>`;
+}
+function renderRoutes() {
+  const domains = [...new Set(EPS.map(domainOf))];
+  const item = (id, n) => `<button type="button" data-d="${esc(id)}" aria-current="${rf.domain === id}"><span>${esc(id === "all" ? "All domains" : id)}</span><span class="n">${n}</span></button>`;
+  const nav = document.getElementById("rnav");
+  nav.innerHTML = item("all", EPS.length) + domains.map(d => item(d, EPS.filter(e => domainOf(e) === d).length)).join("");
+  nav.querySelectorAll("button").forEach(b => b.onclick = () => { rf.domain = b.dataset.d; renderRoutes(); });
+  const list = EPS.filter(matches);
+  document.getElementById("rcount").textContent = `${list.length} of ${EPS.length} routes`;
+  document.getElementById("f-cap").innerHTML = rf.cap ? `<span class="capfilter">Capability: ${esc(capById(rf.cap).name)}<button type="button" id="f-cap-x" aria-label="Clear capability filter">✕</button></span>` : "";
+  const x = document.getElementById("f-cap-x"); if (x) x.onclick = () => { rf.cap = null; renderRoutes(); };
+  const el = document.getElementById("rlist");
+  el.innerHTML = domains.map(d => {
+    const rows = list.filter(e => domainOf(e) === d);
+    return rows.length ? `<section class="rdomain"><h3>${esc(d)} <span class="rcount">${rows.length}</span></h3>${rows.map(e => {
+      const id = k(e.key), op = openRows.has(id);
+      return `<div class="rrow${op ? " open" : ""}"><button type="button" aria-expanded="${op}" data-k="${esc(id)}">${method(e)}<span class="rpath">${esc(e.path)}</span>
+        <span class="rmeta">${whoBadge(e.who)}${e.inside === false ? `<span class="out">outside</span>` : ""}${e.signals.length ? `<span class="sig">⚠ ${e.signals.length}</span>` : ""}<span class="tier">T${e.tier}</span></span></button>${op ? detailHtml(e) : ""}</div>`;
+    }).join("")}</section>` : "";
+  }).join("") || `<p class="empty">No route matches these filters.</p>`;
+  el.querySelectorAll(".rrow > button").forEach(b => b.onclick = () => { const id = b.dataset.k; openRows.has(id) ? openRows.delete(id) : openRows.add(id); renderRoutes(); });
+  el.querySelectorAll(".caplinks button").forEach(b => b.onclick = () => { showRoutesFor(b.dataset.cap); });
+}
+function resetFilters() {
+  Object.assign(rf, { domain: "all", q: "", role: "", write: false, sig: false, out: false, guess: false, cap: null });
+  ["write", "sig", "out", "guess"].forEach(f => document.getElementById("f-" + f).checked = false);
+  document.getElementById("f-q").value = ""; document.getElementById("f-role").value = "";
+  openRows.clear();
+}
+function showRoutesFor(cap) {
+  resetFilters(); rf.cap = cap;
+  capEps(cap).forEach(e => openRows.add(k(e.key)));
+  showTab("routes"); window.scrollTo({ top: 0 });
+}
+function showRoute(id) {
+  resetFilters(); openRows.add(id);
+  showTab("routes");
+  document.querySelector(`.rrow > button[data-k="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "start" });
+}
+function initFilters() {
+  const role = document.getElementById("f-role");
+  role.innerHTML = `<option value="">Reachable by any role</option>` + ROLES.map(r => `<option value="${esc(r.id)}">Reachable by ${esc(r.name)}</option>`).join("");
+  role.onchange = ev => { rf.role = ev.target.value; renderRoutes(); };
+  document.getElementById("f-q").oninput = ev => { rf.q = ev.target.value.trim(); renderRoutes(); };
+  ["write", "sig", "out", "guess"].forEach(f => document.getElementById("f-" + f).onchange = ev => { rf[f] = ev.target.checked; renderRoutes(); });
+}
+
+// ---------- how it's built ----------
+function renderMethod() {
+  const M = DATA.method, rt = M.runtime;
+  const bar = (title, counts) => {
+    const total = Object.values(counts).reduce((n, v) => n + v, 0);
+    return `<div class="bar"><span>${esc(title)}<br><span class="muted">${total}</span></span><div class="track">${Object.keys(BASIS).filter(b => counts[b]).map(b =>
+      `<span class="k-${b}" style="flex:${counts[b]}" title="${esc(BASIS[b])}: ${counts[b]}">${counts[b] / total > 0.06 ? counts[b] : ""}</span>`).join("")}</div></div>`;
+  };
+  const whoBasis = {}; EPS.forEach(e => whoBasis[e.who.basis] = (whoBasis[e.who.basis] || 0) + 1);
+  const layers = { extracted: 0 }; Object.entries(M.layer_sources).forEach(([s, n]) => { const b = s === "rule" || s === "curated" ? s : "extracted"; layers[b] = (layers[b] || 0) + n; });
+  const base = DATA.inventory.base_script;
+  document.getElementById("method").innerHTML = `
+    <section><h2>What the map is built from</h2>
+      <p>The inventory lists every endpoint the ${esc(DATA.project.stack)} app mounts; the review log adds tiers, signals and verdicts; the stack's Map Introspect reads what only the running app knows; the vocabulary names areas, capabilities and roles by hand. <span class="mono">map build</span> joins them on method, path and handler.</p>
+      <div class="counts">${[
+        [M.rows, "review rows (HEAD folded into GET)"], [M.rules, "Recognition Rules"], [M.permissions, "permissions"], [M.grants, "grants of a permission to a role"],
+        [M.anchors, "anchored file:line references"], [M.route_checks, "hand-written in-handler checks"],
+      ].map(([n, t]) => `<div><b>${n}</b><span class="muted">${t}</span></div>`).join("")}</div>
+      ${base ? `<p class="muted">Inventory from the ${esc(base.stack)} Base Script ${esc(base.version)}.</p>` : ""}
+    </section>
+    <section><h2>How far to trust each fact</h2>
+      <p>Every fact has a basis. A cell takes the weakest basis of the endpoints it rests on and of its scope.</p>
+      ${bar("Who can pass, by basis", whoBasis)}${bar("Capabilities, by basis", M.capabilities)}${bar("Check steps, by source", layers)}
+      <div class="legend">${Object.entries(BASIS).map(([b, t]) => `<span><span class="track" style="width:12px;height:12px"><span class="k-${b}" style="flex:1"></span></span>${esc(t)}</span>`).join("")}</div>
+    </section>
+    <section><h2>Map Introspect</h2>
+      ${rt ? `<p>${esc(rt.reads)}</p>${rt.holds.length ? `<ul class="plain">${rt.holds.map(h => `<li>${esc(h)}</li>`).join("")}</ul>` : ""}
+        <h3>Heuristics (≈)</h3><ul class="plain">${rt.heuristics.map(h => `<li>${esc(h)}</li>`).join("") || "<li>None.</li>"}</ul>`
+        : `<p>${esc(M.runtime_note || "No Map Introspect for this stack: the map rests on the inventory and the vocabulary.")}</p>`}
+    </section>
+    <section><h2>Keeping the hand-written part honest</h2>
+      <p>Each file:line in <span class="mono">vocabulary.json</span> is pinned to the text of its line by <span class="mono">map pin</span>; <span class="mono">map check</span> fails when a pinned line moves or disappears, when a partial cell has no decision, or when a decision no longer matches its cell.</p>
+    </section>
+    <section><h2>Regenerate</h2>
+      <pre class="cmds">${esc([rt ? rt.command : null, "node <skill>/map/src/cli.ts check .", "node <skill>/map/src/cli.ts build ."].filter(Boolean).join("\n"))}</pre>
+    </section>`;
+}
+
+renderHeader(); renderAlerts(); renderMatrix(); renderDrawer(); initFilters(); renderMethod();
+showTab({ "#alerts": "alerts", "#routes": "routes", "#method": "method" }[location.hash] || "roles");
+</script>
+</body>
+</html>

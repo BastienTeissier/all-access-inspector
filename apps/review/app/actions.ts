@@ -1,15 +1,17 @@
 'use server';
 
-// Saving a Verdict, on one row or on the Review selection: the same checks and the same append as `review append`.
+// Saving a Verdict, on one row or on the Review selection: the same checks and the same append as `review append`; and
+// a Capability Decision on one cell of the access map, as `map decide`.
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-import { appendBulk, appendVerdict } from '../../../skills/all-access-inspector/review/src/append.ts';
+import { project as mapProject } from '../../../skills/all-access-inspector/map/src/data.ts';
+import { appendBulk, appendDecision, appendVerdict } from '../../../skills/all-access-inspector/review/src/append.ts';
 import { InventoryError, type Key, keyText } from '../../../skills/all-access-inspector/review/src/inventory.ts';
 import { Refused } from '../../../skills/all-access-inspector/review/src/project.ts';
 import { filtersOf, href, projectDir } from '../lib/filters.ts';
-import { confirmation, endpointName, openFinding, project, queue } from '../lib/projection.ts';
+import { accessMap, confirmation, endpointName, openFinding, project, queue } from '../lib/projection.ts';
 
 export interface FormState {
   errors: { verdict?: string; reason?: string; severity?: string; confirm?: string; form?: string };
@@ -103,4 +105,35 @@ export const saveBulk = async (_previous: FormState, form: FormData): Promise<Fo
   if (refused) return refused;
   revalidatePath('/');
   redirect(href(filters));
+};
+
+/** The cell the form posted, or null when it is not one. */
+const cellOf = (value: FormDataEntryValue | null): [string, string] | null => {
+  try {
+    const cell: unknown = JSON.parse(String(value));
+    return Array.isArray(cell) && cell.length === 2 && cell.every(k => typeof k === 'string') ? (cell as [string, string]) : null;
+  } catch {
+    return null;
+  }
+};
+
+/** A Capability Decision on one cell, recording the cell as the map computes it now; then the next undecided partial. */
+export const saveDecision = async (_previous: FormState, form: FormData): Promise<FormState> => {
+  const cell = cellOf(form.get('cell'));
+  if (!cell) return { errors: { form: 'This cell is not on the access map: reload the page.' } };
+  const errors = fieldErrors(form);
+  if (errors) return { errors };
+  const dir = projectDir();
+  let seen;
+  try {
+    seen = mapProject(dir).cells.find(c => c.capability === cell[0] && c.role === cell[1])?.seen;
+  } catch (error) {
+    return { errors: { form: (error as Error).message } };
+  }
+  if (!seen) return { errors: { form: 'This cell is no longer on the access map: reload the page.' } };
+  const refused = appended(() => appendDecision(dir, values(form), cell, seen));
+  if (refused) return refused;
+  revalidatePath('/map');
+  const next = accessMap(dir).data?.alerts.find(a => a.kind === 'undecided')?.cell;
+  redirect(next ? `/map?tab=roles&cap=${encodeURIComponent(next[0])}&role=${encodeURIComponent(next[1])}` : '/map?tab=alerts');
 };

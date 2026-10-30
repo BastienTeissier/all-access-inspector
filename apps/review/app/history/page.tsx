@@ -1,10 +1,10 @@
-// History: who decided what and why, one group per batch, newest first; and the Verdicts whose endpoint is gone.
+// History: who decided what and why, one group per batch, newest first; and the Verdicts and Decisions whose endpoint or cell is gone.
 
 import { basename } from 'node:path';
 
 import { projectDir } from '../../lib/filters.ts';
-import { type Group, endpoints, eventText, groups, kinds, page, reason } from '../../lib/history.ts';
-import { events, orphans, project } from '../../lib/projection.ts';
+import { type Group, endpoints, eventText, groups, kinds, orphanedDecisions, page, reason } from '../../lib/history.ts';
+import { accessMap, events, hasMap, orphans, project } from '../../lib/projection.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +14,7 @@ const author = (by: string) => (by.startsWith('agent:') ? `agent · ${by.slice('
 const GroupItem = ({ group }: { group: Group }) => {
   const shared = reason(group);
   const n = endpoints(group).length;
-  const count = `${n} endpoint${n === 1 ? '' : 's'}`;
+  const count = `${n} ${group.events.some(e => 'endpoint' in e) ? 'endpoint' : 'cell'}${n === 1 ? '' : 's'}`;
   return (
     <li className="group">
       <details>
@@ -25,8 +25,16 @@ const GroupItem = ({ group }: { group: Group }) => {
         <ul>
           {group.events.map(e => (
             <li key={e.line}>
-              <span className="m">{e.endpoint[0]}</span> <span className="path">{e.endpoint[1]}</span>{' '}
-              <span className="muted">{shared ? (e.event === 'reviewed' ? e.verdict : e.event) : eventText(e)}</span>
+              {'endpoint' in e ? (
+                <>
+                  <span className="m">{e.endpoint[0]}</span> <span className="path">{e.endpoint[1]}</span>
+                </>
+              ) : (
+                <a href={`/map?tab=roles&cap=${encodeURIComponent(e.capability[0])}&role=${encodeURIComponent(e.capability[1])}`}>
+                  {e.capability[0]} for {e.capability[1]}
+                </a>
+              )}{' '}
+              <span className="muted">{shared ? (e.event === 'reviewed' || e.event === 'decided' ? e.verdict : e.event) : eventText(e)}</span>
             </li>
           ))}
         </ul>
@@ -47,7 +55,10 @@ export default async function History({ searchParams }: { searchParams: Promise<
       </main>
     );
   const lost = orphans(db);
-  const shown = page(groups(events(db)), typeof given === 'string' ? given : null);
+  const all = events(db);
+  const shown = page(groups(all), typeof given === 'string' ? given : null);
+  const cells = hasMap(abs) ? accessMap(abs).data?.cells : undefined;
+  const lostDecisions = cells ? orphanedDecisions(all, cells) : [];
   return (
     <main className="wrap">
       <header className="top">
@@ -111,6 +122,28 @@ export default async function History({ searchParams }: { searchParams: Promise<
           <p className="muted">Every Verdict names an endpoint of the inventory.</p>
         )}
       </section>
+      {cells && (
+        <section aria-label="Orphaned decisions">
+          <h2>Orphaned decisions ({lostDecisions.length})</h2>
+          {lostDecisions.length ? (
+            <table className="rows">
+              <tbody>
+                {lostDecisions.map(d => (
+                  <tr key={d.line}>
+                    <td>{d.capability[0]}</td>
+                    <td>{d.capability[1]}</td>
+                    <td>{d.event === 'decided' && d.verdict}</td>
+                    <td>{d.event === 'decided' && d.reason}</td>
+                    <td className="muted">{d.by}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="muted">Every Decision names a cell of the access map.</p>
+          )}
+        </section>
+      )}
     </main>
   );
 }

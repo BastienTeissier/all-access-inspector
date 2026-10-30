@@ -7,7 +7,7 @@ import { SIGNAL_IDS } from '../../../skills/all-access-inspector/review/src/sign
 import { TIERS } from '../../../skills/all-access-inspector/review/src/tiers.ts';
 import { FILTERS, filtersOf, href, projectDir } from '../lib/filters.ts';
 import { candidates } from '../lib/history.ts';
-import { type Projected, header, history, orphans, project, queue, row, uncommitted, zones } from '../lib/projection.ts';
+import { type Projected, hasMap, header, history, orphans, project, queue, row, uncommitted, zones } from '../lib/projection.ts';
 import { BulkPanel } from './bulk-panel.tsx';
 import { EndpointPanel } from './endpoint-panel.tsx';
 
@@ -70,6 +70,15 @@ export default async function Queue({ searchParams }: { searchParams: Promise<Re
               <b>{pending}</b> {pending === 1 ? 'event' : 'events'} not committed
             </span>
           ) : null}
+          {hasMap(abs) ? (
+            <a className="btn" href="/map">
+              Access map
+            </a>
+          ) : (
+            <span className="btn" aria-disabled="true" title="No tools/access-map/: ask the Agent to map the access of this project">
+              Access map
+            </span>
+          )}
           <a className="btn" href="/history">
             History
           </a>

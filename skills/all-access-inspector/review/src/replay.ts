@@ -1,7 +1,7 @@
 // Replay: the Review Log read against the current inventory, into one row per endpoint and the orphaned Verdicts.
 
 import { type Endpoint, type Folded, type Inventory, type Key, SEEN_FIELDS, type Seen, foldHead, inside, keyOf, keyText } from './inventory.ts';
-import type { Logged, Reviewed, SignalRaised, Triaged } from './log.ts';
+import type { CellKey, CellSeen, CellSignal, CellTriaged, Decided, Logged, LoggedCell, Reviewed, SignalRaised, Triaged } from './log.ts';
 import { type Signal, siblings, signals } from './signals.ts';
 import { tierOf } from './tiers.ts';
 
@@ -22,6 +22,25 @@ export interface Orphan {
   verdict: Reviewed;
 }
 
+/** The latest Capability Decision on a cell, against the cell as the map computes it now. */
+export interface Decision {
+  key: CellKey;
+  decision: Decided;
+  state: 'valid' | 'outdated' | 'orphaned';
+  expired: boolean;
+}
+
+/** The latest agent event on a cell whose cell has not changed since. */
+export interface CellAgent {
+  key: CellKey;
+  event: CellSignal | CellTriaged;
+}
+
+/** The cells of the access map, keyed by cellText, as the map computes them now; the review knows nothing else of cells. */
+export type Cells = Map<string, CellSeen>;
+
+export const cellText = (key: CellKey): string => JSON.stringify(key);
+
 const AXES = ['authentication', 'authorization'] as const;
 
 /**
@@ -31,7 +50,36 @@ const AXES = ['authentication', 'authorization'] as const;
 export const changed = (seen: Seen, e: Endpoint, insideNow: boolean | null): boolean =>
   AXES.some(axis => (insideNow === false ? SEEN_FIELDS : (['value'] as const)).some(f => seen[axis][f] !== e[axis][f]));
 
-const later = <T extends Logged>(a: T | undefined, b: T): T => (!a || b.at > a.at || (b.at === a.at && b.line > a.line) ? b : a);
+const keys = (xs: Key[]): string => xs.map(keyText).sort().join('\n');
+
+/** Whether the cell is no longer what the event saw: another state, or another set of reached or missed endpoints. */
+export const cellChanged = (seen: CellSeen, now: CellSeen): boolean =>
+  seen.state !== now.state || keys(seen.reached) !== keys(now.reached) || keys(seen.missed) !== keys(now.missed);
+
+const later = <T extends { at: string; line: number }>(a: T | undefined, b: T): T => (!a || b.at > a.at || (b.at === a.at && b.line > a.line) ? b : a);
+
+/** The latest decision and agent event per cell; a decision on a cell that no longer exists is orphaned. */
+export const decide = (cells: Cells, events: LoggedCell[], today: string): { decisions: Decision[]; agents: CellAgent[] } => {
+  const decided = new Map<string, Decided & LoggedCell>();
+  const agent = new Map<string, (CellSignal | CellTriaged) & LoggedCell>();
+  for (const e of events) {
+    const k = cellText(e.capability);
+    if (e.event === 'decided') decided.set(k, later(decided.get(k), e));
+    else agent.set(k, later(agent.get(k), e));
+  }
+  const decisions = [...decided.entries()].map(([k, decision]): Decision => {
+    const now = cells.get(k);
+    const expired = decision.verdict === 'accepted' && decision.until !== undefined && decision.until < today;
+    const state = !now ? 'orphaned' : expired || cellChanged(decision.seen, now) ? 'outdated' : 'valid';
+    return { key: decision.capability, decision, state, expired };
+  });
+  const agents = [...agent.entries()].flatMap(([k, event]) => {
+    const now = cells.get(k);
+    const settled = decisions.some(d => d.state === 'valid' && cellText(d.key) === k);
+    return now && !settled && !cellChanged(event.seen, now) ? [{ key: event.capability, event }] : [];
+  });
+  return { decisions, agents };
+};
 
 /** `today` is YYYY-MM-DD; an `accepted` Verdict is outdated the day after its `until`. */
 export const replay = (inventory: Inventory, events: Logged[], today: string): { rows: Row[]; orphans: Orphan[] } => {

@@ -1,6 +1,6 @@
-django · complete · 75 endpoints (65 rows, HEAD shown with its GET)
+django · complete · 82 endpoints (72 rows, HEAD shown with its GET)
 Verdicts: 3 valid (1 moot), 2 outdated, 1 orphaned
-Review Queue: 63 rows
+Review Queue: 70 rows
 
 Tier 1 · open finding (1)
   ANY      /pages/v1/old/  public  anonymous/none  finding high: Legacy page renders any order by id to anonymous users; open_write: anonymous ANY
@@ -67,7 +67,7 @@ Tier 9 · anyone can read (4)
 Tier 10 · signed in, no authorization rule (1)
   OPTIONS  /api/invoices/  customer  required/none  agent: no signal
 
-Tier 11 · authorization rule (16)
+Tier 11 · authorization rule (23)
   ANY      /admin/  staff  required/rule
   ANY      /admin/autocomplete/  staff  required/rule
   ANY      /admin/jsi18n/  staff  required/rule
@@ -75,6 +75,13 @@ Tier 11 · authorization rule (16)
   ANY      /admin/password_change/  staff  required/rule
   ANY      /admin/password_change/done/  staff  required/rule
   ANY      /admin/r/{content_type_id}/{object_id}/  staff  required/rule
+  ANY      /admin/shop/order/  staff  required/rule
+  ANY      /admin/shop/order/add/  staff  required/rule
+  ANY      /admin/shop/order/export/  staff  required/rule
+  ANY      /admin/shop/order/{object_id}/  staff  required/rule
+  ANY      /admin/shop/order/{object_id}/change/  staff  required/rule
+  ANY      /admin/shop/order/{object_id}/delete/  staff  required/rule
+  ANY      /admin/shop/order/{object_id}/history/  staff  required/rule
   ANY      /admin/shop/product/  staff  required/rule
   ANY      /admin/shop/product/add/  staff  required/rule
   ANY      /admin/shop/product/{object_id}/  staff  required/rule

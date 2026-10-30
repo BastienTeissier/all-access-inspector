@@ -1,11 +1,12 @@
 // Starts `review app` on a temporary committed copy of django-demo, the way a user starts it, and stops it after the run.
+// The copy has the fixture's access map too: its runtime and vocabulary, the sources the vocabulary cites, CONTEXT.md.
 
 import { execFileSync, spawn } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { CLI, INVENTORY, SAMPLE_LOG, env } from './project.ts';
+import { CLI, FIXTURE, INVENTORY, SAMPLE_LOG, env } from './project.ts';
 
 export default async function setup() {
   const root = mkdtempSync(join(tmpdir(), 'review-app-'));
@@ -15,6 +16,10 @@ export default async function setup() {
   copyFileSync(INVENTORY, join(tools, 'inventory.json'));
   copyFileSync(SAMPLE_LOG, join(tools, 'reviews.jsonl'));
   writeFileSync(join(tools, '.gitattributes'), 'reviews.jsonl merge=union\n');
+  mkdirSync(join(project, 'tools', 'access-map'));
+  for (const file of ['runtime.json', 'vocabulary.json']) copyFileSync(join(FIXTURE, 'tools', 'access-map', file), join(project, 'tools', 'access-map', file));
+  cpSync(join(FIXTURE, 'shop'), join(project, 'shop'), { recursive: true, filter: src => !src.includes('__pycache__') });
+  copyFileSync(join(FIXTURE, 'CONTEXT.md'), join(project, 'CONTEXT.md'));
   writeFileSync(join(root, 'gitconfig'), '[user]\n\temail = reviewer@example.com\n\tname = Reviewer\n[init]\n\tdefaultBranch = main\n');
   process.env.REVIEW_TEST_PROJECT = project;
   const git = (...args: string[]) => execFileSync('git', args, { cwd: project, env: env() });

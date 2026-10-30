@@ -8,7 +8,9 @@ import { load } from '../../../../skills/all-access-inspector/review/src/project
 
 const REPO = join(import.meta.dirname, '..', '..', '..', '..');
 export const CLI = join(REPO, 'skills', 'all-access-inspector', 'review', 'src', 'cli.ts');
-export const INVENTORY = join(REPO, 'fixtures', 'django-demo', 'expected', 'inventory.json');
+export const FIXTURE = join(REPO, 'fixtures', 'django-demo');
+export const INVENTORY = join(FIXTURE, 'expected', 'inventory.json');
+export const MAP_CLI = join(REPO, 'skills', 'all-access-inspector', 'map', 'src', 'cli.ts');
 export const SAMPLE_LOG = join(REPO, 'skills', 'all-access-inspector', 'review', 'tests', 'samples', 'django-demo.reviews.jsonl');
 
 /** Set by the global setup for the workers. */

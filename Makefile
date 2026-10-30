@@ -15,6 +15,7 @@ SYMFONY_FIXTURE := fixtures/symfony-demo
 # PHP runs in a container, the Composer cache in a volume; CI has PHP and sets it empty.
 SYMFONY_RUN ?= docker run --rm -v aai-composer:/tmp/cache -e COMPOSER_CACHE_DIR=/tmp/cache -v $(CURDIR):/work -w /work composer:2
 REVIEW := skills/all-access-inspector/review
+MAP := skills/all-access-inspector/map
 REVIEW_APP := apps/review
 
 .PHONY: test test-django test-nestjs test-spring test-symfony test-review install-nestjs install-symfony install-review lint typecheck typecheck-nestjs typecheck-review deps check-all format
@@ -50,10 +51,12 @@ test-symfony:
 
 install-review:
 	pnpm install --frozen-lockfile --dir $(REVIEW)
+	pnpm install --frozen-lockfile --dir $(MAP)
 	pnpm install --frozen-lockfile --dir $(REVIEW_APP)
 
 test-review:
 	pnpm --dir $(REVIEW) exec vitest run
+	pnpm --dir $(MAP) exec vitest run
 	pnpm --dir $(REVIEW_APP) exec vitest run
 	pnpm --dir $(REVIEW_APP) exec playwright test
 
@@ -71,6 +74,7 @@ typecheck-nestjs:
 
 typecheck-review:
 	pnpm --dir $(REVIEW) exec tsc --noEmit -p tsconfig.json
+	pnpm --dir $(MAP) exec tsc --noEmit -p tsconfig.json
 	pnpm --dir $(REVIEW_APP) exec tsc --noEmit -p tsconfig.json
 
 deps:
