@@ -761,7 +761,7 @@ What the action-tracking fit lacked against its prototype: the checks that let a
 - [x] **Role kind `relation`**: a role passing only the checks that name it (`who` kind `relations` with `roles[]`), drawn after the groups; Django `RELATION_RULES` maps a Recognition Rule to the relation roles it lets through; `route_checks` entries take `roles` with `who` `relations`. `map check`: a relation role no check names, a check naming no role.
 - [x] **Folded areas**: a vocabulary area `contains` extracted area ids or prefixes, needs no term, and is drawn collapsed in the static page and the app (`?area=` opens it; selecting one of its cells opens it). `map check`: a `contains` entry matching no extracted area.
 - [x] **Fixture**: `owner` relation role through `IsOwner` on `GET /api/orders/{pk}/`, as a Map Rule capability plus a `route_checks` entry; coverage 12 of 72.
-- [ ] **Verify**: refit action-tracking with the 0.5.0 introspect and compare to the prototype.
+- [x] **Verify**: refit action-tracking with the 0.5.0 introspect and compare to the prototype. Done 2026-10-30: 7 roles (User, 4 relations), 2 folded admin areas, coverage 142 of 287, 3 custom endpoints left (hijack release, admin password). The refit found two bugs fixed here: hijack's `type()`-built admin classes had no location, and curated route checks did not feed their permissions into `who`.
 
 ---
 ## 6. Context: Current System Architecture

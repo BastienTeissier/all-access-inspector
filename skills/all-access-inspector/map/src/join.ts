@@ -155,6 +155,6 @@ export const endpoint = (row: StatusRow, j: Join): MapEndpoint => {
     layers,
     permissions,
     grants: Object.fromEntries(permissions.map(p => [p, j.runtime.grants[p] ?? []])),
-    who: who(row, { ...rt, verdict }, j.runtime.grants),
+    who: who(row, { ...rt, verdict, permissions }, j.runtime.grants),
   };
 };

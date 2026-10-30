@@ -64,6 +64,16 @@ test('A relation role passes the capability whose check names it, and no other',
   expect(states('shop.order.view').owner).toBe('no');
 });
 
+test('A route check naming a permission lets the roles holding it through', () => {
+  editJson('tools/access-map/vocabulary.json', data => {
+    const checks = (data as unknown as { route_checks: Record<string, Record<string, unknown>[]> }).route_checks['/api/orders/{pk}/'];
+    checks![0] = { layer: 'permission', text: 'Needs shop.view_order', at: checks![0]!.at, permissions: ['shop.view_order'] };
+  });
+  const data = buildData(project);
+  const states = Object.fromEntries(data.cells.filter(c => c.capability === 'api.order.view').map(c => [c.role, c.state]));
+  expect(states).toEqual({ anonymous: 'no', clerk: 'pass', manager: 'pass', owner: 'no', superuser: 'pass' });
+});
+
 test('A relation role no check names, and a check naming no role, fail the check', () => {
   editJson('tools/access-map/vocabulary.json', data => {
     const checks = (data as unknown as { route_checks: Record<string, { roles: string[] }[]> }).route_checks['/api/orders/{pk}/'];
