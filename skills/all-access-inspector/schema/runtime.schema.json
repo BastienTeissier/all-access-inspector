@@ -102,7 +102,8 @@
             "enum": [
               "signed_in",
               "superuser",
-              "group"
+              "group",
+              "relation"
             ]
           },
           "at": {
@@ -421,6 +422,7 @@
             "signed_in",
             "staff",
             "groups",
+            "relations",
             "superuser",
             "nobody",
             "custom"
@@ -432,6 +434,14 @@
         "how": {
           "type": "string",
           "minLength": 1
+        },
+        "roles": {
+          "description": "Kind relations: the relation roles the check lets through.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },

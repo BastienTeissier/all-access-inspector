@@ -1,9 +1,9 @@
-// The map's columns: not signed in first, the roles the code defines, superusers last; and whether one passes a `who`.
+// The map's columns: not signed in first, the roles the code defines (groups, then relations), superusers last; and whether one passes a `who`.
 
 import type { Basis, Runtime, Who } from './runtime.ts';
 import type { Vocabulary } from './vocabulary.ts';
 
-export type RoleKind = 'anonymous' | 'signed_in' | 'superuser' | 'group';
+export type RoleKind = 'anonymous' | 'signed_in' | 'superuser' | 'group' | 'relation';
 
 export interface Role {
   id: string;
@@ -20,7 +20,7 @@ export type Reach = 'yes' | 'no' | 'off' | 'unresolved';
 
 export const ANONYMOUS = 'anonymous';
 
-const ORDER: Record<RoleKind, number> = { anonymous: 0, signed_in: 1, group: 1, superuser: 2 };
+const ORDER: Record<RoleKind, number> = { anonymous: 0, signed_in: 1, group: 1, relation: 2, superuser: 3 };
 
 /** Runtime roles and hand-written ones, named by the vocabulary; `includes` closed transitively. */
 export const roleList = (runtime: Runtime, vocabulary: Vocabulary): Role[] => {
@@ -64,7 +64,7 @@ export const reach = (who: Who, role: Role): Reach => {
   if (role.kind === 'anonymous') return 'no';
   if (who.kind === 'signed_in') return 'yes';
   if (who.kind === 'staff') return role.staff ? 'yes' : 'no';
-  if (who.kind === 'groups' && [role.id, ...role.includes].some(r => who.roles?.includes(r))) return 'yes';
+  if ((who.kind === 'groups' || who.kind === 'relations') && [role.id, ...role.includes].some(r => who.roles?.includes(r))) return 'yes';
   if (who.kind === 'custom' || who.basis === 'open') return 'unresolved';
   return 'no'; // superuser only
 };

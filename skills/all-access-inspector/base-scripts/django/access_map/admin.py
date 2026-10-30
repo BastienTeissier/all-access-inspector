@@ -198,6 +198,9 @@ def fallback(endpoint: dict[str, Any]) -> Who | None:
         return {"kind": "signed_in", **from_axis(authz)}
     if rule in project.STAFF_RULES or authz["raw"] == "is_staff":
         return {"kind": "staff", **from_axis(authz)}
+    if rule in project.RELATION_RULES:
+        roles = sorted(project.RELATION_RULES[rule])
+        return {"kind": "relations", "roles": roles, **from_axis(authz)}
     return None
 
 

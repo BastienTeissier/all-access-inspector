@@ -47,8 +47,10 @@ const Alerts = ({ data }: { data: PageData }) => {
   );
 };
 
-const Matrix = ({ data, cap, role }: { data: PageData; cap: string | null; role: string | null }) => {
+/** A folded area (third-party admin and the like) shows its rows only when opened by `area=` or when a cell of its is selected. */
+const Matrix = ({ data, cap, role, open }: { data: PageData; cap: string | null; role: string | null; open: string | null }) => {
   const cells = new Map(data.cells.map(v => [`${v.capability} ${v.role}`, v]));
+  const shown = (a: PageData['areas'][number]) => !a.folded || open === a.id || a.capabilities.some(c => c.id === cap);
   return (
     <div className="matrix-scroll">
       <table className="matrix">
@@ -66,10 +68,17 @@ const Matrix = ({ data, cap, role }: { data: PageData; cap: string | null; role:
           {data.areas.map(a => [
             <tr key={a.id} className="area">
               <th colSpan={data.roles.length + 1}>
-                {a.name} <span className="muted">{a.capabilities.length} capabilities</span>
+                {a.folded ? (
+                  <a href={shown(a) ? '/map?tab=roles' : `/map?tab=roles&area=${encodeURIComponent(a.id)}`} aria-expanded={shown(a)}>
+                    {shown(a) ? '▾' : '▸'} {a.name}
+                  </a>
+                ) : (
+                  a.name
+                )}{' '}
+                <span className="muted">{a.capabilities.length} capabilities</span>
               </th>
             </tr>,
-            ...a.capabilities.map(c => (
+            ...(shown(a) ? a.capabilities : []).map(c => (
               <tr key={`${a.id} ${c.id}`}>
                 <td className="cap">
                   {c.name} <span className={`verb ${c.verb}`}>{c.verb}</span>
@@ -168,6 +177,7 @@ export default async function AccessMap({ searchParams }: { searchParams: Promis
   const tab = TABS.some(([t]) => t === params.get('tab')) ? params.get('tab')! : 'roles';
   const cap = params.get('cap');
   const role = params.get('role');
+  const area = params.get('area');
   const pending = uncommitted(abs);
   const panel = tab === 'roles' && data && cap && role && db;
   return (
@@ -234,7 +244,7 @@ export default async function AccessMap({ searchParams }: { searchParams: Promis
           <div className="layout">
             <div>
               {tab === 'alerts' && <Alerts data={data} />}
-              {tab === 'roles' && <Matrix data={data} cap={cap} role={role} />}
+              {tab === 'roles' && <Matrix data={data} cap={cap} role={role} open={area} />}
               {tab === 'routes' && <Routes data={data} params={params} />}
               {tab === 'method' && <Method data={data} />}
             </div>

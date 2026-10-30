@@ -54,7 +54,38 @@ const editJson = (path: string, change: (data: Record<string, unknown[]>) => voi
 const accept = () => map('decide', '.', 'export-orders', 'clerk', '--verdict', 'accepted', '--reason', 'Clerks export through a manager');
 
 test('Only the roles the code defines are shown', () => {
-  expect(buildData(project).roles.map(r => r.id)).toEqual(['anonymous', 'clerk', 'manager', 'superuser']);
+  expect(buildData(project).roles.map(r => r.id)).toEqual(['anonymous', 'clerk', 'manager', 'owner', 'superuser']);
+});
+
+test('A relation role passes the capability whose check names it, and no other', () => {
+  const data = buildData(project);
+  const states = (cap: string) => Object.fromEntries(data.cells.filter(c => c.capability === cap).map(c => [c.role, c.state]));
+  expect(states('api.order.view')).toEqual({ anonymous: 'no', clerk: 'no', manager: 'no', owner: 'pass', superuser: 'pass' });
+  expect(states('shop.order.view').owner).toBe('no');
+});
+
+test('A relation role no check names, and a check naming no role, fail the check', () => {
+  editJson('tools/access-map/vocabulary.json', data => {
+    const checks = (data as unknown as { route_checks: Record<string, { roles: string[] }[]> }).route_checks['/api/orders/{pk}/'];
+    checks![0]!.roles = ['holder'];
+  });
+  const result = map('check', '.');
+  expect(result.status).toBe(1);
+  expect(result.out).toContain('role owner is a relation no check names');
+  expect(result.out).toContain('a check names role holder, which is not a role');
+});
+
+test('An area folds the extracted areas it contains; one that matches none fails the check', () => {
+  editJson('tools/access-map/vocabulary.json', data => {
+    data.areas?.push({ id: 'catalogue', name: 'Catalogue', contains: ['shop.product', 'shop.basket'] });
+  });
+  const data = buildData(project);
+  expect(data.areas.find(a => a.id === 'catalogue')).toMatchObject({ folded: true });
+  expect(data.areas.find(a => a.id === 'catalogue')?.capabilities.map(c => c.id)).toContain('shop.product.view');
+  expect(data.areas.map(a => a.id)).not.toContain('shop.product');
+  const result = map('check', '.');
+  expect(result.status).toBe(1);
+  expect(result.out).toContain('area catalogue contains shop.basket, which matches no extracted area');
 });
 
 test('A role reaching some endpoints of a capability is partial', () => {

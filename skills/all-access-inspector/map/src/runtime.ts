@@ -6,14 +6,14 @@ import { join } from 'node:path';
 export const BASES = ['extracted', 'rule', 'curated', 'inferred', 'open'] as const;
 export type Basis = (typeof BASES)[number];
 
-export const WHO_KINDS = ['anyone', 'signed_in', 'staff', 'groups', 'superuser', 'nobody', 'custom'] as const;
+export const WHO_KINDS = ['anyone', 'signed_in', 'staff', 'groups', 'relations', 'superuser', 'nobody', 'custom'] as const;
 export type WhoKind = (typeof WHO_KINDS)[number];
 
 export interface Who {
   kind: WhoKind;
   basis: Basis;
   how: string;
-  roles?: string[]; // kind groups: the roles holding the permissions
+  roles?: string[]; // kind groups: the roles holding the permissions; kind relations: the relation roles the check lets through
   custom?: boolean; // kind groups: code also decides beyond the permissions
 }
 
@@ -44,7 +44,7 @@ export interface RuntimeEndpoint {
 
 export interface RuntimeRole {
   id: string;
-  kind: 'signed_in' | 'superuser' | 'group';
+  kind: 'signed_in' | 'superuser' | 'group' | 'relation';
   at: string;
   basis: Basis;
   includes: { role: string; at: string }[];

@@ -18,9 +18,7 @@
         "additionalProperties": false,
         "required": [
           "id",
-          "name",
-          "term",
-          "defined_at"
+          "name"
         ],
         "properties": {
           "id": {
@@ -32,9 +30,16 @@
             "minLength": 1
           },
           "term": {
-            "description": "The CONTEXT.md term this area is about.",
-            "type": "string",
-            "minLength": 1
+            "description": "The CONTEXT.md term this area is about; may be null or absent only on an area that folds others (`contains`).",
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "defined_at": {
             "description": "file:line that defines the term, or null.",
@@ -46,8 +51,43 @@
                 "type": "null"
               }
             ]
+          },
+          "contains": {
+            "description": "Extracted area ids, or their prefixes (socialaccount), whose capabilities move into this area; the page draws it collapsed.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "not": {
+                "required": [
+                  "contains"
+                ],
+                "properties": {
+                  "contains": {
+                    "minItems": 1
+                  }
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "term",
+                "defined_at"
+              ],
+              "properties": {
+                "term": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ]
       }
     },
     "roles": {
@@ -101,7 +141,8 @@
                 "enum": [
                   "signed_in",
                   "superuser",
-                  "group"
+                  "group",
+                  "relation"
                 ]
               },
               "at": {
@@ -371,7 +412,7 @@
         ],
         "properties": {
           "match": {
-            "description": "A regular expression tried against the path; $1… in label are its groups.",
+            "description": "A regular expression tried against the path; $1\u2026 in label are its groups.",
             "type": "string",
             "minLength": 1
           },
@@ -383,7 +424,7 @@
       }
     },
     "route_checks": {
-      "description": "Path → checks made inside a handler body that neither the inventory nor the introspect can see.",
+      "description": "Path \u2192 checks made inside a handler body that neither the inventory nor the introspect can see.",
       "type": "object",
       "additionalProperties": {
         "type": "array",
@@ -419,15 +460,25 @@
               }
             },
             "who": {
+              "description": "What the cited line settles on its own, when it does.",
               "enum": [
                 "anyone",
                 "signed_in",
                 "staff",
                 "groups",
+                "relations",
                 "superuser",
                 "nobody",
                 "custom"
               ]
+            },
+            "roles": {
+              "description": "With who groups or relations: the roles the cited line lets through.",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
             }
           }
         }
@@ -438,7 +489,7 @@
       "type": "object"
     },
     "anchors": {
-      "description": "file:line → the trimmed text of that line, written by map pin.",
+      "description": "file:line \u2192 the trimmed text of that line, written by map pin.",
       "type": "object",
       "additionalProperties": {
         "type": "string"

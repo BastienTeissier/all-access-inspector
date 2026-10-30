@@ -12,15 +12,16 @@ const AT = /^[^\s:]+:\d+$/;
 export interface Area {
   id: string;
   name: string;
-  term: string;
-  defined_at: string | null;
+  term?: string | null; // absent or null only for an area that folds others: third-party admin has no CONTEXT.md term
+  defined_at?: string | null;
+  contains?: string[]; // extracted area ids, or their prefixes (`socialaccount`), folded into this area
 }
 
 export interface VocabularyRole {
   id: string;
   name?: string;
   doc_at?: string;
-  kind?: 'signed_in' | 'superuser' | 'group';
+  kind?: 'signed_in' | 'superuser' | 'group' | 'relation';
   at?: string;
   reason?: string;
   includes?: { role: string; at: string }[];
@@ -65,6 +66,7 @@ export interface RouteCheck {
   at: string;
   permissions?: string[];
   who?: WhoKind;
+  roles?: string[]; // with who groups or relations: the roles the cited line lets through
 }
 
 export interface Vocabulary {
@@ -94,7 +96,7 @@ const list = (v: unknown) => v === undefined || Array.isArray(v);
 const roleProblem = (r: Item): string | null => {
   if (!text(r.id)) return 'id: required';
   if (r.kind === undefined) return ['at', 'reason', 'includes', 'staff'].find(k => r[k] !== undefined)?.concat(': only on a role written by hand, with kind') ?? null;
-  if (!['signed_in', 'superuser', 'group'].includes(r.kind as string)) return `kind: ${JSON.stringify(r.kind)} is not signed_in, superuser or group`;
+  if (!['signed_in', 'superuser', 'group', 'relation'].includes(r.kind as string)) return `kind: ${JSON.stringify(r.kind)} is not signed_in, superuser, group or relation`;
   if (!at(r.at)) return 'at: file:line required';
   if (!text(r.reason)) return 'reason: required on a role written by hand';
   return list(r.includes) ? null : 'includes: must be a list';
@@ -115,8 +117,14 @@ const capabilityProblem = (c: Item): string | null => {
   return list(c.replaces) ? null : 'replaces: must be a list';
 };
 
-const areaProblem = (a: Item): string | null =>
-  !text(a.id) ? 'id: required' : !text(a.name) ? 'name: required' : !text(a.term) ? 'term: required' : a.defined_at === null || at(a.defined_at) ? null : 'defined_at: file:line or null';
+const areaProblem = (a: Item): string | null => {
+  if (!text(a.id)) return 'id: required';
+  if (!text(a.name)) return 'name: required';
+  if (!list(a.contains)) return 'contains: must be a list';
+  const folds = (a.contains as unknown[] | undefined)?.length;
+  if (!text(a.term) && !(folds && (a.term === undefined || a.term === null))) return folds ? 'term: text or null' : 'term: required';
+  return a.defined_at === null || a.defined_at === undefined || at(a.defined_at) ? null : 'defined_at: file:line or null';
+};
 
 const reasoned = (keys: string[]) => (s: Item): string | null =>
   keys.find(k => !text(s[k]))?.concat(': required') ?? (at(s.at) ? null : 'at: file:line required');
@@ -125,7 +133,8 @@ const routeCheckProblem = (c: Item): string | null => {
   if (!['permission', 'scope', 'view', 'write', 'body'].includes(c.layer as string)) return `layer: ${JSON.stringify(c.layer)} is not a layer kind`;
   if (!text(c.text)) return 'text: required';
   if (!at(c.at)) return 'at: file:line required';
-  return c.who === undefined || WHO_KINDS.includes(c.who as WhoKind) ? null : `who: ${JSON.stringify(c.who)} is not a who kind`;
+  if (c.who !== undefined && !WHO_KINDS.includes(c.who as WhoKind)) return `who: ${JSON.stringify(c.who)} is not a who kind`;
+  return list(c.roles) ? null : 'roles: must be a list';
 };
 
 /** Every entry checked against schema/vocabulary.schema.json by hand: the CLI needs no install. */

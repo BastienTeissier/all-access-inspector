@@ -24,6 +24,7 @@ const WHO: Record<string, string> = {
   signed_in: 'any signed-in user',
   staff: 'staff',
   groups: 'groups',
+  relations: 'a relation to the record',
   superuser: 'superuser only',
   nobody: 'nobody',
   custom: 'decided in code',
@@ -46,8 +47,8 @@ export const StateChip = ({ state, basis }: { state: string; basis: string }) =>
 
 export const Who = ({ who, roles }: { who: PageEndpoint['who']; roles: Role[] }) => {
   const name =
-    who.kind === 'groups'
-      ? (who.roles ?? []).map(r => roles.find(x => x.id === r)?.name ?? r).join(', ') + (who.custom ? ' + code' : '') || 'no group'
+    who.kind === 'groups' || who.kind === 'relations'
+      ? (who.roles ?? []).map(r => roles.find(x => x.id === r)?.name ?? r).join(', ') + (who.custom ? ' + code' : '') || (who.kind === 'groups' ? 'no group' : WHO[who.kind])
       : WHO[who.kind];
   return (
     <span className={`who ${who.kind} b-${who.basis}`} title={who.how}>

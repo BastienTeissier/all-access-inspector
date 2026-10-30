@@ -138,6 +138,7 @@ The project section of `project.py`:
 - `FIRST_PARTY`: the top-level packages whose admin classes and overrides are the project's own. Empty reads every module under the project root and outside site-packages.
 - `CONSTANT_FILES`: files holding `NAME = "codename"` constants, so a `"app." + NAME` in an override resolves to the permission it checks.
 - `SUPERUSER_RULES`, `SIGNED_IN_RULES`, `STAFF_RULES`: the Recognition Rule names of `tools/access-inspector/rules.py` that end in superusers only, let any signed-in user through, or let staff through.
+- `RELATION_RULES`: Recognition Rule name → the ids of the `relation` roles it lets through (a `CanEdit` passing the creator and the responsible seat holder: `{"can_edit": ("creator", "responsible")}`).
 - The Map Rules, each returning facts with `at` from `line_of(ROOT, "<file>", "<text on the line>")`.
 
 Map Rule cookbook (each function's docstring holds the example as code):
@@ -149,6 +150,7 @@ Map Rule cookbook (each function's docstring holds the example as code):
 | a sign-in path setting `is_staff = True` for every account | `staff()` on the role every account holds |
 | a `get_queryset` filter on the user's own records, the same everywhere | `scopes()`, then `scoped()` per capability and role it narrows |
 | a view guarded by one permission, outside the admin | `capabilities()` with its endpoints and `check` |
+| a permission class letting the record's creator, a seat holder or an API key through | `roles()` with kind `relation`, `at` the predicate's line; its Recognition Rule in `RELATION_RULES` |
 
 A custom admin URL the registry cannot map to a permission action shows as not resolved until the vocabulary maps it: `"stack": {"admin_actions": {"/admin/shop/order/export/": {"action": "change", "text": "what it does and checks", "at": "shop/admin.py:24"}}}`. It then becomes an extracted capability.
 

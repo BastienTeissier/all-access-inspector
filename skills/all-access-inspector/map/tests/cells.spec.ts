@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { type Capability, capabilityList, cell, cells } from '../src/cells.ts';
+import { type Capability, capabilityList, cell, cells, foldedInto } from '../src/cells.ts';
 import { endpoint, role, runtime, vocabulary, who } from './fixtures.ts';
 
 const cap: Capability = {
@@ -109,6 +109,13 @@ describe('capabilityList and cells', () => {
       ['orders.view', 'See orders', 'extracted'],
       ['export', 'Export orders', 'curated'],
     ]);
+  });
+
+  test('an extracted area is folded into the vocabulary area that contains it, by id or by prefix', () => {
+    const folded = vocabulary({ areas: [{ id: 'third_party', name: 'Third-party admin', contains: ['orders'] }] });
+    expect(capabilityList(rt, folded).map(c => c.area)).toEqual(['third_party', 'third_party']);
+    expect(foldedInto('socialaccount.socialtoken', [{ id: 'allauth', name: 'Allauth', contains: ['socialaccount'] }])).toBe('allauth');
+    expect(foldedInto('socialaccounts', [{ id: 'allauth', name: 'Allauth', contains: ['socialaccount'] }])).toBeNull();
   });
 
   test('a HEAD in a capability is its GET; a valid decision is joined to its cell', () => {

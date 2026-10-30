@@ -32,10 +32,15 @@ CONSTANT_FILES: tuple[str, ...] = ()
 SUPERUSER_RULES: frozenset[str] = frozenset()
 SIGNED_IN_RULES: frozenset[str] = frozenset()
 STAFF_RULES: frozenset[str] = frozenset()
+# Recognition Rules that let through a relation to the record (its creator, the holder of a
+# seat on it, an API key): rule name -> the ids of the `relation` roles roles() declares.
+RELATION_RULES: dict[str, tuple[str, ...]] = {}
 
 
 def roles() -> list[Fact]:
-    """Roles: {id, kind: group|signed_in|superuser, at}. The superuser role is read already.
+    """Roles: {id, kind: group|signed_in|superuser|relation, at}. The superuser role is read already.
+    A `relation` role is a relation to the record a check tests (the creator, a seat holder, an
+    API key), `at` the line of the predicate; RELATION_RULES names the rules that let it through.
 
     A Django Group per key of a grants dict:
         from shop.roles import GROUP_PERMISSIONS

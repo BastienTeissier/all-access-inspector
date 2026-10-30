@@ -32,6 +32,9 @@ CONSTANT_FILES: tuple[str, ...] = ()
 SUPERUSER_RULES: frozenset[str] = frozenset()
 SIGNED_IN_RULES: frozenset[str] = frozenset()
 STAFF_RULES: frozenset[str] = frozenset()
+# Recognition Rules that let through a relation to the record (its creator, the holder of a
+# seat on it, an API key): rule name -> the ids of the `relation` roles roles() declares.
+RELATION_RULES: dict[str, tuple[str, ...]] = {}
 
 
 def roles() -> list[Fact]:
@@ -40,6 +43,12 @@ def roles() -> list[Fact]:
     return [
         {"id": g, "kind": "group", "at": line_of(ROOT, "shop/roles.py", f'"{g}": [')}
         for g in GROUP_PERMISSIONS
+    ] + [
+        {
+            "id": "owner",
+            "kind": "relation",
+            "at": line_of(ROOT, "shop/permissions.py", "obj.owner == request.user"),
+        }
     ]
 
 
@@ -81,7 +90,19 @@ def scoped() -> list[Fact]:
 
 
 def capabilities() -> list[Fact]:
-    return []
+    return [
+        {
+            "id": "api.order.view",
+            "area": "shop.order",
+            "term": "Order",
+            "verb": "read",
+            "endpoints": [["GET", "/api/orders/{pk}/", "shop/api.py"]],
+            "check": "shop.permissions.IsOwner",
+            "at": line_of(
+                ROOT, "shop/api.py", "permission_classes = [IsAuthenticated, IsOwner]"
+            ),
+        }
+    ]
 
 
 # --- end project ---

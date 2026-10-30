@@ -134,7 +134,7 @@ export const endpoint = (row: StatusRow, j: Join): MapEndpoint => {
   const checks: RouteCheck[] = j.vocabulary.route_checks?.[path] ?? [];
   for (const check of checks) {
     layers.push({ kind: check.layer, title: 'Inside the handler', text: check.text, at: check.at, source: 'curated', permissions: check.permissions ?? [] });
-    if (check.who) verdict = { kind: check.who, basis: 'curated', how: `${check.text} (${check.at})` };
+    if (check.who) verdict = { kind: check.who, basis: 'curated', how: `${check.text} (${check.at})`, ...(check.roles ? { roles: check.roles } : {}) };
   }
   const permissions = [...new Set([...rt.permissions, ...layers.flatMap(l => l.permissions ?? [])])].sort();
   return {

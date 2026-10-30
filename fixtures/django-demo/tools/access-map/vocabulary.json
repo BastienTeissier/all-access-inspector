@@ -15,12 +15,20 @@
     {
       "id": "manager",
       "name": "Manager"
+    },
+    {
+      "id": "owner",
+      "name": "Order owner"
     }
   ],
   "capabilities": [
     {
       "extends": "shop.order.view",
       "name": "See orders"
+    },
+    {
+      "extends": "api.order.view",
+      "name": "See own order (API)"
     },
     {
       "id": "export-orders",
@@ -63,6 +71,20 @@
   },
   "anchors": {
     "shop/admin.py:24": "if not self.has_change_permission(request):",
-    "shop/models.py:8": "class Order(models.Model):"
+    "shop/models.py:8": "class Order(models.Model):",
+    "shop/permissions.py:5": "def has_object_permission(self, request, view, obj):"
+  },
+  "route_checks": {
+    "/api/orders/{pk}/": [
+      {
+        "layer": "permission",
+        "text": "IsOwner lets the order's owner through",
+        "at": "shop/permissions.py:5",
+        "who": "relations",
+        "roles": [
+          "owner"
+        ]
+      }
+    ]
   }
 }
