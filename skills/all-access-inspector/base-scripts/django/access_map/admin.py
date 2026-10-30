@@ -103,6 +103,11 @@ def is_first_party(obj: object) -> bool:
 
 def location(func: Callable[..., Any] | type) -> dict[str, str]:
     func = inspect.unwrap(func)
+    if isinstance(
+        func, type
+    ):  # a class built with type(), e.g. by hijack.contrib.admin
+        sourced = [c for c in func.__mro__ if "__firstlineno__" in c.__dict__]
+        func = next((c for c in sourced if is_first_party(c)), sourced[0])
     lines, start = inspect.getsourcelines(func)
     return {
         "at": f"{relative(inspect.getsourcefile(func) or '')}:{start}",
