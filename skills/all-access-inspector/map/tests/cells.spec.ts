@@ -111,6 +111,15 @@ describe('capabilityList and cells', () => {
     ]);
   });
 
+  test('a capability is named by the vocabulary, else by the runtime, else by its id', () => {
+    const named = runtime({ capabilities: rt.capabilities.map(c => ({ ...c, name: `Runtime ${c.id}` })) });
+    expect(capabilityList(named, vocabulary({ capabilities: [{ extends: 'orders.view', name: 'See orders' }] })).map(c => c.name)).toEqual([
+      'See orders',
+      'Runtime orders.delete',
+    ]);
+    expect(capabilityList(rt, vocabulary()).map(c => c.name)).toEqual(['orders.view', 'orders.delete']);
+  });
+
   test('an extracted area is folded into the vocabulary area that contains it, by id or by prefix', () => {
     const folded = vocabulary({ areas: [{ id: 'third_party', name: 'Third-party admin', contains: ['orders'] }] });
     expect(capabilityList(rt, folded).map(c => c.area)).toEqual(['third_party', 'third_party']);

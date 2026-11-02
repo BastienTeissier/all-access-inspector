@@ -273,7 +273,7 @@ function renderHeader() {
   document.title = `${DATA.project.name} access map`;
   document.getElementById("title").textContent = `Who can do what in ${DATA.project.name}`;
   document.getElementById("facts").innerHTML = [
-    [CAPS.length, "capabilities"], [`${DATA.coverage.covered} of ${DATA.coverage.total}`, "endpoints behind one"], [ROLES.length, "roles"], [DATA.inventory.count, "endpoints in the inventory"],
+    [CAPS.length, "capabilities"], DATA.coverage.covered === DATA.coverage.total ? ["every", "endpoint behind a capability"] : [`${DATA.coverage.covered} of ${DATA.coverage.total}`, "coverage"], [ROLES.length, "roles"], [DATA.inventory.count, "endpoints in the inventory"],
   ].map(([b, s]) => `<div class="fact"><b>${b}</b><span>${s}</span></div>`).join("");
   document.getElementById("legend").innerHTML = Object.entries(STATE).map(([s, [, t]]) => `<span>${chip(s, "extracted")} ${t}</span>`).join("")
     + `<span>Border: solid read from the code or a rule · ≈ inferred · dotted ✎ hand-written · dashed not resolved</span><span><span class="dot" style="position:static"></span> decided</span>`;

@@ -66,8 +66,15 @@ export interface Scoped {
   basis: Basis;
 }
 
+export interface RuntimeArea {
+  id: string;
+  name: string;
+  at: string;
+}
+
 export interface RuntimeCapability {
   id: string;
+  name?: string;
   area: string;
   term: string;
   verb: 'read' | 'write';
@@ -90,6 +97,7 @@ export interface Runtime {
   base_script: { stack: string; version: string } | null;
   about: About | null;
   roles: RuntimeRole[];
+  areas?: RuntimeArea[]; // older runtimes have none
   grants: Record<string, { role: string; at: string }[]>;
   scopes: RuntimeScope[];
   scoped: Scoped[];

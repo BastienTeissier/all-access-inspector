@@ -192,8 +192,15 @@ export default async function AccessMap({ searchParams }: { searchParams: Promis
         <div className="facts">
           {data && (
             <span className="fact">
-              <b>{data.areas.reduce((n, a) => n + a.capabilities.length, 0)}</b> capabilities · <b>{data.coverage.covered}</b> of{' '}
-              <b>{data.coverage.total}</b> endpoints behind one · <b>{data.roles.length}</b> roles
+              <b>{data.areas.reduce((n, a) => n + a.capabilities.length, 0)}</b> capabilities ·{' '}
+              {data.coverage.covered === data.coverage.total ? (
+                'every endpoint behind a capability'
+              ) : (
+                <>
+                  coverage <b>{data.coverage.covered}</b> of <b>{data.coverage.total}</b>
+                </>
+              )}{' '}
+              · <b>{data.roles.length}</b> roles
             </span>
           )}
           {pending ? (

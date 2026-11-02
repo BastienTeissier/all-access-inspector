@@ -47,6 +47,11 @@ Branch `{{branch}}`, commit `{{sha}}`. Base Script {{stack}} {{version}}. Discov
 - Docs mismatches: {{none | role in the docs and not in the code, or the reverse}}
 - Vocabulary: {{n}} entries, each with its reason; {{n}} anchors pinned
 - Coverage: {{covered}} of {{total}} endpoints behind a capability
+  - Per area: {{area}} {{covered}} of {{total}} · …
+  - First-party, behind no capability: {{none | `METHOD path`: why it stays open, …}}
+  - Third-party, behind no capability: {{n}} ({{package}} {{n}}, …)
+  - Unnamed capabilities: {{none | id, …}}
+  - Areas with no term: {{none | id, …}}
 - Partial capabilities to decide: {{none | capability for role, …}}; decide each with `node {{skill}}/map/src/cli.ts decide` or in the review app
 - Could be extracted: {{none | fact, where the code declares it}}
 - See it: `{{project}}/tools/access-map/out/access-map.html`, or the review app's Access map
