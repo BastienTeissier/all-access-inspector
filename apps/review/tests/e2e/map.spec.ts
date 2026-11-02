@@ -19,6 +19,13 @@ const states = (page: Page) =>
     cells.map(c => [c.getAttribute('data-cap'), c.getAttribute('data-role'), /\bc-(\w+)/.exec(c.querySelector('[class*="c-"]')!.className)![1]]),
   );
 
+/** The Alerts tab as drawn: the count, each Coverage line as `name count`, and the queue line. */
+const alertsTab = async (page: Page) => ({
+  count: await page.locator('#alert-count').textContent(),
+  coverage: await page.locator('details[aria-label="Coverage"] li').evaluateAll(lines => lines.map(l => l.textContent!.replace(/\s+/g, ' ').trim())),
+  queue: await page.locator('#queue').textContent(),
+});
+
 const decide = async (page: Page, verdict: string, reason: string) => {
   await page.goto('/map');
   await page.locator(CELL).click();
@@ -81,12 +88,40 @@ test('an invalid vocabulary shows the error and the last good map', async ({ pag
   }
 });
 
-test('the static page built from the same files shows the same cell states and alert count', async ({ page }) => {
+test('the Alerts count is the undecided, findings and open lines; coverage and the queue are counted apart', async ({ page }) => {
+  await page.goto('/map?tab=alerts');
+  const lines = await page.locator(['Partial, not decided', 'Findings', 'Not resolved'].map(g => `details[aria-label="${g}"] li`).join(', ')).count();
+  expect(lines).toBeGreaterThan(0);
+  expect(await alertsTab(page)).toEqual({ count: String(lines), coverage: ['Orders 3', 'no area 35', 'Third-party handlers 22'], queue: 'Review queue: 48 signals' });
+});
+
+test('a Coverage line opens the Routes tab filtered on that area and behind no capability', async ({ page }) => {
+  await page.goto('/map?tab=alerts');
+  const coverage = page.getByRole('group', { name: 'Coverage' });
+  await coverage.getByText('Coverage').click();
+  await coverage.getByRole('link', { name: 'Orders' }).click();
+  await expect(page).toHaveURL(/tab=routes&gap=shop\.order/);
+  await expect(page.getByText(/^3 of \d+ routes$/)).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Routes' }).locator('ul.routes > li')).toHaveCount(3);
+});
+
+test('the queue line links to the review queue', async ({ page }) => {
+  await page.goto('/map?tab=alerts');
+  await page.getByRole('link', { name: 'Review queue: 48 signals' }).click();
+  await expect(page).toHaveURL(/\/$/);
+});
+
+test('the static page built from the same files shows the same cell states and Alerts tab', async ({ page }) => {
   const out = join(dir(), '..', 'access-map.html');
   execFileSync(process.execPath, [MAP_CLI, 'build', dir(), '--out', out], { env: env() });
   await page.goto('/map');
-  const app = { states: await states(page), alerts: await page.locator('#alert-count').textContent() };
+  const shown = await states(page);
+  await page.goto('/map?tab=alerts');
+  const app = { states: shown, alerts: await alertsTab(page) };
   expect(app.states.length).toBeGreaterThan(0);
   await page.goto(pathToFileURL(out).href);
-  expect({ states: await states(page), alerts: await page.locator('#alert-count').textContent() }).toEqual(app);
+  expect({ states: await states(page), alerts: await alertsTab(page) }).toEqual(app);
+  await page.goto(`${pathToFileURL(out).href}#routes?gap=shop.order`);
+  await page.reload();
+  await expect(page.locator('#rcount')).toHaveText(/^3 of \d+ routes$/);
 });

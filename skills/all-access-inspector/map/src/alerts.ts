@@ -1,35 +1,27 @@
-// Alerts: what to look at first on the map, computed only, in the order of plan §1.
+// Alerts: what only the map raises, in the order of plan §1; review signals are counted for the queue, never listed here.
 
 import type { Key } from '../../review/src/inventory.ts';
 import type { CellKey } from '../../review/src/log.ts';
 import type { CellAgent } from '../../review/src/replay.ts';
-import { SIGNAL_IDS } from '../../review/src/signals.ts';
-import type { Cell } from './cells.ts';
+import type { Capability, Cell } from './cells.ts';
 import type { MapEndpoint } from './join.ts';
 
-export const ALERT_KINDS = ['undecided', 'finding', 'open', 'uncovered', 'agent', 'signal', 'outside_expected'] as const;
+export const ALERT_KINDS = ['undecided', 'finding', 'open'] as const;
 
 export interface Alert {
   kind: (typeof ALERT_KINDS)[number];
   label: string;
   text: string;
-  cell?: CellKey;
-  endpoint?: Key;
+  cell: CellKey;
 }
 
-export const SIGNAL_LABELS: Record<(typeof SIGNAL_IDS)[number], string> = {
-  outside_expected: 'Outside its expected access',
-  unknown: 'Unknown check',
-  sibling: 'Differs from its siblings',
-  open_write: 'Open write',
-  agent: 'Agent signal',
-  id_without_authz: 'Id without authorization',
-  open_read: 'Open read',
-};
+/** The Review Queue's share of the map: every inventory signal and open agent signal, and the endpoints they sit on. */
+export interface Queue {
+  signals: number;
+  endpoints: Key[];
+}
 
-const where = (e: MapEndpoint) => `${e.method} ${e.path}`;
-
-export const alerts = (cells: Cell[], agents: CellAgent[], endpoints: MapEndpoint[], covered: Set<MapEndpoint>, name: (cell: CellKey) => string): Alert[] => {
+export const alerts = (cells: Cell[], name: (cell: CellKey) => string): Alert[] => {
   const out: Alert[] = [];
   for (const c of cells)
     if (c.state === 'partial' && c.decision?.state !== 'valid')
@@ -41,14 +33,15 @@ export const alerts = (cells: Cell[], agents: CellAgent[], endpoints: MapEndpoin
   }
   for (const c of cells)
     if (c.state === 'open') out.push({ kind: 'open', label: 'Open', text: `${name([c.capability, c.role])}: decided in code the map cannot read`, cell: [c.capability, c.role] });
-  for (const e of endpoints)
-    if (!covered.has(e)) out.push({ kind: 'uncovered', label: 'Behind no capability', text: where(e), endpoint: e.key });
-  for (const a of agents)
-    if (a.event.event === 'signal_raised') out.push({ kind: 'agent', label: 'Agent signal', text: `${name(a.key)}: ${a.event.reason}`, cell: a.key });
-  for (const id of SIGNAL_IDS)
-    for (const e of endpoints)
-      for (const s of e.signals.filter(s => s.id === id)) out.push({ kind: 'signal', label: SIGNAL_LABELS[id], text: `${where(e)}: ${s.text}`, endpoint: e.key });
-  for (const e of endpoints)
-    if (e.inside === false) out.push({ kind: 'outside_expected', label: 'Outside expected access', text: where(e), endpoint: e.key });
   return out;
+};
+
+/** An agent signal on a cell counts once and sits on the cell capability's endpoints; a later triage closes it. */
+export const queue = (endpoints: MapEndpoint[], agents: CellAgent[], found: { cap: Capability; found: MapEndpoint[] }[]): Queue => {
+  const open = agents.filter(a => a.event.event === 'signal_raised');
+  const on = new Set([...endpoints.filter(e => e.signals.length), ...open.flatMap(a => found.find(f => f.cap.id === a.key[0])?.found ?? [])]);
+  return {
+    signals: endpoints.reduce((n, e) => n + e.signals.length, 0) + open.length,
+    endpoints: endpoints.filter(e => on.has(e)).map(e => e.key),
+  };
 };

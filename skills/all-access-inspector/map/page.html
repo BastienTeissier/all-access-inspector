@@ -218,6 +218,7 @@ footer { font-size: 0.8rem; color: var(--muted); max-width: 90ch; }
         <div class="filters">
           <input type="search" id="f-q" placeholder="Path, handler, permission, file…" aria-label="Search routes">
           <select id="f-role" aria-label="Reachable by"></select>
+          <select id="f-gap" aria-label="Coverage"></select>
           <label><input type="checkbox" id="f-write"> Writes only</label>
           <label><input type="checkbox" id="f-sig"> Has signals</label>
           <label><input type="checkbox" id="f-out"> Outside expected</label>
@@ -245,7 +246,7 @@ const k = key => JSON.stringify(key);
 const STATE = { pass: ["Yes", "reaches every endpoint"], partial: ["Part", "reaches some endpoints, not all"], no: ["—", "reaches none"], off: ["Off", "switched off in code"], open: ["?", "decided in code the map cannot read"] };
 const BASIS = { extracted: "read from the code", rule: "from a reviewed recognition rule", inferred: "inferred by a heuristic", curated: "hand-written in vocabulary.json", open: "not resolved" };
 const WHO = { anyone: "anyone", signed_in: "any signed-in user", staff: "staff", groups: "groups", relations: "a relation to the record", superuser: "superuser only", nobody: "nobody", custom: "decided in code" };
-const KINDS = { undecided: "Partial, not decided", finding: "Findings", open: "Not resolved", uncovered: "Behind no capability", agent: "Agent signals", signal: "Inspector signals", outside_expected: "Outside expected access" };
+const KINDS = { undecided: "Partial, not decided", finding: "Findings", open: "Not resolved" };
 
 const ROLES = DATA.roles;
 const CAPS = DATA.areas.flatMap(a => a.capabilities);
@@ -257,6 +258,12 @@ const roleById = id => ROLES.find(r => r.id === id);
 // The endpoints of a capability: the same for every role, so read from any of its cells.
 const capEps = id => { const c = DATA.cells.find(x => x.capability === id); return c ? [...c.seen.reached, ...c.seen.missed].map(key => EP.get(k(key))).filter(Boolean) : []; };
 const capsOf = e => CAPS.filter(c => capEps(c.id).includes(e));
+// The gap filters of the Routes tab: an area's first-party gaps, the third-party handlers, or both.
+const GAPS = new Map([
+  ...DATA.coverage.areas.filter(a => a.gaps.length).map(a => [a.id, a.gaps]),
+  ["third-party", DATA.coverage.third_party.packages.flatMap(p => p.endpoints)],
+].map(([id, keys]) => [id, new Set(keys.map(k))]));
+GAPS.set("any", new Set([...GAPS.values()].flatMap(g => [...g])));
 
 const chip = (state, basis) => `<span class="chip c-${state} b-${basis}">${STATE[state][0]}</span>`;
 const whoName = w => w.kind === "groups" || w.kind === "relations" ? (w.roles || []).map(r => roleById(r)?.name ?? r).join(", ") + (w.custom ? " + code" : "") || (w.kind === "groups" ? "no group" : WHO[w.kind]) : WHO[w.kind];
@@ -266,7 +273,7 @@ const method = e => `<span class="mpill${e.write ? " w" : ""}">${esc(e.method)}<
 let sel = null;
 // Areas drawn collapsed: the folded ones (third-party admin and the like) until opened, or a cell of theirs is selected.
 const closed = new Set(DATA.areas.filter(a => a.folded).map(a => a.id));
-const rf = { domain: "all", q: "", role: "", write: false, sig: false, out: false, guess: false, cap: null };
+const rf = { domain: "all", q: "", role: "", gap: "", write: false, sig: false, out: false, guess: false, cap: null };
 const openRows = new Set();
 
 function renderHeader() {
@@ -292,17 +299,23 @@ function showTab(t) {
 // ---------- alerts ----------
 function renderAlerts() {
   document.getElementById("alert-count").textContent = DATA.alerts.length || "";
-  const kinds = Object.keys(KINDS).filter(kind => DATA.alerts.some(a => a.kind === kind));
-  const el = document.getElementById("alerts");
-  el.innerHTML = kinds.map((kind, i) => {
+  const group = (title, n, items) => `<details class="group" aria-label="${title}"><summary><strong>${title}</strong><span class="n">${n}</span></summary><ul>${items.join("")}</ul></details>`;
+  const groups = Object.keys(KINDS).filter(kind => DATA.alerts.some(a => a.kind === kind)).map(kind => {
     const list = DATA.alerts.map((a, n) => ({ a, n })).filter(x => x.a.kind === kind);
-    return `<details class="group"${i === 0 ? " open" : ""}><summary><strong>${KINDS[kind]}</strong><span class="n">${list.length}</span></summary><ul>${list.map(({ a, n }) =>
-      `<li><button type="button" data-n="${n}"><span>${esc(a.text)}</span><span class="lbl">${esc(a.label)}</span></button></li>`).join("")}</ul></details>`;
-  }).join("") || `<p class="empty">Nothing to look at.</p>`;
+    return group(KINDS[kind], list.length, list.map(({ a, n }) => `<li><button type="button" data-n="${n}"><span>${esc(a.text)}</span><span class="lbl">${esc(a.label)}</span></button></li>`));
+  });
+  const cov = DATA.coverage, gaps = cov.areas.filter(a => a.gaps.length);
+  const line = (id, text, n) => `<li><button type="button" data-gap="${esc(id)}"><span>${esc(text)}</span> <span class="lbl">${n}</span></button></li>`;
+  const lines = [...gaps.map(a => line(a.id, a.name, a.gaps.length)), ...(cov.third_party.total ? [line("third-party", "Third-party handlers", cov.third_party.total)] : [])];
+  if (lines.length) groups.push(group("Coverage", gaps.reduce((n, a) => n + a.gaps.length, 0) + cov.third_party.total, lines));
+  const el = document.getElementById("alerts");
+  el.innerHTML = groups.join("") + (DATA.queue.signals ? `<p id="queue">Review queue: ${DATA.queue.signals} signals</p>` : "") || `<p class="empty">Nothing to look at.</p>`;
+  el.querySelector("details")?.setAttribute("open", "");
   el.querySelectorAll("button[data-n]").forEach(b => b.onclick = () => {
     const a = DATA.alerts[+b.dataset.n];
-    if (a.cell) { showTab("roles"); select(a.cell[0], a.cell[1], true); } else showRoute(k(a.endpoint));
+    showTab("roles"); select(a.cell[0], a.cell[1], true);
   });
+  el.querySelectorAll("button[data-gap]").forEach(b => b.onclick = () => showGap(b.dataset.gap));
 }
 
 // ---------- roles ----------
@@ -364,6 +377,7 @@ const domainOf = e => e.domain ?? "(no domain)";
 function matches(e) {
   if (rf.domain !== "all" && domainOf(e) !== rf.domain) return false;
   if (rf.cap && !capEps(rf.cap).includes(e)) return false;
+  if (rf.gap && !GAPS.get(rf.gap)?.has(k(e.key))) return false;
   if (rf.write && !e.write) return false;
   if (rf.sig && !e.signals.length) return false;
   if (rf.out && e.inside !== false) return false;
@@ -422,9 +436,9 @@ function renderRoutes() {
   el.querySelectorAll(".caplinks button").forEach(b => b.onclick = () => { showRoutesFor(b.dataset.cap); });
 }
 function resetFilters() {
-  Object.assign(rf, { domain: "all", q: "", role: "", write: false, sig: false, out: false, guess: false, cap: null });
+  Object.assign(rf, { domain: "all", q: "", role: "", gap: "", write: false, sig: false, out: false, guess: false, cap: null });
   ["write", "sig", "out", "guess"].forEach(f => document.getElementById("f-" + f).checked = false);
-  document.getElementById("f-q").value = ""; document.getElementById("f-role").value = "";
+  ["q", "role", "gap"].forEach(f => document.getElementById("f-" + f).value = "");
   openRows.clear();
 }
 function showRoutesFor(cap) {
@@ -432,15 +446,19 @@ function showRoutesFor(cap) {
   capEps(cap).forEach(e => openRows.add(k(e.key)));
   showTab("routes"); window.scrollTo({ top: 0 });
 }
-function showRoute(id) {
-  resetFilters(); openRows.add(id);
-  showTab("routes");
-  document.querySelector(`.rrow > button[data-k="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "start" });
+function showGap(gap) {
+  resetFilters(); rf.gap = gap; document.getElementById("f-gap").value = gap;
+  showTab("routes"); window.scrollTo({ top: 0 });
 }
 function initFilters() {
   const role = document.getElementById("f-role");
   role.innerHTML = `<option value="">Reachable by any role</option>` + ROLES.map(r => `<option value="${esc(r.id)}">Reachable by ${esc(r.name)}</option>`).join("");
   role.onchange = ev => { rf.role = ev.target.value; renderRoutes(); };
+  const gap = document.getElementById("f-gap");
+  gap.innerHTML = `<option value="">Behind a capability or not</option><option value="any">Behind no capability</option>`
+    + DATA.coverage.areas.filter(a => a.gaps.length).map(a => `<option value="${esc(a.id)}">Behind no capability in ${esc(a.name)}</option>`).join("")
+    + (DATA.coverage.third_party.total ? `<option value="third-party">Third-party handlers</option>` : "");
+  gap.onchange = ev => { rf.gap = ev.target.value; renderRoutes(); };
   document.getElementById("f-q").oninput = ev => { rf.q = ev.target.value.trim(); renderRoutes(); };
   ["write", "sig", "out", "guess"].forEach(f => document.getElementById("f-" + f).onchange = ev => { rf[f] = ev.target.checked; renderRoutes(); });
 }
@@ -484,7 +502,10 @@ function renderMethod() {
 }
 
 renderHeader(); renderAlerts(); renderMatrix(); renderDrawer(); initFilters(); renderMethod();
-showTab({ "#alerts": "alerts", "#routes": "routes", "#method": "method" }[location.hash] || "roles");
+const [hash, query] = location.hash.split("?");
+const tab = { "#alerts": "alerts", "#routes": "routes", "#method": "method" }[hash] || "roles";
+const gapParam = new URLSearchParams(query).get("gap");
+if (tab === "routes" && gapParam && GAPS.has(gapParam)) showGap(gapParam); else showTab(tab);
 </script>
 </body>
 </html>

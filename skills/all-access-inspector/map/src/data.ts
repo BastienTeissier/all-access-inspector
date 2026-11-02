@@ -5,7 +5,7 @@ import { basename, resolve } from 'node:path';
 import { output } from '../../review/src/output.ts';
 import { readLog, now } from '../../review/src/log.ts';
 import { load } from '../../review/src/project.ts';
-import { type Alert, alerts } from './alerts.ts';
+import { type Alert, type Queue, alerts, queue } from './alerts.ts';
 import { type Capability, type Cell, cells, capabilityList, endpointsOf } from './cells.ts';
 import { type Coverage, coverage } from './coverage.ts';
 import { type MapEndpoint, type StatusRow, endpoint, isFirstParty, joiner } from './join.ts';
@@ -54,6 +54,7 @@ export interface PageData {
   endpoints: PageEndpoint[];
   alerts: Alert[];
   coverage: Coverage;
+  queue: Queue;
   snippets: Record<string, string>;
   method: {
     rows: number;
@@ -125,7 +126,6 @@ export const project = (dir: string, options: Options = {}) => {
 
 export const buildData = (dir: string, options: Options = {}): PageData => {
   const p = project(dir, options);
-  const covered = new Set(p.found.flatMap(f => f.found));
   const names = new Map(p.caps.map(c => [c.id, c.name]));
   const roleNames = new Map(p.roles.map(r => [r.id, r.name]));
   const rules = new Set(p.inventory.endpoints.flatMap(e => [e.authentication.rule, e.authorization.rule]).filter(r => r?.startsWith('recognition:')));
@@ -143,7 +143,8 @@ export const buildData = (dir: string, options: Options = {}): PageData => {
       };
     }),
     endpoints: p.endpoints.map(e => ({ ...e, reach: Object.fromEntries(p.roles.map(r => [r.id, reach(e.who, r)])) })),
-    alerts: alerts(p.cells, p.agents, p.endpoints, covered, ([c, r]) => `${names.get(c) ?? c} for ${roleNames.get(r) ?? r}`),
+    alerts: alerts(p.cells, ([c, r]) => `${names.get(c) ?? c} for ${roleNames.get(r) ?? r}`),
+    queue: queue(p.endpoints, p.agents, p.found),
     coverage: p.coverage,
     snippets: p.runtime.snippets,
     method: {

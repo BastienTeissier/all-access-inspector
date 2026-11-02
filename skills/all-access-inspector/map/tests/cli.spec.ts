@@ -256,7 +256,7 @@ test('A group role holding no grant fails the check, unless no Map Introspect re
   expect(map('check', '.').out).not.toContain('holds no grant');
 });
 
-test('The Agent raises a signal on a cell through review append, shown under Alerts', () => {
+test('The Agent raises a signal on a cell through review append, counted on the review queue line and never as an alert', () => {
   const lines = [
     { event: 'signal_raised', capability: ['export-orders', 'clerk'], reason: 'The export button is in the list a clerk sees.', evidence: 'shop/admin.py:24' },
     { event: 'triaged', capability: ['shop.order.view', 'manager'] },
@@ -268,7 +268,11 @@ test('The Agent raises a signal on a cell through review append, shown under Ale
     expect.objectContaining({ v: 2, event: 'signal_raised', by: 'agent:m', capability: ['export-orders', 'clerk'], seen: expect.objectContaining({ state: 'partial' }) }),
     expect.objectContaining({ v: 2, event: 'triaged', capability: ['shop.order.view', 'manager'] }),
   ]);
-  expect(buildData(project).alerts).toContainEqual(expect.objectContaining({ kind: 'agent', cell: ['export-orders', 'clerk'] }));
+  const withSignal = buildData(project);
+  expect(withSignal.alerts.map(a => a.kind)).toEqual(['undecided']);
+  expect(withSignal.queue.signals).toBe(withSignal.endpoints.reduce((n, e) => n + e.signals.length, 0) + 1);
+  const seen = withSignal.cells.find(c => c.capability === 'export-orders' && c.role === 'clerk')!.seen;
+  expect(withSignal.queue.endpoints).toEqual(expect.arrayContaining([...seen.reached, ...seen.missed]));
   const before = log();
   const refused = run(REVIEW_CLI, ['append', '.', '--agent', '--model', 'm'], JSON.stringify({ event: 'triaged', capability: ['export-orders', 'cashier'] }));
   expect(refused).toMatchObject({ status: 2, out: expect.stringContaining('stdin line 1: no cell export-orders for cashier on the access map') });
