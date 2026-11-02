@@ -303,7 +303,7 @@ function renderAlerts() {
   if (DATA.gaps.length) groups.push(group("Coverage", DATA.gaps.reduce((n, g) => n + g.endpoints.length, 0),
     DATA.gaps.map(g => `<li><button type="button" data-gap="${esc(g.id)}"><span>${esc(g.name)}</span> <span class="lbl">${g.endpoints.length}</span></button></li>`)));
   const el = document.getElementById("alerts");
-  el.innerHTML = groups.join("") + (DATA.queue.signals ? `<p id="queue">Review queue: ${DATA.queue.signals} signals</p>` : "") || `<p class="empty">Nothing to look at.</p>`;
+  el.innerHTML = (groups.join("") + (DATA.queue.signals ? `<p id="queue">Review queue: ${DATA.queue.signals} signals</p>` : "")) || `<p class="empty">Nothing to look at.</p>`;
   el.querySelector("details")?.setAttribute("open", "");
   el.querySelectorAll("button[data-n]").forEach(b => b.onclick = () => {
     const a = DATA.alerts[+b.dataset.n];
