@@ -19,6 +19,7 @@ const COMMAND = 'tools/access-inspector/inspect.sh map';
 const main = async (mode: string, out: string[], err: string[]): Promise<number> => {
   let before: Runtime | undefined;
   let result: Runtime;
+  let diff: string[] = [];
   try {
     if (mode === 'check') {
       if (!existsSync(OUTPUT)) throw new MapRuleError(`${COMMITTED} not found; generate it first with \`${COMMAND}\` and commit it`);
@@ -35,6 +36,7 @@ const main = async (mode: string, out: string[], err: string[]): Promise<number>
     } finally {
       await booted.app.close().catch(() => undefined);
     }
+    if (before !== undefined) diff = check(before, result);
   } catch (error) {
     if (!(error instanceof MapRuleError || error instanceof RuleError)) {
       const cause = error instanceof BootError ? (error.cause ?? error) : error;
@@ -44,7 +46,6 @@ const main = async (mode: string, out: string[], err: string[]): Promise<number>
     return 2;
   }
   if (before !== undefined) {
-    const diff = check(before, result);
     if (diff.length === 0) {
       out.push('runtime up to date');
       return 0;

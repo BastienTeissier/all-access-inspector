@@ -63,6 +63,15 @@ test('nestjs map check missing runtime', () => {
   expect(result.stderr).toContain('tools/access-map/runtime.json not found; generate it first');
 });
 
+test('nestjs map check committed runtime missing a key', () => {
+  const runtime = JSON.parse(readFileSync(EXPECTED, 'utf8'));
+  delete runtime.grants;
+  writeFileSync(output(), JSON.stringify(runtime));
+  const result = run(['--check']);
+  expect(result.status).toBe(2);
+  expect(result.stderr).toContain('access-map: ');
+});
+
 test('nestjs map role roles() does not declare', () => {
   edit('src/admin/admin.controller.ts', "  @Roles('admin')\n  @Delete(':id')", "  @Roles('owner')\n  @Delete(':id')");
   const result = run();
