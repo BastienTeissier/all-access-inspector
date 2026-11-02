@@ -112,7 +112,7 @@ How a **Role** is compared with what an endpoint lets through: `signed_in` (an a
 One thing a role can do in the domain's words ("Upload scanned cards"), with the endpoints that action spans. Extracted first (an admin model action), else derived (a resource verb); the Agent only names, groups and adds what no program can read. Every endpoint is meant to sit behind one.
 
 **Derived capability**:
-A **Capability** the map reads from the inventory's path shapes, the same on every stack: one per REST resource (a collection with a `{param}` detail sibling) and verb, and one per action nested under its detail path. First-party handlers only, basis `inferred`; the **Map Vocabulary** names it with `extends` and drops it with `replaces`.
+A **Capability** the map reads from the inventory's path shapes, the same on every stack: one per REST resource (a collection with a `{param}` detail sibling) and verb, and one per action nested under its detail path. First-party handlers only, basis `inferred`; the **Map Vocabulary** names it with `extends` and drops it with `replaces`. See [ADR 0007](docs/adr/0007-derived-facts-come-from-the-inventory.md).
 
 **Area**:
 A group of **Capabilities** around one domain term. The term comes from `CONTEXT.md` when the project has one, else from the code or the docs, with its `file:line`. An area with no term of the project's own folds the extracted areas it `contains` (third-party admin: accounts, social accounts, API keys) and is drawn collapsed.
@@ -172,6 +172,9 @@ A human's judgement on one **Cell**, in the **Review Log** with the same verdict
 - A **Role** exists on the **Access Map** only if the code defines it; a role the docs name and the code does not is reported, never invented
 - A **Partial capability** stays an alert until a **Capability Decision** that is not outdated covers it
 - The **Access Map** never changes the **Committed Inventory**, the **Map Runtime** or a **Verdict**
+- A **Capability** is extracted when a **Map Introspect** or a **Map Rule** reads it, else a **Derived capability** comes from the inventory, the same rule on every stack ([ADR 0007](docs/adr/0007-derived-facts-come-from-the-inventory.md)); the **Map Vocabulary** names, groups and adds only what neither reads
+- Coverage counts, per **Area**, the endpoints a **Capability** lists; every first-party endpoint behind none is named, third-party ones are counted per package, and coverage never fails `map check`
+- Review Signals and the Agent's signals belong to the **Review Queue**; the **Access Map** counts them in one line and never lists them as alerts
 
 ## Flagged ambiguities
 
