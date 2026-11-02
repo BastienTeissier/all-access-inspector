@@ -7,6 +7,7 @@ Tested with NestJS 12 (ESM, vitest) and NestJS 11 (CommonJS, jest), on the Expre
 - App root: the directory that holds the app's `package.json`.
 - Boot, rules and dimensions files: `boot.ts`, `rules.ts`, `dimensions.ts`. Their project section runs from `// --- project ---` to `// --- end project ---`.
 - Production entry: `ENTRY`, the root module, and `CONFIGURE`, the setup function. Boot entries: `Env`, `Stub`.
+- Rule fields: `pathPrefix`, `safeAuthn`, `safeAuthz`, `whenMetadata`, `rawMetadata`.
 
 Copy every file of `<skill>/base-scripts/nestjs/access_inspector/` into `tools/access-inspector/`, with `cp -L` for `VERSION`. Never copy the toolkit's `package.json`, lockfile, `tests/` or `tsconfig.json`. The project's dependencies must be installed.
 
@@ -15,7 +16,7 @@ Copy every file of `<skill>/base-scripts/nestjs/access_inspector/` into `tools/a
 - vitest: `vitest.config.ts` loads the project's `vitest.config.*` / `vite.config.*` and keeps its `resolve` and plugins.
 - jest: `jest.config.cjs` loads `jest.config.{js,cjs,mjs,json}` or the `jest` key of `package.json` and keeps its `transform` and `moduleNameMapper`. A `jest.config.ts` is not read: port its transform and mappings into `jest.config.cjs`, which is then project code to mention in the summary.
 
-`<run>` is always `tools/access-inspector/inspect.sh` from the directory that holds the app's `package.json`. In a monorepo that is the app's package (`apps/backend`), not the repository root.
+`<inspect>` is always `tools/access-inspector/inspect.sh` from the directory that holds the app's `package.json`. In a monorepo that is the app's package (`apps/backend`), not the repository root.
 
 ## Where access is decided, by layer
 
