@@ -135,14 +135,20 @@ def view_name(view: Callable[..., Any]) -> str:
     return str(getattr(view, "short_description", None) or view.__name__)
 
 
+# A value each built-in converter accepts: `1` for int, str, slug and path, a UUID for uuid.
+PLACEHOLDERS = ("1", "00000000-0000-0000-0000-000000000000")
+
+
 def view_of(path: str) -> Callable[..., Any] | None:
     """The view a custom admin URL resolves to, a placeholder standing in for each parameter."""
     from django.urls import Resolver404, resolve
 
-    try:
-        return resolve(re.sub(r"\{\w+\}", "1", path)).func  # type: ignore[no-any-return]
-    except Resolver404:
-        return None
+    for placeholder in PLACEHOLDERS:
+        try:
+            return resolve(re.sub(r"\{\w+\}", placeholder, path)).func  # type: ignore[no-any-return]
+        except Resolver404:
+            continue
+    return None
 
 
 def admin_entries() -> list[Admin]:
