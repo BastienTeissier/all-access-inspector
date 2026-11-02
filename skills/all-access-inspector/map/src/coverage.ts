@@ -22,6 +22,13 @@ export interface Coverage {
   untermed: string[]; // unfolded areas holding capabilities and no term
 }
 
+/** A Coverage line of the Alerts tab and a gap filter of the Routes tab. */
+export interface Gap {
+  id: string;
+  name: string;
+  endpoints: Key[];
+}
+
 export interface CoverageInput {
   areas: { id: string; name: string; term: string | null; folded: boolean; capabilities: Capability[] }[];
   found: { cap: Capability; found: MapEndpoint[] }[];
@@ -45,6 +52,12 @@ const prefixOf = (path: string): string => {
 };
 
 const under = (path: string, prefix: string): boolean => path === prefix || path.startsWith(prefix.endsWith('/') ? prefix : `${prefix}/`);
+
+/** Each area's first-party gaps, then the third-party handlers: no endpoint in two of them. */
+export const gaps = (c: Coverage): Gap[] => [
+  ...c.areas.filter(a => a.gaps.length).map(a => ({ id: a.id, name: a.name, endpoints: a.gaps })),
+  ...(c.third_party.total ? [{ id: 'third-party', name: 'Third-party handlers', endpoints: c.third_party.packages.flatMap(p => p.endpoints) }] : []),
+];
 
 export const coverage = ({ areas, found, endpoints, domains, firstParty }: CoverageInput): Coverage => {
   const covered = new Set(found.flatMap(f => f.found));

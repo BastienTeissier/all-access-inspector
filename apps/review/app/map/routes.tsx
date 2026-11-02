@@ -14,12 +14,9 @@ const capEndpoints = (data: PageData, cap: string): Set<string> => {
   return new Set(c ? [...c.seen.reached, ...c.seen.missed].map(keyText) : []);
 };
 
-/** The endpoints a `gap` filter keeps: an area's first-party gaps, the third-party handlers, or `any` of them. */
-const gapEndpoints = (data: PageData, gap: string): Set<string> => {
-  const areas = data.coverage.areas.filter(a => gap === 'any' || a.id === gap).flatMap(a => a.gaps);
-  const third = gap === 'any' || gap === 'third-party' ? data.coverage.third_party.packages.flatMap(p => p.endpoints) : [];
-  return new Set([...areas, ...third].map(keyText));
-};
+/** The endpoints a `gap` filter keeps: one gap, or `any` of them. */
+const gapEndpoints = (data: PageData, gap: string): Set<string> =>
+  new Set(data.gaps.filter(g => gap === 'any' || g.id === gap).flatMap(g => g.endpoints.map(keyText)));
 
 const matches = (e: PageEndpoint, p: URLSearchParams, inCap: Set<string> | null, inGap: Set<string> | null): boolean => {
   const q = p.get('q')?.toLowerCase();
@@ -85,14 +82,11 @@ export const Routes = ({ data, params }: { data: PageData; params: URLSearchPara
           <select name="gap" defaultValue={gap ?? ''}>
             <option value="">behind a capability or not</option>
             <option value="any">behind no capability</option>
-            {data.coverage.areas
-              .filter(a => a.gaps.length)
-              .map(a => (
-                <option key={a.id} value={a.id}>
-                  behind no capability in {a.name}
-                </option>
-              ))}
-            {data.coverage.third_party.total > 0 && <option value="third-party">third-party handlers</option>}
+            {data.gaps.map(g => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
           </select>
         </label>
         <Check name="write" label="Writes only" params={params} />

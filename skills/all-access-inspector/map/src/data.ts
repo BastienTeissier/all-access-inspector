@@ -7,7 +7,7 @@ import { readLog, now } from '../../review/src/log.ts';
 import { load } from '../../review/src/project.ts';
 import { type Alert, type Queue, alerts, queue } from './alerts.ts';
 import { type Capability, type Cell, cells, capabilityList, endpointsOf } from './cells.ts';
-import { type Coverage, coverage } from './coverage.ts';
+import { type Coverage, type Gap, coverage, gaps } from './coverage.ts';
 import { type MapEndpoint, type StatusRow, endpoint, isFirstParty, joiner } from './join.ts';
 import { type Reach, type Role, reach, roleList } from './roles.ts';
 import { type About, type Runtime, loadRuntime, runtimePath } from './runtime.ts';
@@ -54,6 +54,7 @@ export interface PageData {
   endpoints: PageEndpoint[];
   alerts: Alert[];
   coverage: Coverage;
+  gaps: Gap[];
   queue: Queue;
   snippets: Record<string, string>;
   method: {
@@ -146,6 +147,7 @@ export const buildData = (dir: string, options: Options = {}): PageData => {
     alerts: alerts(p.cells, ([c, r]) => `${names.get(c) ?? c} for ${roleNames.get(r) ?? r}`),
     queue: queue(p.endpoints, p.agents, p.found),
     coverage: p.coverage,
+    gaps: gaps(p.coverage),
     snippets: p.runtime.snippets,
     method: {
       rows: p.rows.length,

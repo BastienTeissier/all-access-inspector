@@ -22,10 +22,7 @@ const TABS: [string, string][] = [
 /** The map's own alerts, then the coverage gaps and the review queue's count: each endpoint shows once, signals only as a count. */
 const Alerts = ({ data }: { data: PageData }) => {
   const kinds = Object.keys(KINDS).filter(kind => data.alerts.some(a => a.kind === kind));
-  const gaps = data.coverage.areas.filter(a => a.gaps.length);
-  const third = data.coverage.third_party.total;
-  const lines = [...gaps.map(a => ({ id: a.id, name: a.name, n: a.gaps.length })), ...(third ? [{ id: 'third-party', name: 'Third-party handlers', n: third }] : [])];
-  if (!kinds.length && !lines.length && !data.queue.signals) return <p className="muted">Nothing to look at.</p>;
+  if (!kinds.length && !data.gaps.length && !data.queue.signals) return <p className="muted">Nothing to look at.</p>;
   return (
     <section aria-label="Alerts" className="map-alerts">
       {kinds.map((kind, i) => {
@@ -45,15 +42,15 @@ const Alerts = ({ data }: { data: PageData }) => {
           </details>
         );
       })}
-      {lines.length > 0 && (
+      {data.gaps.length > 0 && (
         <details className="group" open={!kinds.length} aria-label="Coverage">
           <summary>
-            <b>Coverage</b> <span className="muted">{lines.reduce((n, l) => n + l.n, 0)}</span>
+            <b>Coverage</b> <span className="muted">{data.gaps.reduce((n, g) => n + g.endpoints.length, 0)}</span>
           </summary>
           <ul>
-            {lines.map(({ id, name, n }) => (
-              <li key={id}>
-                <a href={`/map?tab=routes&gap=${encodeURIComponent(id)}`}>{name}</a> <span className="muted">{n}</span>
+            {data.gaps.map(g => (
+              <li key={g.id}>
+                <a href={`/map?tab=routes&gap=${encodeURIComponent(g.id)}`}>{g.name}</a> <span className="muted">{g.endpoints.length}</span>
               </li>
             ))}
           </ul>
