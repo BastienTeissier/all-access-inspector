@@ -277,7 +277,11 @@ test('The Agent raises a signal on a cell through review append, counted on the 
     expect.objectContaining({ v: 2, event: 'triaged', capability: ['shop.order.view', 'manager'] }),
   ]);
   const withSignal = buildData(project);
-  expect(withSignal.alerts.map(a => a.kind)).toEqual(['undecided', ...Array(6).fill('open')]); // the invoices resource is decided in get_permissions()
+  expect(withSignal.alerts.filter(a => a.kind !== 'open').map(a => a.kind)).toEqual(['undecided']);
+  // the invoices resource is decided in get_permissions(), which the map cannot read
+  expect(withSignal.alerts.filter(a => a.kind === 'open').map(a => a.cell)).toEqual(
+    ['list', 'delete'].flatMap(verb => ['clerk', 'manager', 'owner'].map(role => [`resource.api.invoices.${verb}`, role])),
+  );
   expect(withSignal.queue.signals).toBe(withSignal.endpoints.reduce((n, e) => n + e.signals.length, 0) + 1);
   const before = log();
   const refused = run(REVIEW_CLI, ['append', '.', '--agent', '--model', 'm'], JSON.stringify({ event: 'triaged', capability: ['export-orders', 'cashier'] }));
