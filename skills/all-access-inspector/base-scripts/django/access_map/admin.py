@@ -71,7 +71,7 @@ ABOUT = {
     "command": "python tools/access-map/introspect.py",
 }
 
-Who = dict[str, str]
+Who = dict[str, Any]
 Layer = dict[str, Any]
 Override = dict[str, str]
 Admin = dict[str, Any]
