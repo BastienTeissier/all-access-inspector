@@ -92,7 +92,7 @@ test('the Alerts count is the undecided, findings and open lines; coverage and t
   await page.goto('/map?tab=alerts');
   const lines = await page.locator(['Partial, not decided', 'Findings', 'Not resolved'].map(g => `details[aria-label="${g}"] li`).join(', ')).count();
   expect(lines).toBeGreaterThan(0);
-  expect(await alertsTab(page)).toEqual({ count: String(lines), coverage: ['Orders 3', 'no area 36', 'Third-party handlers 21'], queue: 'Review queue: 48 signals' });
+  expect(await alertsTab(page)).toEqual({ count: String(lines), coverage: ['Orders 3', 'api.invoices 2', 'no area 32', 'Third-party handlers 21'], queue: 'Review queue: 48 signals' });
 });
 
 test('a Coverage line opens the Routes tab filtered on that area and behind no capability', async ({ page }) => {

@@ -15,6 +15,7 @@ const cap: Capability = {
   at: 'app/models.py:1',
   basis: 'extracted',
   reason: null,
+  derived: null,
 };
 
 const editor = role('editor');

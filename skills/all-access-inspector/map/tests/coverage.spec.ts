@@ -24,6 +24,7 @@ const capability = (id: string, area: string, name = id): Capability => ({
   at: null,
   basis: 'extracted',
   reason: null,
+  derived: null,
 });
 
 const firstParty = (handler: string) => /:\d+$/.test(handler);
