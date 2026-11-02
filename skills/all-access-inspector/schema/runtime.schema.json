@@ -477,7 +477,7 @@
           "minLength": 1
         },
         "roles": {
-          "description": "Kind relations: the relation roles the check lets through.",
+          "description": "Kind groups or relations: the roles the check lets through.",
           "type": "array",
           "items": {
             "type": "string",

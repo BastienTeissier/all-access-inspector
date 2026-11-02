@@ -13,7 +13,7 @@ export interface Who {
   kind: WhoKind;
   basis: Basis;
   how: string;
-  roles?: string[]; // kind groups: the roles holding the permissions; kind relations: the relation roles the check lets through
+  roles?: string[]; // kind groups: the roles holding the permissions, or a roles guard names; kind relations: the relation roles the check lets through
   custom?: boolean; // kind groups: code also decides beyond the permissions
 }
 
