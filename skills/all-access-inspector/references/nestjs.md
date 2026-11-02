@@ -108,6 +108,17 @@ As for any stack: path prefix groups that share a guard or a middleware (`/api/a
 
 Each value then gets an expected access in `EXPECTED`, keyed like `DIMENSIONS`: the `authentication` and `authorization` values its endpoints may have. Typical: `public` anonymous or optional, none; `customer` required, none or rule; `staff` required, rule. Derive it from what the value means; an endpoint outside it is a finding for the team, not a reason to move the endpoint.
 
+## Map introspect
+
+No Map Introspect ships for NestJS yet: `tools/access-map/` holds only `vocabulary.json`, the runtime is empty, and the page's "How it's built" tab says so. Every fact is hand-written (dotted ✎), each with its `at` and `reason`: a role is `{"id", "kind", "at", "reason", "includes"?, "staff"?}` in the vocabulary's `roles`. The map does not guess which role a route rule names, so an endpoint guarded by a role rule shows as not resolved (dashed) until an introspect reads the grants. List each fact below that the project declares in a readable form under "could be extracted" in the summary.
+
+Where roles, grants and scopes live on NestJS:
+
+- Roles: the `Role` enum (or string union) passed to `@Roles()`, and the `RolesGuard` that compares it with `request.user.roles`; a superuser is a role the guard lets through every check.
+- What every account holds: the JWT or session strategy's `validate()`, which builds `request.user` and its roles.
+- Grants: a permission map (role → actions) read by a policies guard or CASL `AbilityFactory`, when the project has one.
+- Scopes: service and repository queries filtered on the user (`where: { userId: user.id }`, a tenant id), or a CASL condition.
+
 ## Linters
 
 Exclude `tools/access-inspector/` from:

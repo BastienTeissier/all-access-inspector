@@ -105,7 +105,7 @@ describe('loadVocabulary', () => {
   test.each([
     ['not JSON', '{', 'not valid JSON'],
     ['no roles', { areas: [], capabilities: [] }, 'roles: required list'],
-    ['a bad kind', { areas: [], capabilities: [], roles: [{ id: 'auditor', kind: 'admin' }] }, 'roles[0] auditor: kind: "admin" is not signed_in, superuser or group'],
+    ['a bad kind', { areas: [], capabilities: [], roles: [{ id: 'auditor', kind: 'admin' }] }, 'roles[0] auditor: kind: "admin" is not signed_in, superuser, group or relation'],
     ['a hand-written role with no reason', { areas: [], capabilities: [], roles: [{ id: 'ops', kind: 'group', at: 'a.py:1' }] }, 'roles[0] ops: reason: required'],
     ['a capability with no evidence', { areas: [], roles: [], capabilities: [{ id: 'x', name: 'X', area: 'a', verb: 'read', endpoints: [['GET', '/']], check: '', evidence: [], reason: 'r' }] }, 'capabilities[0] x: evidence'],
   ])('%s is a VocabularyError', (_, data, message) => {

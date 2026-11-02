@@ -4,7 +4,7 @@
   "discovery_mode": "runtime",
   "coverage": "complete",
   "coverage_note": null,
-  "base_script": {"stack": "nestjs", "version": "0.3.0"},
+  "base_script": {"stack": "nestjs", "version": "0.4.0"},
   "boot_environment": {"entry": "src/app.module.js#AppModule", "environ": [{"name": "NODE_ENV", "value": "production", "reason": "production value"}], "stubs": [], "pinned": []},
   "project_dimensions": {},
   "expected_access": {},

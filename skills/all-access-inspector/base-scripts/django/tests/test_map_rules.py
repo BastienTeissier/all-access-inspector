@@ -147,3 +147,22 @@ def test_staff_rules_fall_back_to_staff(monkeypatch: pytest.MonkeyPatch) -> None
         "basis": "rule",
         "how": "Recognition rule staff_member (e)",
     }
+
+
+def test_relation_rules_fall_back_to_the_relation_roles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from access_map import admin
+
+    authz = {"rule": "recognition:can_edit", "raw": "CanEdit", "evidence": "e"}
+    endpoint = {"authorization": authz}
+    assert admin.fallback(endpoint) is None
+    monkeypatch.setattr(
+        project, "RELATION_RULES", {"can_edit": ("responsible", "creator")}
+    )
+    assert admin.fallback(endpoint) == {
+        "kind": "relations",
+        "roles": ["creator", "responsible"],
+        "basis": "rule",
+        "how": "Recognition rule can_edit (e)",
+    }

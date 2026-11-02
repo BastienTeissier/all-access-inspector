@@ -1,7 +1,7 @@
 // The map CLI run as a user runs it, inside a copy of fixtures/django-demo: one test per scenario of test.md.
 
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -10,6 +10,7 @@ import { beforeEach, expect, test } from 'vitest';
 import { buildData } from '../src/data.ts';
 
 const CLI = join(import.meta.dirname, '..', 'src', 'cli.ts');
+const REVIEW_CLI = join(import.meta.dirname, '..', '..', 'review', 'src', 'cli.ts');
 const FIXTURE = join(import.meta.dirname, '..', '..', '..', '..', 'fixtures', 'django-demo');
 
 let project: string;
@@ -24,11 +25,13 @@ beforeEach(() => {
   writeFileSync(gitconfig, '[user]\n\temail = reviewer@example.com\n');
 });
 
-const map = (...args: string[]) => {
+const run = (cli: string, args: string[], input?: string) => {
   const env = { ...process.env, GIT_CONFIG_GLOBAL: gitconfig, GIT_CONFIG_NOSYSTEM: '1' };
-  const result = spawnSync(process.execPath, [CLI, ...args], { cwd: project, env, encoding: 'utf8' });
+  const result = spawnSync(process.execPath, [cli, ...args], { cwd: project, env, encoding: 'utf8', input });
   return { status: result.status, out: result.stdout + result.stderr };
 };
+
+const map = (...args: string[]) => run(CLI, args);
 
 const logPath = () => join(project, 'tools', 'access-inspector', 'reviews.jsonl');
 const log = () => (existsSync(logPath()) ? readFileSync(logPath(), 'utf8') : '');
@@ -51,7 +54,48 @@ const editJson = (path: string, change: (data: Record<string, unknown[]>) => voi
 const accept = () => map('decide', '.', 'export-orders', 'clerk', '--verdict', 'accepted', '--reason', 'Clerks export through a manager');
 
 test('Only the roles the code defines are shown', () => {
-  expect(buildData(project).roles.map(r => r.id)).toEqual(['anonymous', 'clerk', 'manager', 'superuser']);
+  expect(buildData(project).roles.map(r => r.id)).toEqual(['anonymous', 'clerk', 'manager', 'owner', 'superuser']);
+});
+
+test('A relation role passes the capability whose check names it, and no other', () => {
+  const data = buildData(project);
+  const states = (cap: string) => Object.fromEntries(data.cells.filter(c => c.capability === cap).map(c => [c.role, c.state]));
+  expect(states('api.order.view')).toEqual({ anonymous: 'no', clerk: 'no', manager: 'no', owner: 'pass', superuser: 'pass' });
+  expect(states('shop.order.view').owner).toBe('no');
+});
+
+test('A route check naming a permission lets the roles holding it through', () => {
+  editJson('tools/access-map/vocabulary.json', data => {
+    const checks = (data as unknown as { route_checks: Record<string, Record<string, unknown>[]> }).route_checks['/api/orders/{pk}/'];
+    checks![0] = { layer: 'permission', text: 'Needs shop.view_order', at: checks![0]!.at, permissions: ['shop.view_order'] };
+  });
+  const data = buildData(project);
+  const states = Object.fromEntries(data.cells.filter(c => c.capability === 'api.order.view').map(c => [c.role, c.state]));
+  expect(states).toEqual({ anonymous: 'no', clerk: 'pass', manager: 'pass', owner: 'no', superuser: 'pass' });
+});
+
+test('A relation role no check names, and a check naming no role, fail the check', () => {
+  editJson('tools/access-map/vocabulary.json', data => {
+    const checks = (data as unknown as { route_checks: Record<string, { roles: string[] }[]> }).route_checks['/api/orders/{pk}/'];
+    checks![0]!.roles = ['holder'];
+  });
+  const result = map('check', '.');
+  expect(result.status).toBe(1);
+  expect(result.out).toContain('role owner is a relation no check names');
+  expect(result.out).toContain('a check names role holder, which is not a role');
+});
+
+test('An area folds the extracted areas it contains; one that matches none fails the check', () => {
+  editJson('tools/access-map/vocabulary.json', data => {
+    data.areas?.push({ id: 'catalogue', name: 'Catalogue', contains: ['shop.product', 'shop.basket'] });
+  });
+  const data = buildData(project);
+  expect(data.areas.find(a => a.id === 'catalogue')).toMatchObject({ folded: true });
+  expect(data.areas.find(a => a.id === 'catalogue')?.capabilities.map(c => c.id)).toContain('shop.product.view');
+  expect(data.areas.map(a => a.id)).not.toContain('shop.product');
+  const result = map('check', '.');
+  expect(result.status).toBe(1);
+  expect(result.out).toContain('area catalogue contains shop.basket, which matches no extracted area');
 });
 
 test('A role reaching some endpoints of a capability is partial', () => {
@@ -166,4 +210,33 @@ test('A named capability term absent from CONTEXT.md and a scoped fact on no rol
   expect(result.status).toBe(1);
   expect(result.out).toContain('term "Product" is not in CONTEXT.md');
   expect(result.out).toContain('scoped export-orders for cashier at shop/admin.py:24: no such capability or role on the map');
+});
+
+test('A group role holding no grant fails the check, unless no Map Introspect reads the grants', () => {
+  editJson('tools/access-map/vocabulary.json', data => {
+    data.roles?.push({ id: 'auditor', kind: 'group', at: 'shop/admin.py:24', reason: 'No Map Rule reads it.' });
+  });
+  map('pin', '.');
+  expect(map('check', '.')).toMatchObject({ status: 1, out: expect.stringContaining('role auditor holds no grant') });
+  rmSync(join(project, 'tools', 'access-map', 'runtime.json'));
+  expect(map('check', '.').out).not.toContain('holds no grant');
+});
+
+test('The Agent raises a signal on a cell through review append, shown under Alerts', () => {
+  const lines = [
+    { event: 'signal_raised', capability: ['export-orders', 'clerk'], reason: 'The export button is in the list a clerk sees.', evidence: 'shop/admin.py:24' },
+    { event: 'triaged', capability: ['shop.order.view', 'manager'] },
+  ];
+  const result = run(REVIEW_CLI, ['append', '.', '--agent', '--model', 'm'], lines.map(l => JSON.stringify(l)).join('\n'));
+  expect(result.status, result.out).toBe(0);
+  const added = log().trimEnd().split('\n').map(l => JSON.parse(l));
+  expect(added).toEqual([
+    expect.objectContaining({ v: 2, event: 'signal_raised', by: 'agent:m', capability: ['export-orders', 'clerk'], seen: expect.objectContaining({ state: 'partial' }) }),
+    expect.objectContaining({ v: 2, event: 'triaged', capability: ['shop.order.view', 'manager'] }),
+  ]);
+  expect(buildData(project).alerts).toContainEqual(expect.objectContaining({ kind: 'agent', cell: ['export-orders', 'clerk'] }));
+  const before = log();
+  const refused = run(REVIEW_CLI, ['append', '.', '--agent', '--model', 'm'], JSON.stringify({ event: 'triaged', capability: ['export-orders', 'cashier'] }));
+  expect(refused).toMatchObject({ status: 2, out: expect.stringContaining('stdin line 1: no cell export-orders for cashier on the access map') });
+  expect(log()).toBe(before);
 });

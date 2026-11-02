@@ -103,6 +103,11 @@ def is_first_party(obj: object) -> bool:
 
 def location(func: Callable[..., Any] | type) -> dict[str, str]:
     func = inspect.unwrap(func)
+    if isinstance(
+        func, type
+    ):  # a class built with type(), e.g. by hijack.contrib.admin
+        sourced = [c for c in func.__mro__ if "__firstlineno__" in c.__dict__]
+        func = next((c for c in sourced if is_first_party(c)), sourced[0])
     lines, start = inspect.getsourcelines(func)
     return {
         "at": f"{relative(inspect.getsourcefile(func) or '')}:{start}",
@@ -198,6 +203,9 @@ def fallback(endpoint: dict[str, Any]) -> Who | None:
         return {"kind": "signed_in", **from_axis(authz)}
     if rule in project.STAFF_RULES or authz["raw"] == "is_staff":
         return {"kind": "staff", **from_axis(authz)}
+    if rule in project.RELATION_RULES:
+        roles = sorted(project.RELATION_RULES[rule])
+        return {"kind": "relations", "roles": roles, **from_axis(authz)}
     return None
 
 

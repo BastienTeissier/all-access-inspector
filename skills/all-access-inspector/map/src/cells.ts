@@ -6,7 +6,7 @@ import { type CellAgent, type Cells, type Decision, cellText, decide } from '../
 import { type MapEndpoint, weakest } from './join.ts';
 import { type Reach, type Role, reach } from './roles.ts';
 import type { Basis, Runtime } from './runtime.ts';
-import type { Vocabulary } from './vocabulary.ts';
+import type { Area, Vocabulary } from './vocabulary.ts';
 
 export interface Capability {
   id: string;
@@ -41,7 +41,11 @@ export interface Cell {
   decision: Decision | null;
 }
 
-/** Extracted capabilities named or replaced by the vocabulary, then the hand-written ones. */
+/** The vocabulary area an extracted area is folded into, by id or by prefix (`socialaccount` folds `socialaccount.socialtoken`). */
+export const foldedInto = (area: string, areas: Area[]): string | null =>
+  areas.find(a => (a.contains ?? []).some(c => area === c || area.startsWith(`${c}.`)))?.id ?? null;
+
+/** Extracted capabilities named, folded or replaced by the vocabulary, then the hand-written ones. */
 export const capabilityList = (runtime: Runtime, vocabulary: Vocabulary): Capability[] => {
   const written = vocabulary.capabilities.flatMap(c => ('id' in c ? [c] : []));
   const replaced = new Set(written.flatMap(c => c.replaces ?? []));
@@ -50,7 +54,7 @@ export const capabilityList = (runtime: Runtime, vocabulary: Vocabulary): Capabi
     .filter(c => !replaced.has(c.id))
     .map((c): Capability => {
       const n = named.get(c.id);
-      return { ...c, name: n?.name ?? c.id, sub: n?.sub ?? null, area: n?.area ?? c.area, reason: null };
+      return { ...c, name: n?.name ?? c.id, sub: n?.sub ?? null, area: n?.area ?? foldedInto(c.area, vocabulary.areas) ?? c.area, reason: null };
     });
   const curated = written.map(
     (c): Capability => ({

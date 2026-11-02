@@ -22,6 +22,7 @@ export interface PageArea {
   name: string;
   term: string | null;
   defined_at: string | null;
+  folded: boolean; // holds extracted areas folded by `contains`: the page draws it collapsed
   capabilities: Capability[];
 }
 
@@ -74,11 +75,11 @@ const ordered = (rows: StatusRow[]): StatusRow[] => [...rows].sort((a, b) => a.t
 
 /** Vocabulary areas first, in their order, then any area a capability names that the vocabulary does not. */
 const areaList = (vocabulary: Vocabulary, caps: Capability[]): PageArea[] => {
-  const areas: PageArea[] = vocabulary.areas.map(a => ({ ...a, capabilities: [] }));
+  const areas: PageArea[] = vocabulary.areas.map(a => ({ id: a.id, name: a.name, term: a.term ?? null, defined_at: a.defined_at ?? null, folded: Boolean(a.contains?.length), capabilities: [] }));
   for (const cap of caps) {
     let area = areas.find(a => a.id === cap.area);
     if (!area) {
-      area = { id: cap.area, name: cap.area, term: cap.term, defined_at: null, capabilities: [] };
+      area = { id: cap.area, name: cap.area, term: cap.term, defined_at: null, folded: false, capabilities: [] };
       areas.push(area);
     }
     area.capabilities.push(cap);

@@ -120,12 +120,15 @@ export const appendDecision = (project: string, values: Values, capability: Cell
   return `decided ${verdict}: ${capability[0]} for ${capability[1]}\n`;
 };
 
-export const appendAgent = (project: string, model: string | undefined, input: string) => {
+/** What the access map computes for a cell now, or undefined when it is not on the map; the map passes it in. */
+export type CellsNow = (cell: CellKey) => CellSeen | undefined;
+
+export const appendAgent = (project: string, model: string | undefined, input: string, cellsNow?: CellsNow) => {
   if (!model) throw new Refused('--agent needs --model <id>');
   const { inventory, rows } = load(project);
   const batch = newBatch();
   const at = now();
-  const events: Event[] = [];
+  const events: (Event | CellEvent)[] = [];
   input.split('\n').forEach((line, i) => {
     if (!line.trim()) return;
     let item: Record<string, unknown>;
@@ -135,6 +138,18 @@ export const appendAgent = (project: string, model: string | undefined, input: s
       throw new Refused(`stdin line ${i + 1}: not valid JSON`);
     }
     if (item.event !== 'signal_raised' && item.event !== 'triaged') throw new Refused(`stdin line ${i + 1}: the agent appends only signal_raised or triaged`);
+    if ('capability' in item) {
+      const cell = item.capability as CellKey;
+      if (!Array.isArray(cell) || cell.length !== 2 || !cell.every(x => typeof x === 'string')) throw new Refused(`stdin line ${i + 1}: capability must be [capability, role]`);
+      const seen = cellsNow?.(cell);
+      if (!seen) throw new Refused(`stdin line ${i + 1}: no cell ${cell[0]} for ${cell[1]} on the access map`);
+      const event: Record<string, unknown> = { v: MAP_VERSION, at, by: `agent:${model}`, event: item.event, batch, capability: cell, seen };
+      if (item.event === 'signal_raised') Object.assign(event, { reason: item.reason, evidence: item.evidence });
+      const wrong = problem(event);
+      if (wrong) throw new Refused(`stdin line ${i + 1}: ${wrong}`);
+      events.push(event as unknown as CellEvent);
+      return;
+    }
     if (typeof item.method !== 'string' || typeof item.path !== 'string') throw new Refused(`stdin line ${i + 1}: method and path are required`);
     for (const e of resolve(inventory, rows, item.method, item.path, item.handler as string | undefined)) {
       const event: Record<string, unknown> = { v: VERSION, at, by: `agent:${model}`, event: item.event, batch, endpoint: keyOf(e), seen: seenOf(e, inventory.expected_access) };

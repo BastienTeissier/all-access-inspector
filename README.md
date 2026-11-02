@@ -25,6 +25,7 @@ An agent skill fits the toolkit to your project **once**. It leaves a small scri
 - [Review the inventory](#review-the-inventory)
 - [Review app](#review-app)
 - [Triage with the Agent](#triage-with-the-agent)
+- [Access map](#access-map)
 - [Wire it into CI](#wire-it-into-ci)
 - [Living with it](#living-with-it)
 - [Edit the fitting by hand](#edit-the-fitting-by-hand)
@@ -43,7 +44,7 @@ An agent skill fits the toolkit to your project **once**. It leaves a small scri
 | Symfony (+ API Platform) | `base-scripts/symfony/` | runtime, the router | Tested on Symfony 8.1 and API Platform 5.0, PHP 8.5 (needs PHP 8.2 or later). Firewalls, `access_control`, `#[IsGranted]`, `denyAccessUnlessGranted()`, API Platform `security` |
 | Anything else (FastAPI, Flask, Express, Laravel, Rails…) | improvised from the closest one | runtime when the framework has a route registry, else static | Always `coverage: best-effort`. See [Fit an unsupported stack](#fit-an-unsupported-stack) |
 
-Base Script version: see [`skills/all-access-inspector/VERSION`](skills/all-access-inspector/VERSION) (currently 0.3.0). Every inventory records the version that produced it.
+Base Script version: see [`skills/all-access-inspector/VERSION`](skills/all-access-inspector/VERSION) (currently 0.4.0). Every inventory records the version that produced it.
 
 ## Install the skill
 
@@ -204,7 +205,7 @@ tools/access-inspector/
 
 The Symfony script boots a subclass of your kernel that builds its container in a temporary directory, so `var/cache/` and `config/` are never touched.
 
-Plus one exclusion line per linter or type checker. Nothing else outside `tools/access-inspector/` changes.
+Plus one exclusion line per linter or type checker. Nothing else outside `tools/access-inspector/` changes, until you ask for the [access map](#access-map), which lands in `tools/access-map/`.
 
 Only the blocks between `# --- project ---` and `# --- end project ---` (`// --- project ---` in TypeScript, Java and PHP) are project-specific. Everything else stays byte-identical to the Base Script, so a later refresh can replace it.
 
@@ -263,7 +264,7 @@ The output is deterministic: sorted, with no timestamps and no absolute paths. T
   "discovery_mode": "runtime",
   "coverage": "complete",
   "coverage_note": null,
-  "base_script": {"stack": "django", "version": "0.3.0"},
+  "base_script": {"stack": "django", "version": "0.4.0"},
   "boot_environment": {"entry": "config.settings", "environ": […], "stubs": […], "pinned": […]},
   "project_dimensions": {"access_tier": ["public", "customer", "staff"]},
   "expected_access": {"access_tier": {"staff": {"authentication": ["required"], "authorization": ["rule"]}, …}},
@@ -446,6 +447,63 @@ The Agent:
 5. prints the Signals it raised and the rows it skipped, with the reason for each.
 
 A Signal moves its row up to tier 7, "suggested by the agent". It **never clears** an endpoint: only a person gives a Verdict. The Agent changes only `reviews.jsonl`, plus `.gitattributes` on the first run. It never edits the inventory or the Adapted Script, and it never commits. Commit those files yourself.
+
+## Access map
+
+The inventory says whether an endpoint checks a sign-in and an authorization. The access map says **who** passes: per Role and per Capability ("Export orders"), whether the role passes, how far its reach goes over the records (its Scope), and where each fact was read (its Basis). Terms are in [`CONTEXT.md` § Access map](CONTEXT.md#access-map).
+
+### Build it with the Agent
+
+Once the inventory is committed:
+
+```
+/all-access-inspector build the access map
+```
+
+The Agent reads before it writes ([ADR 0005](docs/adr/0005-access-facts-are-read-before-they-are-written.md)):
+
+1. On Django, it vendors the Map Introspect into `tools/access-map/`. The introspect boots the app through the Adapted Script's `boot.py` and reads the admin registry. The Agent then writes **Map Rules** in its project section for the roles, grants, scopes and capabilities your code declares: a groups dict, a sign-in adapter, a `get_queryset` filter. It shows you each one with its `file:line` before saving it. Other stacks have no introspect yet, so every fact is written by hand and the summary lists what could be extracted.
+2. It maps each role and each area to your docs: `CONTEXT.md`, else the README or `docs/`. It reports a role the docs name and the code does not, or the reverse. It never writes your `CONTEXT.md`.
+3. It writes `tools/access-map/vocabulary.json` with you, only for what no program can read: capability names in your words, capabilities spanning several endpoints, checks inside handler bodies. Each entry gives its reason.
+4. It runs `map pin`, `map check` and `map build`, commits on a new branch, and prints the coverage, the partial capabilities left for you to decide, and the "could be extracted" list.
+
+```
+tools/access-map/
+├── introspect.py, admin.py, runtime.py   # Django Map Introspect, Base Script: do not edit
+├── project.py                            # project section: Map Rules
+├── runtime.json                          # the Map Runtime: committed, byte-stable, checked in CI
+├── vocabulary.json                       # the Map Vocabulary: written with you, every file:line pinned
+├── .gitattributes                        # runtime.json -diff linguist-generated
+└── out/access-map.html                   # map build output: ignore it in git
+```
+
+### Read the map
+
+`node <skill>/map/src/cli.ts build <project>` writes one static page, `tools/access-map/out/access-map.html`, that you can open or share. The review app shows the same map under **Access map**, with a decision form on each cell. Both draw the same data, computed in `map/src/`.
+
+- **Alerts**: partial capabilities with no valid decision, open `finding` decisions, cells not resolved, endpoints behind no capability, the Agent's signals, the review Signals, and endpoints outside their expected access.
+- **Roles**: areas × roles. Not signed in is the first column, the superuser the last. Each cell **passes**, is **partial** (the role reaches some of the capability's endpoints), **does not pass**, is **switched off** for everyone, or is **not resolved**. A cell shows its scope, and its basis as a border: solid when read from the code, ≈ inferred, dotted ✎ hand-written, dashed not resolved. Click a cell for its check, its evidence, and the endpoints the role reaches and misses.
+- **Routes**: one row per endpoint with who passes and the chain of checks, filterable.
+- **How it's built**: what each source contributed, and every heuristic behind an inferred badge.
+
+### Decide a partial capability
+
+A partial cell is either a bug or a leak until a person decides it ([ADR 0006](docs/adr/0006-the-access-map-is-a-view-of-the-review-app.md)). Decide it in the review app's cell panel, or with:
+
+```bash
+node <skill>/map/src/cli.ts decide <project> export-orders clerk --verdict accepted --reason "Clerks export through a manager"
+```
+
+A Capability Decision uses a Verdict's words and fields (`safe`, `accepted` with `--until`, `finding` with `--severity` and `--ticket`). It is appended to `reviews.jsonl` as a `decided` event that records what the cell was. The decision goes outdated, and the partial comes back under Alerts, when the cell's state or its reached and missed endpoints change. The Agent never decides a cell: asked to look at the map, it appends signals on cells, which show under Alerts.
+
+### Check it in CI
+
+| Command | Exit 1 when |
+|---|---|
+| `<run> python tools/access-map/introspect.py --check` (Django) | `runtime.json` differs from what the app declares now |
+| `node <skill>/map/src/cli.ts check <project>` | a pinned `file:line` no longer shows its line, a vocabulary entry duplicates a Map Rule, the runtime and the inventory disagree, a partial has no valid decision or an outdated one, a term is missing from `CONTEXT.md`, a group role holds no grant |
+
+Both exit 2 when a file is unreadable or invalid. `map check` also prints the coverage and the open findings, which never fail it.
 
 ## Wire it into CI
 
@@ -705,17 +763,18 @@ The full lists are under "Blind spots" in each stack reference.
 skills/all-access-inspector/
 ├── SKILL.md                     # the Agent's workflow
 ├── VERSION
-├── base-scripts/django/         # Base Script + tests (uv, pytest, ruff, mypy)
+├── base-scripts/django/         # Base Script + tests (uv, pytest, ruff, mypy); access_map/: the Map Introspect
 ├── base-scripts/nestjs/         # Base Script + tests (pnpm, vitest, tsc)
 ├── base-scripts/spring/         # Base Script + tests (Maven, JUnit), Java 21
 ├── base-scripts/symfony/        # Base Script + tests (Composer, PHPUnit)
 ├── review/                      # review CLI (Node 24, zero dependencies)
+├── map/                         # map CLI and the static page.html (Node 24)
 ├── references/                  # per-stack knowledge the Agent reads
-├── schema/                      # inventory.schema.json + canonical samples
+├── schema/                      # inventory, review event, runtime and vocabulary schemas + canonical samples
 ├── assets/                      # CI snippet templates, summary template
 └── viewer/inventory-viewer.html
 fixtures/                        # django-demo, nestjs-demo, nestjs-jest-smoke, spring-demo, spring-gradle-smoke, symfony-demo:
-                                 # fitted projects with golden inventories
+                                 # fitted projects with golden inventories; django-demo also has a fitted access map
 apps/review/                     # the Next.js review app
 docs/                            # ADRs, PRD, user flows, plan
 CONTEXT.md                       # the domain glossary
@@ -723,7 +782,9 @@ CONTEXT.md                       # the domain glossary
 
 ```bash
 make install-nestjs install-symfony install-review   # once
-make test             # Base Script unit tests + golden tests on every fixture
+pnpm --dir apps/review exec playwright install chromium   # once, for the app's e2e tests
+make test             # Base Script unit tests + golden tests on every fixture + make test-review
+make test-review      # review CLI, map CLI and review app tests, then the app's Playwright e2e
 make check-all        # ruff, mypy, deptry, tsc
 make format
 ```
@@ -731,6 +792,7 @@ make format
 - Java and PHP run in Docker (`eclipse-temurin:21-jdk`, `composer:2`) with their caches in volumes, so you need neither on your machine. CI, which has them, sets `SPRING_RUN=` and `SYMFONY_RUN=` to run them directly.
 - The fixtures vendor the Base Script. A golden test checks that each vendored copy matches the Base Script outside its project section, so copy changes into the fixtures.
 - After a change in classification, regenerate the fixture goldens (`expected/inventory.json`) by running the script in the fixture and moving the output into `expected/`. Review that diff like any inventory diff.
+- The same goes for the Map Introspect: `fixtures/django-demo/expected/runtime.json` is checked against a fresh run, and `tools/access-map/runtime.json` must stay identical to it.
 - Keep the Core Classification closed. A new framework construct becomes a Built-in Rule, never a new value.
 
-Design decisions: [ADR 0001: the Agent fits once, the script runs forever](docs/adr/0001-agent-fits-once-script-runs-forever.md), [ADR 0002: runtime discovery is the source of truth](docs/adr/0002-runtime-discovery-is-the-source-of-truth.md), [ADR 0003: the Adapted Script is vendored](docs/adr/0003-adapted-script-is-vendored.md). Vocabulary: [`CONTEXT.md`](CONTEXT.md).
+Design decisions: [ADR 0001: the Agent fits once, the script runs forever](docs/adr/0001-agent-fits-once-script-runs-forever.md), [ADR 0002: runtime discovery is the source of truth](docs/adr/0002-runtime-discovery-is-the-source-of-truth.md), [ADR 0003: the Adapted Script is vendored](docs/adr/0003-adapted-script-is-vendored.md), [ADR 0004: review state is an event log](docs/adr/0004-review-state-is-an-event-log.md), [ADR 0005: access facts are read before they are written](docs/adr/0005-access-facts-are-read-before-they-are-written.md), [ADR 0006: the access map is a view of the review app](docs/adr/0006-the-access-map-is-a-view-of-the-review-app.md). Vocabulary: [`CONTEXT.md`](CONTEXT.md).

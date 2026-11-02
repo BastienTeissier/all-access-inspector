@@ -106,13 +106,13 @@ Who a request can be, as the project's code defines it: a group, a role constant
 _Avoid_: profile, persona, user type
 
 **Role kind**:
-How a **Role** is compared with what an endpoint lets through: `signed_in` (an account with no role), `superuser` (passes every check), `group` (anything else). Chosen per role from evidence, never from a default list.
+How a **Role** is compared with what an endpoint lets through: `signed_in` (an account with no role), `superuser` (passes every check), `group` (anything else held on the account), `relation` (a relation to the record a check tests: its creator, the holder of a seat on it, an API key; passes only the checks that name it). Chosen per role from evidence, never from a default list.
 
 **Capability**:
 One thing a role can do in the domain's words ("Upload scanned cards"), with the endpoints that action spans. Extracted first (an admin model action, a resource verb); the Agent only names, groups and adds what no program can read. Every endpoint is meant to sit behind one.
 
 **Area**:
-A group of **Capabilities** around one domain term. The term comes from `CONTEXT.md` when the project has one, else from the code or the docs, with its `file:line`.
+A group of **Capabilities** around one domain term. The term comes from `CONTEXT.md` when the project has one, else from the code or the docs, with its `file:line`. An area with no term of the project's own folds the extracted areas it `contains` (third-party admin: accounts, social accounts, API keys) and is drawn collapsed.
 
 **Scope**:
 How far a role's reach goes over the records once it passes: every record, or what a filter in the code leaves (own subsidiary, own records). Never proved by a program, so never shown as read from the code.

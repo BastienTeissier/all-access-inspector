@@ -4,7 +4,7 @@
   "discovery_mode": "runtime",
   "coverage": "complete",
   "coverage_note": null,
-  "base_script": {"stack": "spring", "version": "0.3.0"},
+  "base_script": {"stack": "spring", "version": "0.4.0"},
   "boot_environment": {"entry": "com.example.smoke.SmokeApplication", "environ": [], "stubs": [], "pinned": [{"setting": "spring.profiles.active", "value": "default", "reason": "production runs the default profile"}]},
   "project_dimensions": {},
   "expected_access": {},

@@ -10,7 +10,7 @@ The inventory says, per endpoint, whether a sign-in and an authorization check e
 
 AAU (developer or security reviewer), in a project with a Committed Inventory, I ask the all-access-inspector skill for the access map. The Agent:
 - vendors the stack's Map Introspect when the stack has one (Django today) into `tools/access-map/`, and fills its project section with Map Rules: `roles()`, `includes()`, `grants()`, `scopes()`, `capabilities()`, each fact with its `file:line`; it shows me every Map Rule with its evidence before saving, as when fitting
-- reads roles from the code: groups and their grants, the superuser bypass, what the sign-in assigns; on NestJS the `Role` enum behind `@Roles()`, on Spring `ROLE_*` and `hasRole`, on Symfony `role_hierarchy`; it gives each role a kind (`signed_in`, `superuser`, `group`) from evidence, and adds no role the code does not define
+- reads roles from the code: groups and their grants, the superuser bypass, what the sign-in assigns; on NestJS the `Role` enum behind `@Roles()`, on Spring `ROLE_*` and `hasRole`, on Symfony `role_hierarchy`; it gives each role a kind (`signed_in`, `superuser`, `group`, `relation`) from evidence, and adds no role the code does not define
 - maps each role and each area to the project's docs: `CONTEXT.md` when it exists, else the README or `docs/`, else the defining model or class, always with a `file:line`; a role the docs name and the code does not, or the reverse, is reported to me
 - writes `tools/access-map/vocabulary.json` with me, only for what no program can read: capability names in the glossary's words, endpoints one action spans, capabilities outside any pattern, scopes not read by a rule, checks inside handler bodies; each entry gives the reason it was not extracted
 - runs `map pin`, `map check` and `map build`, and prints the coverage ("N of M endpoints behind a capability"), the partial capabilities, and on a stack with no introspect the facts it saw a readable pattern for ("could be extracted")
@@ -32,7 +32,7 @@ AAU, I run `node <skill>/map/src/cli.ts build <project>` and open the static pag
 
 - AAU, a pinned `file:line` no longer shows its line, `map check` and `map build` exit 1 listing each one and where the line moved.
 - AAU, the vocabulary writes a role, grant, scope or capability that a Map Rule already produces, `map check` exits 1 naming both.
-- AAU, the vocabulary is not valid against `schema/vocabulary.schema.json`, or a role has a kind outside the three, the command exits 2 naming the field.
+- AAU, the vocabulary is not valid against `schema/vocabulary.schema.json`, or a role has a kind outside the four, the command exits 2 naming the field.
 - AAU, `runtime.json` lists an endpoint the inventory does not, or the reverse, `map check` exits 1 naming them.
 
 ## Edge Cases

@@ -4,7 +4,7 @@
   "discovery_mode": "runtime",
   "coverage": "complete",
   "coverage_note": null,
-  "base_script": {"stack": "symfony", "version": "0.3.0"},
+  "base_script": {"stack": "symfony", "version": "0.4.0"},
   "boot_environment": {"entry": "prod", "environ": [{"name": "TRUSTED_IPS", "value": "10.0.0.0/8", "reason": "the office network, set by the deployment; access_control reads it"}], "stubs": [], "pinned": []},
   "project_dimensions": {"access_tier": ["public", "user", "staff"]},
   "expected_access": {"access_tier": {"staff": {"authentication": ["required"], "authorization": ["rule"]}}},

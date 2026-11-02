@@ -96,6 +96,8 @@ table.matrix { border-collapse: separate; border-spacing: 0; width: 100%; }
 .dot.outdated { background: none; border: 1px solid var(--warn); }
 tr.area th { text-align: left; padding: 10px 12px; background: var(--bg); }
 tr.area .count { font-weight: 400; font-size: 0.78rem; color: var(--muted); margin-left: 8px; }
+tr.area .fold { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+tr.area .fold:hover { color: var(--accent); }
 
 /* drawer */
 aside.drawer { position: sticky; top: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 18px; display: grid; gap: 14px; max-height: calc(100vh - 24px); overflow-y: auto; min-width: 0; }
@@ -242,7 +244,7 @@ const k = key => JSON.stringify(key);
 
 const STATE = { pass: ["Yes", "reaches every endpoint"], partial: ["Part", "reaches some endpoints, not all"], no: ["—", "reaches none"], off: ["Off", "switched off in code"], open: ["?", "decided in code the map cannot read"] };
 const BASIS = { extracted: "read from the code", rule: "from a reviewed recognition rule", inferred: "inferred by a heuristic", curated: "hand-written in vocabulary.json", open: "not resolved" };
-const WHO = { anyone: "anyone", signed_in: "any signed-in user", staff: "staff", groups: "groups", superuser: "superuser only", nobody: "nobody", custom: "decided in code" };
+const WHO = { anyone: "anyone", signed_in: "any signed-in user", staff: "staff", groups: "groups", relations: "a relation to the record", superuser: "superuser only", nobody: "nobody", custom: "decided in code" };
 const KINDS = { undecided: "Partial, not decided", finding: "Findings", open: "Not resolved", uncovered: "Behind no capability", agent: "Agent signals", signal: "Inspector signals", outside_expected: "Outside expected access" };
 
 const ROLES = DATA.roles;
@@ -257,11 +259,13 @@ const capEps = id => { const c = DATA.cells.find(x => x.capability === id); retu
 const capsOf = e => CAPS.filter(c => capEps(c.id).includes(e));
 
 const chip = (state, basis) => `<span class="chip c-${state} b-${basis}">${STATE[state][0]}</span>`;
-const whoName = w => w.kind === "groups" ? (w.roles || []).map(r => roleById(r)?.name ?? r).join(", ") + (w.custom ? " + code" : "") || "no group" : WHO[w.kind];
+const whoName = w => w.kind === "groups" || w.kind === "relations" ? (w.roles || []).map(r => roleById(r)?.name ?? r).join(", ") + (w.custom ? " + code" : "") || (w.kind === "groups" ? "no group" : WHO[w.kind]) : WHO[w.kind];
 const whoBadge = w => `<span class="who ${w.kind} b-${w.basis}" title="${esc(w.how)}" aria-label="${esc(whoName(w))}, ${esc(BASIS[w.basis])}">${esc(whoName(w))}</span>`;
 const method = e => `<span class="mpill${e.write ? " w" : ""}">${esc(e.method)}</span>`;
 
 let sel = null;
+// Areas drawn collapsed: the folded ones (third-party admin and the like) until opened, or a cell of theirs is selected.
+const closed = new Set(DATA.areas.filter(a => a.folded).map(a => a.id));
 const rf = { domain: "all", q: "", role: "", write: false, sig: false, out: false, guess: false, cap: null };
 const openRows = new Set();
 
@@ -305,7 +309,9 @@ function renderAlerts() {
 function renderMatrix() {
   let h = `<thead><tr><th class="cap">Capability</th>${ROLES.map(r => `<th scope="col" class="b-${r.basis}" title="${esc(BASIS[r.basis])}">${esc(r.name)}</th>`).join("")}</tr></thead><tbody>`;
   DATA.areas.forEach(a => {
-    h += `<tr class="area"><th colspan="${ROLES.length + 1}">${esc(a.name)}<span class="count">${a.capabilities.length} capabilities</span></th></tr>`;
+    const open = !closed.has(a.id);
+    h += `<tr class="area"><th colspan="${ROLES.length + 1}"><button type="button" class="fold" data-area="${esc(a.id)}" aria-expanded="${open}">${open ? "▾" : "▸"} ${esc(a.name)}</button><span class="count">${a.capabilities.length} capabilities</span></th></tr>`;
+    if (!open) return;
     a.capabilities.forEach(c => {
       h += `<tr><td class="cap"><div>${esc(c.name)}<span class="verb ${c.verb}">${c.verb}</span></div>${c.sub ? `<div class="sub">${esc(c.sub)}</div>` : ""}</td>`;
       ROLES.forEach(r => {
@@ -320,6 +326,7 @@ function renderMatrix() {
   const t = document.getElementById("matrix");
   t.innerHTML = h + `</tbody>`;
   t.querySelectorAll("td.cell button").forEach(b => b.onclick = () => select(b.dataset.cap, b.dataset.role));
+  t.querySelectorAll("button.fold").forEach(b => b.onclick = () => { closed.has(b.dataset.area) ? closed.delete(b.dataset.area) : closed.add(b.dataset.area); renderMatrix(); });
 }
 function decisionHtml(d, cap, role) {
   if (!d) return `<span class="muted">None.</span> <code>map decide . ${esc(cap)} ${esc(role)} --verdict safe|accepted|finding --reason …</code>`;
@@ -347,6 +354,7 @@ function renderDrawer() {
 }
 function select(cap, role, scroll) {
   sel = [cap, role];
+  closed.delete(capById(cap).area);
   renderMatrix(); renderDrawer();
   if (scroll) document.querySelector("td.cell button.sel")?.scrollIntoView({ block: "center", inline: "center" });
 }

@@ -39,14 +39,14 @@ Every file of the chosen Base Script falls in exactly one of three lists. Transl
 
 The schema (`<skill>/schema/inventory.schema.json`) is the contract: the improvised inventory must validate against it.
 
-Start every rewritten and every extended file with a comment naming the Base Script, its version and what changed: `# Improvised from the django Base Script 0.3.0 for FastAPI: discovery and classify read app.routes and Depends()`, or `# Extended from the django Base Script 0.3.0 for FastAPI: builtins fastapi_security, fastapi_http_bearer`. A later refresh relies on it.
+Start every rewritten and every extended file with a comment naming the Base Script, its version and what changed: `# Improvised from the django Base Script 0.4.0 for FastAPI: discovery and classify read app.routes and Depends()`, or `# Extended from the django Base Script 0.4.0 for FastAPI: builtins fastapi_security, fastapi_http_bearer`. A later refresh relies on it.
 
 In the inventory:
 - `stack` is the project's framework (`fastapi`).
 - `base_script.stack` is the Base Script it derives from (`django`), with that script's `VERSION`.
 - `discovery_mode` is `runtime` when the route registry was enumerated, `static` otherwise.
 - `coverage` is `best-effort`, whatever the discovery mode. Never `complete`.
-- `coverage_note` names the stack, the Base Script it derives from and what it does not see, e.g. `FastAPI improvised from the django Base Script 0.3.0; app.routes read at runtime; middleware and dependency bodies not read`.
+- `coverage_note` names the stack, the Base Script it derives from and what it does not see, e.g. `FastAPI improvised from the django Base Script 0.4.0; app.routes read at runtime; middleware and dependency bodies not read`.
 
 ## Route registries
 

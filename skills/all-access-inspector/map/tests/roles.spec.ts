@@ -10,20 +10,22 @@ const ROLES = {
   group: role('editor'),
   staffed: role('desk', { staff: true }),
   including: role('lead', { includes: ['editor'] }),
+  relation: role('creator', { kind: 'relation' }),
   superuser: role('root', { kind: 'superuser' }),
 };
 
 // One row per `who`, one column per role above, in the order of plan §1.
 const TABLE: [string, ReturnType<typeof who>, string[]][] = [
-  ['nobody', who('nobody'), ['off', 'off', 'off', 'off', 'off', 'off']],
-  ['anyone', who('anyone'), ['yes', 'yes', 'yes', 'yes', 'yes', 'yes']],
-  ['signed_in', who('signed_in'), ['no', 'yes', 'yes', 'yes', 'yes', 'yes']],
-  ['staff', who('staff'), ['no', 'no', 'no', 'yes', 'no', 'yes']],
-  ['groups', who('groups', { roles: ['editor'] }), ['no', 'no', 'yes', 'no', 'yes', 'yes']],
-  ['superuser', who('superuser'), ['no', 'no', 'no', 'no', 'no', 'yes']],
-  ['custom', who('custom', { basis: 'open' }), ['no', 'unresolved', 'unresolved', 'unresolved', 'unresolved', 'yes']],
-  ['open basis', who('signed_in', { basis: 'open' }), ['no', 'yes', 'yes', 'yes', 'yes', 'yes']],
-  ['groups, open basis', who('groups', { roles: [], basis: 'open' }), ['no', 'unresolved', 'unresolved', 'unresolved', 'unresolved', 'yes']],
+  ['nobody', who('nobody'), ['off', 'off', 'off', 'off', 'off', 'off', 'off']],
+  ['anyone', who('anyone'), ['yes', 'yes', 'yes', 'yes', 'yes', 'yes', 'yes']],
+  ['signed_in', who('signed_in'), ['no', 'yes', 'yes', 'yes', 'yes', 'yes', 'yes']],
+  ['staff', who('staff'), ['no', 'no', 'no', 'yes', 'no', 'no', 'yes']],
+  ['groups', who('groups', { roles: ['editor'] }), ['no', 'no', 'yes', 'no', 'yes', 'no', 'yes']],
+  ['relations', who('relations', { roles: ['creator'] }), ['no', 'no', 'no', 'no', 'no', 'yes', 'yes']],
+  ['superuser', who('superuser'), ['no', 'no', 'no', 'no', 'no', 'no', 'yes']],
+  ['custom', who('custom', { basis: 'open' }), ['no', 'unresolved', 'unresolved', 'unresolved', 'unresolved', 'unresolved', 'yes']],
+  ['open basis', who('signed_in', { basis: 'open' }), ['no', 'yes', 'yes', 'yes', 'yes', 'yes', 'yes']],
+  ['groups, open basis', who('groups', { roles: [], basis: 'open' }), ['no', 'unresolved', 'unresolved', 'unresolved', 'unresolved', 'unresolved', 'yes']],
 ];
 
 describe('reach', () => {
@@ -43,10 +45,10 @@ const ruled = (id: string, extra: Partial<RuntimeRole> = {}): RuntimeRole => ({
 });
 
 describe('roleList', () => {
-  test('not signed in first, superuser last, the rest by id, named by the vocabulary', () => {
-    const rt = runtime({ roles: [ruled('admin', { kind: 'superuser' }), ruled('zeta'), ruled('alpha')] });
+  test('not signed in first, then groups, then relations, superuser last, each by id, named by the vocabulary', () => {
+    const rt = runtime({ roles: [ruled('admin', { kind: 'superuser' }), ruled('zeta'), ruled('api_key', { kind: 'relation' }), ruled('alpha')] });
     const roles = roleList(rt, vocabulary({ roles: [{ id: 'alpha', name: 'Alpha team', doc_at: 'README.md:3' }] }));
-    expect(roles.map(r => r.id)).toEqual([ANONYMOUS, 'alpha', 'zeta', 'admin']);
+    expect(roles.map(r => r.id)).toEqual([ANONYMOUS, 'alpha', 'zeta', 'api_key', 'admin']);
     expect(roles[1]).toMatchObject({ name: 'Alpha team', doc_at: 'README.md:3', basis: 'rule' });
   });
 

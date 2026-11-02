@@ -1,11 +1,12 @@
 {
   "schema_version": "1",
   "stack": "django",
-  "base_script": {"stack": "django", "version": "0.3.0"},
+  "base_script": {"stack": "django", "version": "0.4.0"},
   "about": {"reads": "The admin registry of every mounted admin site, each ModelAdmin's class hierarchy and the project's Map Rules, as the booted settings load them.", "holds": ["Roles, grants, scopes and capabilities from the Map Rules in tools/access-map/project.py", "Every admin model page as a capability, its model as an area", "Every admin URL: which has_*_permission Django calls for it, and the first-party overrides of those methods with source and file:line", "Permissions each endpoint checks, and the stack's reading of superuser-only and staff rules"], "heuristics": ["Admin URL → which has_*_permission Django calls (from the URL suffix)", "Permissions found in override code by pattern (\"app.\" + CONSTANT)", "An override ending in `return False` → nobody; `return request.user.is_superuser` → superuser; `raise Http404` in the page view → page off", "A get_queryset override → a scope candidate"], "command": "python tools/access-map/introspect.py"},
   "roles": [
     {"id": "clerk", "kind": "group", "at": "shop/roles.py:4", "basis": "rule", "includes": [], "staff": {"at": "shop/signin.py:5"}},
     {"id": "manager", "kind": "group", "at": "shop/roles.py:5", "basis": "rule", "includes": [{"role": "clerk", "at": "shop/signin.py:7"}], "staff": null},
+    {"id": "owner", "kind": "relation", "at": "shop/permissions.py:6", "basis": "rule", "includes": [], "staff": null},
     {"id": "superuser", "kind": "superuser", "at": "django/contrib/auth/models.py:328", "basis": "extracted", "includes": [], "staff": null}
   ],
   "grants": {
@@ -23,6 +24,7 @@
     {"capability": "shop.order.view", "role": "clerk", "scope": "shop.order.get_queryset", "at": "shop/admin.py:17", "basis": "rule"}
   ],
   "capabilities": [
+    {"id": "api.order.view", "area": "shop.order", "term": "Order", "verb": "read", "endpoints": [["GET", "/api/orders/{pk}/", "shop/api.py"]], "check": "shop.permissions.IsOwner", "at": "shop/api.py:26", "basis": "rule"},
     {"id": "shop.order.add", "area": "shop.order", "term": "Order", "verb": "write", "endpoints": [["ANY", "/admin/shop/order/add/", "django.contrib.admin.options.ModelAdmin.add_view"]], "check": "shop.add_order", "at": "shop/admin.py:12", "basis": "extracted"},
     {"id": "shop.order.change", "area": "shop.order", "term": "Order", "verb": "write", "endpoints": [["ANY", "/admin/shop/order/{object_id}/change/", "django.contrib.admin.options.ModelAdmin.change_view"]], "check": "shop.change_order", "at": "shop/admin.py:12", "basis": "extracted"},
     {"id": "shop.order.delete", "area": "shop.order", "term": "Order", "verb": "write", "endpoints": [["ANY", "/admin/shop/order/{object_id}/delete/", "django.contrib.admin.options.ModelAdmin.delete_view"]], "check": "OrderAdmin.has_delete_permission", "at": "shop/admin.py:12", "basis": "extracted"},
