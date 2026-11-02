@@ -1,7 +1,7 @@
 // map check: every problem that fails CI, then coverage and open findings. The CLI prints it, the review app shows it.
 
 import { type Key, keyText } from '../../review/src/inventory.ts';
-import { type Options, project } from './data.ts';
+import { type Options, byText, project } from './data.ts';
 import { runtimeKey } from './runtime.ts';
 import { duplicates, missingTerms, staleReferences } from './vocabulary.ts';
 
@@ -41,7 +41,7 @@ export const check = (dir: string, options: Options & { thirdParty?: boolean } =
   const labels = (keys: Key[]) =>
     keys
       .map(k => byKey.get(keyText(k)) ?? { method: k[0], path: k[1] })
-      .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : a.method < b.method ? -1 : a.method > b.method ? 1 : 0))
+      .sort((a, b) => byText(a.path, b.path) || byText(a.method, b.method))
       .map(e => `${e.method} ${e.path}`);
   const gaps = labels(cov.areas.flatMap(a => a.gaps));
   const packages = cov.third_party.packages;

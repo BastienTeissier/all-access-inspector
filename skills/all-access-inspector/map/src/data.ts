@@ -69,7 +69,7 @@ export interface PageData {
   };
 }
 
-const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+export const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** Every row, highest tier first, then path and method: the Review Queue's order, verdicts included. */
 const ordered = (rows: StatusRow[]): StatusRow[] => [...rows].sort((a, b) => a.tier - b.tier || byText(a.path, b.path) || byText(a.method, b.method));
