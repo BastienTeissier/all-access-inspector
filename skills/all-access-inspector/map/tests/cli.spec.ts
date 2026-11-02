@@ -85,6 +85,16 @@ test('A relation role no check names, and a check naming no role, fail the check
   expect(result.out).toContain('a check names role holder, which is not a role');
 });
 
+test('A roles check naming no role fails the check', () => {
+  editJson('tools/access-map/vocabulary.json', data => {
+    const checks = (data as unknown as { route_checks: Record<string, { who: string; roles: string[] }[]> }).route_checks['/api/orders/{pk}/'];
+    checks![0] = { ...checks![0]!, who: 'groups', roles: ['ghost'] };
+  });
+  const result = map('check', '.');
+  expect(result.status).toBe(1);
+  expect(result.out).toContain('a check names role ghost, which is not a role');
+});
+
 test('An area folds the extracted areas it contains; one that matches none fails the check', () => {
   editJson('tools/access-map/vocabulary.json', data => {
     data.areas?.push({ id: 'catalogue', name: 'Catalogue', contains: ['shop.product', 'shop.basket'] });

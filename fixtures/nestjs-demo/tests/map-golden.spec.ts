@@ -1,7 +1,7 @@
 // Golden-file tests: run the vendored Map Introspect inside a copy of this fixture.
 
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { beforeEach, expect, test } from 'vitest';
@@ -9,6 +9,7 @@ import { beforeEach, expect, test } from 'vitest';
 const FIXTURE = join(import.meta.dirname, '..');
 const BASE = join(FIXTURE, '..', '..', 'skills', 'all-access-inspector', 'base-scripts', 'nestjs', 'access_map');
 const EXPECTED = join(FIXTURE, 'expected', 'runtime.json');
+const MAP_CLI = join(FIXTURE, '..', '..', 'skills', 'all-access-inspector', 'map', 'src', 'cli.ts');
 const PROJECT_SECTION = /\/\/ --- project ---\n[\s\S]*?\/\/ --- end project ---\n/;
 
 let project: string;
@@ -75,9 +76,14 @@ test('nestjs map check committed runtime missing a key', () => {
 test('nestjs map role roles() does not declare', () => {
   edit('src/admin/admin.controller.ts', "  @Roles('admin')\n  @Delete(':id')", "  @Roles('owner')\n  @Delete(':id')");
   const result = run();
-  expect(result.status).toBe(2);
-  expect(result.stderr).toContain(`DELETE /api/admin/users/{id}: roles: RolesGuard roles=["owner"] names role 'owner' that roles() does not declare`);
-  expect(existsSync(output())).toBe(false);
+  expect(result.status, result.stderr).toBe(0);
+  const runtime = JSON.parse(readFileSync(output(), 'utf8'));
+  const remove = runtime.endpoints.find((e: { method: string }) => e.method === 'DELETE');
+  expect(remove.verdict).toMatchObject({ kind: 'groups', roles: ['owner'] });
+  cpSync(join(FIXTURE, 'expected', 'inventory.json'), join(project, 'tools', 'access-inspector', 'inventory.json'));
+  const check = spawnSync(process.execPath, [MAP_CLI, 'check', '.'], { cwd: project, encoding: 'utf8' });
+  expect(check.status, check.stdout + check.stderr).toBe(1);
+  expect(check.stdout).toContain('a check names role owner, which is not a role');
 });
 
 test('nestjs map usage error', () => {

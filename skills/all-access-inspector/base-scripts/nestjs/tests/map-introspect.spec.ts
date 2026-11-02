@@ -124,7 +124,7 @@ test('first-party handlers are the classes and functions declared under the FIRS
   expect(firstParty(handlers, root, ['src', 'missing'])).toEqual(['UsersController.list', 'UsersController.show', 'legacyStatus']);
 });
 
-test('the runtime holds only endpoints with a verdict, each naming a declared role', () => {
+test('the runtime holds only endpoints with a verdict, a role roles() does not declare included', () => {
   rules.roles = [{ id: 'admin', kind: 'group', at: 'src/a.ts:3' }];
   const runtime = build([guarded(['admin']), row(axis('none', 'recognition:session'))], '0.5.0', RECOGNITION);
   expect(runtime.endpoints).toEqual([
@@ -140,7 +140,5 @@ test('the runtime holds only endpoints with a verdict, each naming a declared ro
     },
   ]);
   expect(runtime).toMatchObject({ stack: 'nestjs', base_script: { stack: 'nestjs', version: '0.5.0' }, grants: {}, areas: [] });
-  expect(() => build([guarded(['admin', 'owner'])], '0.5.0', RECOGNITION)).toThrow(
-    `GET /users: roles: RolesGuard roles=["admin","owner"] names role 'owner' that roles() does not declare`,
-  );
+  expect(build([guarded(['admin', 'owner'])], '0.5.0', RECOGNITION).endpoints).toMatchObject([{ verdict: { roles: ['admin', 'owner'] } }]);
 });

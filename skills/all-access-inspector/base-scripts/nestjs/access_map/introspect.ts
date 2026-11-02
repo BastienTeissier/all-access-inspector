@@ -127,15 +127,10 @@ export const firstParty = (handlers: string[], root: string = ROOT, dirs: string
 
 export const build = (found: Row[], version: string, recognition: Rule[] = RECOGNITION): Runtime => {
   const declared = roles(found, recognition);
-  const known = new Set(declared.map(r => r.id));
   const endpoints: Fact[] = [];
   for (const row of found) {
     const decided = verdict(row, recognition);
     if (decided === null) continue;
-    const unknown = (decided.roles as string[]).find(r => !known.has(r));
-    if (unknown !== undefined) {
-      throw new MapRuleError(`${row.method} ${row.path}: ${decided.how} names role '${unknown}' that roles() does not declare`);
-    }
     const { method, path, handler } = row;
     endpoints.push({ method, path, handler, layers: [], permissions: [], verdict: decided, fallback: null, notes: [] });
   }

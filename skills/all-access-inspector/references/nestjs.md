@@ -119,7 +119,7 @@ Copy every `*.ts` of `<skill>/base-scripts/nestjs/access_map/` into `tools/acces
 
 What it reads with no Map Rule:
 
-- per endpoint, the Recognition Rule its authorization resolves to: when that rule has `rawMetadata`, the metadata it reads (`@Roles('admin')`) is the roles the check lets through (`who` `groups`). Each role it names must be declared by `roles()`;
+- per endpoint, the Recognition Rule its authorization resolves to: when that rule has `rawMetadata`, the metadata it reads (`@Roles('admin')`) is the roles the check lets through (`who` `groups`). Declare each role it names in `roles()`: `map check` fails on one that is not a role;
 - the signed-in role `user`, at the first Recognition Rule with `authn: 'required'` an endpoint goes through, unless `roles()` declares a `signed_in` role;
 - each handler whose class or function is declared under `FIRST_PARTY`, as `first_party`, so coverage counts it with the project's gaps.
 
