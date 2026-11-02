@@ -288,3 +288,18 @@ test('The Agent raises a signal on a cell through review append, counted on the 
   expect(refused).toMatchObject({ status: 2, out: expect.stringContaining('stdin line 1: no cell export-orders for cashier on the access map') });
   expect(log()).toBe(before);
 });
+
+test('A NestJS project maps each endpoint to the roles its guards let through', () => {
+  const nest = join(import.meta.dirname, '..', '..', '..', '..', 'fixtures', 'nestjs-demo');
+  project = join(mkdtempSync(join(tmpdir(), 'map-')), 'nestjs-demo');
+  cpSync(nest, project, { recursive: true, filter: src => !/(node_modules|tests)$/.test(src) });
+  copyFileSync(join(nest, 'expected', 'inventory.json'), join(project, 'tools', 'access-inspector', 'inventory.json'));
+  copyFileSync(join(nest, 'expected', 'runtime.json'), join(project, 'tools', 'access-map', 'runtime.json'));
+  const data = buildData(project);
+  const reach = (method: string, path: string) => data.endpoints.find(e => e.method === method && e.path === path)?.reach;
+  expect(reach('DELETE', '/api/admin/users/{id}')).toEqual({ anonymous: 'no', admin: 'yes', partner: 'no', user: 'no' });
+  expect(reach('GET+HEAD', '/api/products')).toEqual({ anonymous: 'yes', admin: 'yes', partner: 'yes', user: 'yes' });
+  expect(reach('GET+HEAD', '/api/admin/users/stats')).toMatchObject({ anonymous: 'no', admin: 'yes', user: 'yes' });
+  const result = map('check', '.');
+  expect(result.status, result.out).toBe(0);
+});
