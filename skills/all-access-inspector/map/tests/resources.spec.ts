@@ -51,6 +51,19 @@ describe('resources', () => {
     ]);
   });
 
+  test('prefixes that differ only by a parameter are one resource', () => {
+    const items = derive(at('GET', '/api/items/'), at('GET', '/api/items/{id}/'), at('GET', '/api/{version}/items/'), at('GET', '/api/{version}/items/{id}/'));
+    expect(items.map(c => [c.id, c.endpoints.length])).toEqual([
+      ['resource.api.items.list', 2],
+      ['resource.api.items.read', 2],
+    ]);
+  });
+
+  test('an action named like a verb joins that verb, and a write makes it write', () => {
+    const list = derive(at('GET', '/x/'), at('GET', '/x/{id}/'), at('POST', '/x/{id}/list/')).find(c => c.id === 'resource.x.list');
+    expect(list).toMatchObject({ name: 'List x', verb: 'write', endpoints: [['GET', '/x/', 'app/views.py'], ['POST', '/x/{id}/list/', 'app/views.py']] });
+  });
+
   test('an action under a detail path is its own capability, named by its segment', () => {
     const refund = derive(...invoices, at('POST', '/api/invoices/{pk}/refund/'), at('GET', '/api/invoices/{pk}/pdf/')).slice(-2);
     expect(refund.map(c => [c.id, c.name, c.verb])).toEqual([

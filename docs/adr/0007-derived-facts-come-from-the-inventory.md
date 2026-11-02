@@ -9,7 +9,7 @@ Most first-party endpoints of an API sit behind no extracted capability: a Map I
 
 ## Consequences
 
-- A derived capability is replaced like an extracted one: a hand-written capability's `replaces` drops it, and `extends` names it. Its id is `resource.<prefix slug>.<verb>` (`resource.api.invoices.list`), so `/v1/items` and `/v2/items` stay distinct.
+- A derived capability is replaced like an extracted one: a hand-written capability's `replaces` drops it, and `extends` names it. Its id is `resource.<prefix slug>.<verb>` (`resource.api.invoices.list`), so `/v1/items` and `/v2/items` stay distinct. Prefixes that differ only by a parameter (`/api/items`, `/api/{version}/items`) are one resource, and a nested action named like a verb (`/x/{id}/list`) joins that verb's capability, which turns `write` if the action writes.
 - Its name is the verb and the path segment as is (`List invoices`, an action's segment capitalised: `Refund`), so it never shows in the unnamed list; its area is the prefix slug, which shows under "areas with no term" until the vocabulary folds or names it. Coverage reports what derivation covers and never fails the check.
 - `CONTEXT.md`'s ladder for where a capability comes from gains a rung: extracted, then derived, then named or hand-written by the Agent.
 - A path whose shape is not plain segments and parameters (Symfony's `.{_format}`) is not derived.
