@@ -1,6 +1,6 @@
 # Unsupported stack reference
 
-Read this when step 1 of `SKILL.md` finds no shipped Base Script for the project's stack. You then improvise an Adapted Script from the closest Base Script. Its guarantee is weaker, and the inventory says so: `coverage` is always `best-effort`.
+Read this when `SKILL.md` § Detect the stack finds no shipped Base Script for the project's stack. You then improvise an Adapted Script from the closest Base Script. Its guarantee is weaker, and the inventory says so: `coverage` is always `best-effort`.
 
 ## Pick the closest Base Script
 
@@ -73,7 +73,7 @@ Stop, and commit nothing, when there is no registry and no recognisable routing 
 ## Classifying an improvised stack
 
 - **The Core Classification does not change.** Every check maps onto `authentication` (anonymous, optional, required, unknown) and `authorization` (none, rule, unknown), at a layer (`global`, `class`, `method`, `framework-default`).
-- **A framework check is a Built-in Rule only when its behaviour is fixed by the framework**: Flask-Login's `login_required`, Laravel's `auth` middleware, ASP.NET's `[AllowAnonymous]`. Cite in a comment where that behaviour is documented. Everything the project defines (a dependency `get_current_admin`, a `can:` ability, a custom middleware) is unknown until a Recognition Rule names it, with evidence, as in `SKILL.md` step 5.
+- **A framework check is a Built-in Rule only when its behaviour is fixed by the framework**: Flask-Login's `login_required`, Laravel's `auth` middleware, ASP.NET's `[AllowAnonymous]`. Cite in a comment where that behaviour is documented. Everything the project defines (a dependency `get_current_admin`, a `can:` ability, a custom middleware) is unknown until a Recognition Rule names it, with evidence, as in `workflows/fit.md` § Resolve every unknown.
 - **When the framework has no safe default, the default is `anonymous`/`none` at `framework-default`.** This applies when a route without any check is open, which is the case for every framework in the table above.
 - **Read checks from what the framework applies, not from names.** Examples: FastAPI dependencies from `.dependant`, never from the parameter name; Express middleware from the route's stack, never from the file layout.
 

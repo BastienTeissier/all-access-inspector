@@ -2,6 +2,11 @@
 
 ## Vendor and run
 
+- App root: the directory that holds `manage.py`.
+- Boot, rules and dimensions files: `boot.py`, `rules.py`, `dimensions.py`. Their project section runs from `# --- project ---` to `# --- end project ---`.
+- Production entry: `ENTRY`, the settings module. Boot entries: `Env`, `Stub`, `Pin`.
+- Rule fields: `path_prefix`, `safe_authn`, `safe_authz`.
+
 Copy every `*.py` of `<skill>/base-scripts/django/access_inspector/` except `__init__.py` into `tools/access-inspector/`, and `VERSION` with `cp -L`.
 
 Find how the project runs its Python, from its README, Makefile, `pyproject.toml`, Dockerfile or docker-compose (for example `uv run`, `poetry run`, an activated venv, `docker compose run web`). Call this `<run>`. `<inspect>` is `<run> python tools/access-inspector/inspect.py`, from the directory that holds `manage.py`.
@@ -98,7 +103,7 @@ Use them when the decision is data-dependent or out of scope, with a reason the 
 
 ## Triage checklist
 
-Read each handler in the Triage scope (`SKILL.md` § Triage) for what the inventory cannot see. Raise a Signal on the first item that holds; otherwise mark it `triaged`.
+Read each handler in the triage scope (`workflows/triage.md`) for what the inventory cannot see. Raise a Signal on the first item that holds; otherwise mark it `triaged`.
 
 - **Name and verb against the guard.** A handler named `delete_*`, `approve`, `export`, `impersonate`, `refund` or `admin_*` with `required/none` or an `anonymous` write is a Signal. So is a `PUT` or `PATCH` that any signed-in user reaches on a model whose `POST` is restricted to staff: raise it on the open handler, since the guarded one is not in scope.
 - **Checks in the body.** `request.user` compared to the object, `raise PermissionDenied`, `raise Http404` on a foreign object, `user_passes_test` called inline: say whether they cover every method the endpoint serves.

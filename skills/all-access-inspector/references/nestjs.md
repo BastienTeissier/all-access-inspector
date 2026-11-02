@@ -4,6 +4,10 @@ Tested with NestJS 12 (ESM, vitest) and NestJS 11 (CommonJS, jest), on the Expre
 
 ## Vendor and run
 
+- App root: the directory that holds the app's `package.json`.
+- Boot, rules and dimensions files: `boot.ts`, `rules.ts`, `dimensions.ts`. Their project section runs from `// --- project ---` to `// --- end project ---`.
+- Production entry: `ENTRY`, the root module, and `CONFIGURE`, the setup function. Boot entries: `Env`, `Stub`.
+
 Copy every file of `<skill>/base-scripts/nestjs/access_inspector/` into `tools/access-inspector/`, with `cp -L` for `VERSION`. Never copy the toolkit's `package.json`, lockfile, `tests/` or `tsconfig.json`. The project's dependencies must be installed.
 
 `inspect.sh` runs `run.spec.ts` as a single test through the project's own runner, vitest or jest, whichever `package.json` declares. The runner gives the script the project's TypeScript transform, decorator metadata and path aliases. The project's test files, setup files, coverage and test `env` are not loaded. The package manager is read from the nearest lockfile, up to a monorepo root.
@@ -91,7 +95,7 @@ Field names are camelCase in TypeScript: `pathPrefix`, `safeAuthn`, `safeAuthz`,
 
 ## Triage checklist
 
-Read each handler in the Triage scope (`SKILL.md` § Triage) for what the inventory cannot see. Raise a Signal on the first item that holds; otherwise mark it `triaged`.
+Read each handler in the triage scope (`workflows/triage.md`) for what the inventory cannot see. Raise a Signal on the first item that holds; otherwise mark it `triaged`.
 
 - **Name and verb against the guard.** A handler named `delete*`, `approve`, `export`, `impersonate` or `refund` with `required/none` or an `anonymous` write is a Signal. So is a `@Put` or `@Patch` that any signed-in user reaches on an entity whose `@Post` is restricted by role: raise it on the open handler, since the guarded one is not in scope.
 - **Checks in the handler or its service.** `@Req() req` / a `@CurrentUser()` decorator compared to the entity, `throw new ForbiddenException()`, an ownership filter in the service call (`where: { userId }`): follow the call one level into the service and say whether the check covers every route of the handler.

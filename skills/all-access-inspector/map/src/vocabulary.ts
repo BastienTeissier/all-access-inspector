@@ -165,7 +165,7 @@ export const vocabularyProblem = (data: Item): string | null => {
 };
 
 export const loadVocabulary = (path: string): Vocabulary => {
-  if (!existsSync(path)) throw new VocabularyError(`${path} not found: write the vocabulary first (see the Map section of SKILL.md)`);
+  if (!existsSync(path)) throw new VocabularyError(`${path} not found: write the vocabulary first (see the skill's workflows/map.md)`);
   let data: Item;
   try {
     data = JSON.parse(readFileSync(path, 'utf8')) as Item;

@@ -4,6 +4,11 @@ Tested with Spring Boot 4.1.1 (Spring Framework 7, Spring Security 7) on Spring 
 
 ## Vendor and run
 
+- App root: the module that holds the application class and its `pom.xml` / `build.gradle*`.
+- Boot, rules and dimensions files: `Boot.java`, `Rules.java`, `Dimensions.java` in `src/test/java/accessinspector/`. Their project section runs from `// --- project ---` to `// --- end project ---`.
+- Production entry: `@SpringBootTest(classes = …)`, the application class, and `@ActiveProfiles`. Boot entries: `Pin`, `@MockitoBean` fields with `@Reason`.
+- Rule fields: `Rule.construct`, `Rule.pathPrefix`, `.safe(…)`, `.raw(…)`.
+
 Copy `<skill>/base-scripts/spring/tools/access-inspector/` into `tools/access-inspector/` (`cp -L` for `VERSION`), and `<skill>/base-scripts/spring/src/test/java/accessinspector/` into the project's test sources as `src/test/java/accessinspector/`. Never copy the toolkit's `pom.xml`, `mvnw`, `.mvn/` or `tests/`.
 
 The project must have `spring-boot-starter-test` (JUnit 5, Mockito, the Spring test context) and Spring Security on its test classpath. A Gradle build needs `useJUnitPlatform()` on its `test` task.
@@ -96,7 +101,7 @@ A SpEL expression is a Built-in Rule only when it is one such call with quoted l
 
 ## Triage checklist
 
-Read each handler in the Triage scope (`SKILL.md` § Triage) for what the inventory cannot see. Raise a Signal on the first item that holds; otherwise mark it `triaged`.
+Read each handler in the triage scope (`workflows/triage.md`) for what the inventory cannot see. Raise a Signal on the first item that holds; otherwise mark it `triaged`.
 
 - **Name and verb against the check.** A handler named `delete*`, `approve`, `export`, `impersonate` or `refund` with `required/none` or an `anonymous` write is a Signal. So is a `@PutMapping` or `@PatchMapping` that any signed-in user reaches on an entity whose `@PostMapping` is restricted by role: raise it on the open handler.
 - **HEAD and GET-only matchers.** `requestMatchers(HttpMethod.GET, …)` does not match HEAD or OPTIONS; the inventory shows it. Raise a Signal only when that leaves a write reachable.
