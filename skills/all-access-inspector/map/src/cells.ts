@@ -128,7 +128,7 @@ export const cell = (cap: Capability, role: Role, endpoints: MapEndpoint[], runt
     missed: sortKeys(endpoints.filter((_, i) => reaches[i] === 'no' || reaches[i] === 'off').map(e => e.key)),
     who: Object.fromEntries(endpoints.map(e => [keyText(e.key), [e.who.kind, e.who.basis]])),
   };
-  const basis = weakest(...endpoints.map(e => e.who.basis), ...(scope ? [scope.basis] : []));
+  const basis = weakest(...endpoints.map(e => e.who.basis), ...(scope ? [scope.basis] : []), ...(cap.derived ? [cap.basis] : []));
   return { capability: cap.id, role: role.id, state, scope, basis, seen };
 };
 
