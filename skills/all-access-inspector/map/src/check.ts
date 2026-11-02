@@ -13,7 +13,7 @@ export const check = (dir: string, options: Options & { thirdParty?: boolean } =
   const rows = new Set(p.endpoints.map(e => runtimeKey({ method: e.key[0], path: e.path, handler: e.handler })));
   const problems = [
     ...staleReferences(dir, p.vocabulary),
-    ...duplicates(p.vocabulary, p.runtime),
+    ...duplicates(p.vocabulary, p.runtime, p.derived.map(c => c.id)),
     ...p.runtime.endpoints.filter(e => !rows.has(runtimeKey(e))).map(e => `runtime endpoint ${runtimeKey(e)} is not in the inventory, run the Map Introspect again`),
     ...p.found.flatMap(f => f.missing.map(e => `capability ${f.cap.id} names ${e.join(' ')}, not in the inventory`)),
     ...p.cells.filter(c => c.state === 'partial' && !c.decision).map(c => `${name(c.capability, c.role)} is partial: decide it with map decide`),

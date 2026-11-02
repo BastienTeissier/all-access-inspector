@@ -93,6 +93,17 @@ describe('duplicates', () => {
       'vocabulary scoped "shop.order.view" for "clerk": a Map Rule produces it',
     ]);
   });
+
+  test('a hand-written capability with the id of a derived one is a problem', () => {
+    const v = vocabulary({
+      capabilities: [
+        { id: 'resource.api.invoices.list', name: 'See', area: 'api.invoices', verb: 'read', endpoints: [['GET', '/']], check: '', evidence: [['a.py:1', 'x']], reason: 'r' },
+      ],
+    });
+    expect(duplicates(v, runtime(), ['resource.api.invoices.list'])).toEqual([
+      'vocabulary capability "resource.api.invoices.list": the map derives it from the paths, use {extends: "resource.api.invoices.list", name}',
+    ]);
+  });
 });
 
 describe('loadVocabulary', () => {

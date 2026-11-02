@@ -118,12 +118,13 @@ export const project = (dir: string, options: Options = {}) => {
   const endpoints = rows.map(row => endpoint(row, j));
   const roles = roleList(runtime, vocabulary);
   const firstParty = (handler: string) => isFirstParty(handler, runtime);
-  const caps = capabilityList(runtime, vocabulary, resources(endpoints, firstParty));
+  const derived = resources(endpoints, firstParty);
+  const caps = capabilityList(runtime, vocabulary, derived);
   const found = caps.map(cap => ({ cap, ...endpointsOf(cap, endpoints) }));
   const computed = cells(caps, roles, endpoints, runtime, vocabulary, readLog(dir).cells, now().slice(0, 10));
   const areas = areaList(vocabulary, runtime, caps);
   const covers = coverage({ areas, found, endpoints, domains: vocabulary.domains, firstParty });
-  return { inventory, rows, runtime, note, vocabulary, endpoints, roles, caps, found, areas, coverage: covers, ...computed };
+  return { inventory, rows, runtime, note, vocabulary, endpoints, roles, derived, caps, found, areas, coverage: covers, ...computed };
 };
 
 export const buildData = (dir: string, options: Options = {}): PageData => {
