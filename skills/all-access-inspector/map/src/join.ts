@@ -41,11 +41,12 @@ export const fromAxis = (axis: Axis): { basis: Basis; how: string } =>
 /** A badge takes the weakest basis of what it rests on. */
 export const weakest = (...bases: Basis[]): Basis => bases.reduce((a, b) => (BASES.indexOf(b) > BASES.indexOf(a) ? b : a), 'extracted');
 
-/** A handler in the project's code: one with a file:line; on stacks whose handlers carry no line, any outside the framework's packages. */
-export const isFirstParty = (handler: string, stack: string): boolean => {
-  if (handlerFile(handler) !== null) return true;
-  if (stack === 'nestjs') return !handler.startsWith('@nestjs/');
-  if (stack === 'spring') return !handler.startsWith('org.springframework.');
+/** A handler in the project's code: one with a file:line, or one the runtime lists as first-party;
+ * on stacks whose handlers carry no line and that have no runtime, any outside the framework's packages. */
+export const isFirstParty = (handler: string, runtime: Runtime): boolean => {
+  if (handlerFile(handler) !== null || runtime.first_party?.includes(handler)) return true;
+  if (runtime.stack === 'nestjs') return !handler.startsWith('@nestjs/');
+  if (runtime.stack === 'spring') return !handler.startsWith('org.springframework.');
   return false;
 };
 

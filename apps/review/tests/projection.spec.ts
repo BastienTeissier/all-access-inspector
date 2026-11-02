@@ -110,7 +110,7 @@ test('the access map carries coverage per area and the third-party gaps', () => 
   cpSync(join(REPO, 'fixtures', 'django-demo', 'tools', 'access-map'), join(dir, 'tools', 'access-map'), { recursive: true });
   const { data, error } = accessMap(dir);
   expect(error).toBeNull();
-  expect(data?.coverage).toMatchObject({ covered: 12, total: 72, third_party: { total: 22 }, unnamed: [], untermed: [] });
+  expect(data?.coverage).toMatchObject({ covered: 12, total: 72, third_party: { total: 21 }, unnamed: [], untermed: [] });
   expect(data?.coverage.areas.map(a => a.name)).toContain('products');
   expect(data?.queue.signals).toBe(48);
 });

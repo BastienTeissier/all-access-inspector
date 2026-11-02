@@ -72,3 +72,23 @@ def test_areas_one_per_admin_model_with_name_and_at() -> None:
         {"id": "shop.order", "name": "orders", "at": "shop/models.py:8"},
         {"id": "shop.product", "name": "products", "at": "shop/models.py:4"},
     ]
+
+
+def test_first_party_handlers_are_the_dotted_ones_in_project_code(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    views = ModuleType("shop.views")
+    views.PingHook = type("PingHook", (), {"__module__": "shop.views"})  # type: ignore[attr-defined]
+    shop = ModuleType("shop")
+    shop.views = views  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "shop", shop)
+    monkeypatch.setitem(sys.modules, "shop.views", views)
+    monkeypatch.setattr(admin.project, "FIRST_PARTY", ("shop",))
+    rows = [
+        {"handler": "shop/views.py:12"},
+        {"handler": "shop.views.PingHook"},
+        {"handler": "django.views.generic.base.RedirectView"},
+        {"handler": "gone.module.View"},
+    ]
+
+    assert admin.first_party_handlers(rows) == ["shop.views.PingHook"]

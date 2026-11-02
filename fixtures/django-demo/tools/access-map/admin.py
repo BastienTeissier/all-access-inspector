@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import pydoc
 import re
 import sys
 from pathlib import Path
@@ -60,6 +61,7 @@ ABOUT = {
         "Every admin URL: which has_*_permission Django calls for it, and the first-party "
         "overrides of those methods with source and file:line",
         "Permissions each endpoint checks, and the stack's reading of superuser-only and staff rules",
+        "Handlers with no file:line that are the project's own code",
     ],
     "heuristics": [
         "Admin URL → which has_*_permission Django calls (from the URL suffix)",
@@ -99,6 +101,16 @@ def is_first_party(obj: object) -> bool:
         return False
     path = Path(file).resolve()
     return path.is_relative_to(project.ROOT) and "site-packages" not in path.parts
+
+
+def first_party_handlers(rows: list[dict[str, Any]]) -> list[str]:
+    """Dotted handlers that are the project's own code: they carry no file:line, yet are first-party."""
+    dotted = {e["handler"] for e in rows if not re.search(r":\d+$", e["handler"])}
+    return sorted(
+        h
+        for h in dotted
+        if (obj := pydoc.locate(h)) is not None and is_first_party(obj)
+    )
 
 
 def location(func: Callable[..., Any] | type) -> dict[str, str]:

@@ -132,10 +132,11 @@ What it reads with no Map Rule:
 - each registered `ModelAdmin` as an area (its model name as the term) and its pages as extracted capabilities;
 - per admin URL, the `has_*_permission` Django calls, the first-party overrides of those methods and of the page view, `formfield_for_manytomany` and `save_related`, with source and `file:line`. An override ending in `return False` lets nobody through, one ending in `return request.user.is_superuser` only a superuser; a permission found in override code by pattern makes the badge `inferred`;
 - each first-party `get_queryset` override, as a scope candidate (`inferred`).
+- each handler with no `file:line` that is the project's own code (a plain class mounted as a view), as `first_party`, so coverage counts it with the project's gaps.
 
 The project section of `project.py`:
 
-- `FIRST_PARTY`: the top-level packages whose admin classes and overrides are the project's own. Empty reads every module under the project root and outside site-packages.
+- `FIRST_PARTY`: the top-level packages whose admin classes, overrides and handlers are the project's own. Empty reads every module under the project root and outside site-packages.
 - `CONSTANT_FILES`: files holding `NAME = "codename"` constants, so a `"app." + NAME` in an override resolves to the permission it checks.
 - `SUPERUSER_RULES`, `SIGNED_IN_RULES`, `STAFF_RULES`: the Recognition Rule names of `tools/access-inspector/rules.py` that end in superusers only, let any signed-in user through, or let staff through.
 - `RELATION_RULES`: Recognition Rule name → the ids of the `relation` roles it lets through (a `CanEdit` passing the creator and the responsible seat holder: `{"can_edit": ("creator", "responsible")}`).

@@ -19,6 +19,7 @@ KEYS = (
     "scoped",
     "capabilities",
     "endpoints",
+    "first_party",
     "snippets",
 )
 # How each list is sorted and how one of its items is named in a diff.
@@ -53,8 +54,9 @@ def canonical(runtime: dict[str, Any]) -> dict[str, Any]:
     """Keys in schema order, lists sorted, grants by role: equal content gives equal bytes."""
     runtime = {
         "areas": [],
+        "first_party": [],
         **runtime,
-    }  # optional: a runtime written before 0.5.0 has none
+    }  # optional: a runtime written before 0.5.0 has neither
     out = {key: runtime[key] for key in KEYS}
     for name in IDENTITY:
         out[name] = sorted(runtime[name], key=lambda item: _identity(name, item))
@@ -62,6 +64,7 @@ def canonical(runtime: dict[str, Any]) -> dict[str, Any]:
         permission: sorted(holders, key=lambda h: (h["role"], h["at"]))
         for permission, holders in sorted(runtime["grants"].items())
     }
+    out["first_party"] = sorted(runtime["first_party"])
     out["snippets"] = dict(sorted(runtime["snippets"].items()))
     return out
 

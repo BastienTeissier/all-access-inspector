@@ -120,7 +120,7 @@ export const project = (dir: string, options: Options = {}) => {
   const found = caps.map(cap => ({ cap, ...endpointsOf(cap, endpoints) }));
   const computed = cells(caps, roles, endpoints, runtime, vocabulary, readLog(dir).cells, now().slice(0, 10));
   const areas = areaList(vocabulary, runtime, caps);
-  const firstParty = (handler: string) => isFirstParty(handler, inventory.stack);
+  const firstParty = (handler: string) => isFirstParty(handler, runtime);
   const covers = coverage({ areas, found, endpoints, domains: vocabulary.domains, firstParty });
   return { inventory, rows, runtime, note, vocabulary, endpoints, roles, caps, found, areas, coverage: covers, ...computed };
 };
