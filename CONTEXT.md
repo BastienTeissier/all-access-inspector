@@ -109,7 +109,10 @@ _Avoid_: profile, persona, user type
 How a **Role** is compared with what an endpoint lets through: `signed_in` (an account with no role), `superuser` (passes every check), `group` (anything else held on the account), `relation` (a relation to the record a check tests: its creator, the holder of a seat on it, an API key; passes only the checks that name it). Chosen per role from evidence, never from a default list.
 
 **Capability**:
-One thing a role can do in the domain's words ("Upload scanned cards"), with the endpoints that action spans. Extracted first (an admin model action, a resource verb); the Agent only names, groups and adds what no program can read. Every endpoint is meant to sit behind one.
+One thing a role can do in the domain's words ("Upload scanned cards"), with the endpoints that action spans. Extracted first (an admin model action), else derived (a resource verb); the Agent only names, groups and adds what no program can read. Every endpoint is meant to sit behind one.
+
+**Derived capability**:
+A **Capability** the map reads from the inventory's path shapes, the same on every stack: one per REST resource (a collection with a `{param}` detail sibling) and verb, and one per action nested under its detail path. First-party handlers only, basis `inferred`; the **Map Vocabulary** names it with `extends` and drops it with `replaces`.
 
 **Area**:
 A group of **Capabilities** around one domain term. The term comes from `CONTEXT.md` when the project has one, else from the code or the docs, with its `file:line`. An area with no term of the project's own folds the extracted areas it `contains` (third-party admin: accounts, social accounts, API keys) and is drawn collapsed.

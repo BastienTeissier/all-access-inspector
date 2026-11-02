@@ -134,6 +134,8 @@ What it reads with no Map Rule:
 - each first-party `get_queryset` override, as a scope candidate (`inferred`).
 - each handler with no `file:line` that is the project's own code (a plain class mounted as a view), as `first_party`, so coverage counts it with the project's gaps.
 
+REST resources need no Map Rule: the map derives one capability per resource and verb from the inventory's paths (`resource.api.invoices.list`, basis `inferred`). Name one with `extends` in the vocabulary, or drop it with a hand-written capability's `replaces`.
+
 The project section of `project.py`:
 
 - `FIRST_PARTY`: the top-level packages whose admin classes, overrides and handlers are the project's own. Empty reads every module under the project root and outside site-packages.
