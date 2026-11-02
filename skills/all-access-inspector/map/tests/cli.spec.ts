@@ -310,6 +310,9 @@ test('A NestJS project maps each endpoint to the roles its guards let through', 
   expect(reach('DELETE', '/api/admin/users/{id}')).toEqual({ anonymous: 'no', admin: 'yes', partner: 'no', user: 'no' });
   expect(reach('GET+HEAD', '/api/products')).toEqual({ anonymous: 'yes', admin: 'yes', partner: 'yes', user: 'yes' });
   expect(reach('GET+HEAD', '/api/admin/users/stats')).toMatchObject({ anonymous: 'no', admin: 'yes', user: 'yes' });
+  const cells = (capability: string) => Object.fromEntries(data.cells.filter(c => c.capability === capability).map(c => [c.role, c.state]));
+  expect(cells('resource.api.admin.users.list')).toEqual({ anonymous: 'no', admin: 'pass', partner: 'no', user: 'no' });
+  expect(cells('resource.api.products.list')).toEqual({ anonymous: 'pass', admin: 'pass', partner: 'pass', user: 'pass' });
   const result = map('check', '.');
   expect(result.status, result.out).toBe(0);
 });
