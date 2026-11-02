@@ -20,8 +20,8 @@ const citing = (text: string, anchors?: Record<string, string>) =>
 
 describe('references', () => {
   test('finds every file:line in strings, nested anywhere but under anchors and stack', () => {
-    const v = { ...citing('see shop/views.py:3 and app/Guard.java:12, templates/x.html:4, docs/roles.md:7', { 'old/file.py:1': 'x' }), stack: { admin_actions: ['shop/admin.py:9'] } };
-    expect([...references(v)].sort()).toEqual(['app/Guard.java:12', 'docs/roles.md:7', 'shop/views.py:3', 'templates/x.html:4']);
+    const v = { ...citing('see shop/views.py:3 and app/Guard.java:12, templates/x.html:4, docs/roles.md:7, src/admin/admin.controller.ts:8', { 'old/file.py:1': 'x' }), stack: { admin_actions: ['shop/admin.py:9'] } };
+    expect([...references(v)].sort()).toEqual(['app/Guard.java:12', 'docs/roles.md:7', 'shop/views.py:3', 'src/admin/admin.controller.ts:8', 'templates/x.html:4']);
   });
 });
 
