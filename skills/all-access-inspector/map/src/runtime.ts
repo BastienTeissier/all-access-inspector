@@ -103,6 +103,7 @@ export interface Runtime {
   scoped: Scoped[];
   capabilities: RuntimeCapability[];
   endpoints: RuntimeEndpoint[];
+  first_party?: string[]; // handlers with no file:line that are the project's own code; older runtimes have none
   snippets: Record<string, string>;
 }
 

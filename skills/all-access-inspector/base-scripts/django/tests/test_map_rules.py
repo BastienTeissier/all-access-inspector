@@ -94,6 +94,7 @@ def runtime(**more: Any) -> dict[str, Any]:
         "scoped": [],
         "capabilities": [],
         "endpoints": [endpoint, {**endpoint, "path": "/a/"}],
+        "first_party": ["shop.views.Ping", "core.views.Hook"],
         "snippets": {"z.py:1": "z", "a.py:1": "a"},
         **more,
     }
@@ -108,17 +109,19 @@ def test_runtime_serialisation_is_sorted_and_stable() -> None:
     assert [e["path"] for e in data["endpoints"]] == ["/a/", "/b/"]
     assert [h["role"] for h in data["grants"]["shop.view"]] == ["clerk", "manager"]
     assert list(data["snippets"]) == ["a.py:1", "z.py:1"]
+    assert data["first_party"] == ["core.views.Hook", "shop.views.Ping"]
     assert '    {"id": "clerk", "kind": "group", "at": "r.py:2"},\n' in text
     assert '  "scopes": [],\n' in text
     assert to_canonical_json(json.loads(text)) == text
 
 
 def test_runtime_check_reads_a_runtime_without_areas() -> None:
-    committed = runtime()
+    committed = runtime(first_party=[])
     del committed["areas"]
+    del committed["first_party"]
     area = {"id": "shop.order", "name": "orders", "at": "shop/models.py:8"}
 
-    assert check(committed, runtime(areas=[area])) == [
+    assert check(committed, runtime(areas=[area], first_party=[])) == [
         '+ areas shop.order: {"id": "shop.order", "name": "orders", "at": "shop/models.py:8"}'
     ]
 

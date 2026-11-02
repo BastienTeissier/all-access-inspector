@@ -65,7 +65,10 @@ export const CellPanel = ({ data, cap, role, history }: { data: PageData; cap: s
             at <code>{c.at}</code>
           </>
         )}{' '}
-        <span className="muted">{BASIS[c.basis]}</span>
+        <span className="muted">
+          {BASIS[c.basis]}
+          {c.derived && ', derived from the paths'}
+        </span>
         {c.reason && <span className="muted"> · {c.reason}</span>}
       </p>
       {r.at && (

@@ -20,6 +20,7 @@ export interface Capability {
   at: string | null;
   basis: Basis;
   reason: string | null;
+  derived: 'resource' | null; // derived by the map from the inventory's path shapes
 }
 
 export type CellState = 'pass' | 'partial' | 'no' | 'off' | 'open';
@@ -45,12 +46,12 @@ export interface Cell {
 export const foldedInto = (area: string, areas: Area[]): string | null =>
   areas.find(a => (a.contains ?? []).some(c => area === c || area.startsWith(`${c}.`)))?.id ?? null;
 
-/** Extracted capabilities named, folded or replaced by the vocabulary, then the hand-written ones. */
-export const capabilityList = (runtime: Runtime, vocabulary: Vocabulary): Capability[] => {
+/** Extracted, then derived capabilities named, folded or replaced by the vocabulary, then the hand-written ones. */
+export const capabilityList = (runtime: Runtime, vocabulary: Vocabulary, derived: Capability[] = []): Capability[] => {
   const written = vocabulary.capabilities.flatMap(c => ('id' in c ? [c] : []));
   const replaced = new Set(written.flatMap(c => c.replaces ?? []));
   const named = new Map(vocabulary.capabilities.flatMap(c => ('extends' in c ? [[c.extends, c] as const] : [])));
-  const extracted = runtime.capabilities
+  const extracted = [...runtime.capabilities.map(c => ({ ...c, derived: null })), ...derived]
     .filter(c => !replaced.has(c.id))
     .map((c): Capability => {
       const n = named.get(c.id);
@@ -69,6 +70,7 @@ export const capabilityList = (runtime: Runtime, vocabulary: Vocabulary): Capabi
       at: c.evidence[0]?.[0] ?? null,
       basis: 'curated',
       reason: c.reason,
+      derived: null,
     }),
   );
   return [...extracted, ...curated];
@@ -126,7 +128,7 @@ export const cell = (cap: Capability, role: Role, endpoints: MapEndpoint[], runt
     missed: sortKeys(endpoints.filter((_, i) => reaches[i] === 'no' || reaches[i] === 'off').map(e => e.key)),
     who: Object.fromEntries(endpoints.map(e => [keyText(e.key), [e.who.kind, e.who.basis]])),
   };
-  const basis = weakest(...endpoints.map(e => e.who.basis), ...(scope ? [scope.basis] : []));
+  const basis = weakest(...endpoints.map(e => e.who.basis), ...(scope ? [scope.basis] : []), ...(cap.derived ? [cap.basis] : []));
   return { capability: cap.id, role: role.id, state, scope, basis, seen };
 };
 

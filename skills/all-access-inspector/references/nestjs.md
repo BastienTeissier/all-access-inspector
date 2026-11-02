@@ -112,6 +112,8 @@ Each value then gets an expected access in `EXPECTED`, keyed like `DIMENSIONS`: 
 
 No Map Introspect ships for NestJS yet: `tools/access-map/` holds only `vocabulary.json`, the runtime is empty, and the page's "How it's built" tab says so. Every fact is hand-written (dotted ✎), each with its `at` and `reason`: a role is `{"id", "kind", "at", "reason", "includes"?, "staff"?}` in the vocabulary's `roles`. The map does not guess which role a route rule names, so an endpoint guarded by a role rule shows as not resolved (dashed) until an introspect reads the grants. List each fact below that the project declares in a readable form under "could be extracted" in the summary.
 
+REST resources need no introspect: the map derives one capability per resource and verb from the inventory's paths (`resource.api.products.list`, basis `inferred`). Name one with `extends` in the vocabulary, or drop it with a hand-written capability's `replaces`.
+
 Where roles, grants and scopes live on NestJS:
 
 - Roles: the `Role` enum (or string union) passed to `@Roles()`, and the `RolesGuard` that compares it with `request.user.roles`; a superuser is a role the guard lets through every check.

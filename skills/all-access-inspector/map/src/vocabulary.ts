@@ -248,8 +248,8 @@ export const missingTerms = (project: string, terms: string[]): string[] => {
 
 const source = (basis: string) => (basis === 'extracted' ? 'the Map Introspect reads it' : 'a Map Rule produces it');
 
-/** Read before you write: a vocabulary entry the runtime already holds is a duplicate. */
-export const duplicates = (vocabulary: Vocabulary, runtime: Runtime): string[] => {
+/** Read before you write: a vocabulary entry the runtime already holds, or the map derives, is a duplicate. */
+export const duplicates = (vocabulary: Vocabulary, runtime: Runtime, derived: string[] = []): string[] => {
   const problems: string[] = [];
   const roles = new Map(runtime.roles.map(r => [r.id, r]));
   for (const r of vocabulary.roles) {
@@ -260,6 +260,7 @@ export const duplicates = (vocabulary: Vocabulary, runtime: Runtime): string[] =
   for (const c of vocabulary.capabilities) {
     const found = 'id' in c ? caps.get(c.id) : undefined;
     if (found) problems.push(`vocabulary capability "${found.id}": ${source(found.basis)} at ${found.at}, use {extends: "${found.id}", name}`);
+    if ('id' in c && derived.includes(c.id)) problems.push(`vocabulary capability "${c.id}": the map derives it from the paths, use {extends: "${c.id}", name}`);
   }
   const scopes = new Map(runtime.scopes.map(s => [s.id, s]));
   for (const s of vocabulary.scopes ?? []) {

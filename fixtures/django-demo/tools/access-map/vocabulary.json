@@ -31,6 +31,10 @@
       "name": "See own order (API)"
     },
     {
+      "extends": "resource.api.invoices.list",
+      "name": "See invoices"
+    },
+    {
       "id": "export-orders",
       "name": "Export orders",
       "area": "shop.order",

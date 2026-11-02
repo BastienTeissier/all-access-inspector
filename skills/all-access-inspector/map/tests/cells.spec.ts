@@ -15,6 +15,7 @@ const cap: Capability = {
   at: 'app/models.py:1',
   basis: 'extracted',
   reason: null,
+  derived: null,
 };
 
 const editor = role('editor');
@@ -47,6 +48,10 @@ describe('cell', () => {
       scoped: [{ capability: cap.id, role: 'editor', scope: 'own', at: 'app/admin.py:3', reason: 'r' }],
     });
     expect(cell(cap, editor, [list], runtime(), scoped)).toMatchObject({ basis: 'curated', scope: { id: 'own', basis: 'curated' } });
+  });
+
+  test('a derived capability is at best inferred', () => {
+    expect(cell({ ...cap, basis: 'inferred', derived: 'resource' }, editor, [list], runtime(), vocabulary()).basis).toBe('inferred');
   });
 
   test('a scope read by a Map Rule is inferred, and shown only on pass or partial', () => {

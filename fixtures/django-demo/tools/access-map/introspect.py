@@ -115,6 +115,7 @@ def build(inventory: dict[str, Any], admin_actions: dict[str, Any]) -> dict[str,
             for c in facts("capabilities", keys)
         ],
         "endpoints": endpoints,
+        "first_party": admin.first_party_handlers(rows),
         "snippets": introspect.snippets,
     }
 

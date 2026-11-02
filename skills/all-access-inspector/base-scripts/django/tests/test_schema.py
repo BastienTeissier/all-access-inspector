@@ -219,12 +219,13 @@ def test_canonical_input_describes_the_canonical_inventory() -> None:
     assert neutral == load(CANONICAL)
 
 
-def test_runtime_with_areas_and_capability_names_validates() -> None:
+def test_runtime_with_areas_capability_names_and_first_party_validates() -> None:
     runtime = load(RUNTIME)
     runtime["areas"] = [
         {"id": "shop.order", "name": "orders", "at": "shop/models.py:8"}
     ]
     runtime["capabilities"][0]["name"] = "Add order"
+    runtime["first_party"] = ["shop.views.PingHook"]
 
     RUNTIME_VALIDATOR.validate(runtime)
 

@@ -20,7 +20,7 @@ Fact = dict[str, Any]
 __all__ = ["ROOT", "Fact", "line_of"]
 
 # --- project ---
-# Top-level packages whose admin classes and overrides are the project's own; empty means
+# Top-level packages whose admin classes, overrides and handlers are the project's own; empty means
 # every module whose file is under the project root and outside site-packages.
 FIRST_PARTY: tuple[str, ...] = ()
 

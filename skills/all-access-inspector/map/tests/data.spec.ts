@@ -3,6 +3,7 @@ import { expect, test } from 'vitest';
 import { capabilityList } from '../src/cells.ts';
 import { areaList } from '../src/data.ts';
 import { isFirstParty } from '../src/join.ts';
+import { emptyRuntime } from '../src/runtime.ts';
 import { runtime, vocabulary } from './fixtures.ts';
 
 const rt = runtime({
@@ -32,9 +33,11 @@ test('an area the runtime does not name keeps its id', () => {
   ]);
 });
 
-test('a first-party handler has a file:line, or on nestjs and spring sits outside the framework', () => {
-  expect(isFirstParty('shop/views.py:12', 'django')).toBe(true);
-  expect(isFirstParty('allauth.account.views.LoginView', 'django')).toBe(false);
-  expect(isFirstParty('AdminController.list', 'nestjs')).toBe(true);
-  expect(isFirstParty('org.springframework.boot.autoconfigure.web.servlet.error.BasicErrorController.error', 'spring')).toBe(false);
+test('a first-party handler has a file:line or is listed by the runtime, or on nestjs and spring sits outside the framework', () => {
+  const django = runtime({ first_party: ['shop.views.PingHook'] });
+  expect(isFirstParty('shop/views.py:12', django)).toBe(true);
+  expect(isFirstParty('shop.views.PingHook', django)).toBe(true);
+  expect(isFirstParty('allauth.account.views.LoginView', django)).toBe(false);
+  expect(isFirstParty('AdminController.list', emptyRuntime('nestjs'))).toBe(true);
+  expect(isFirstParty('org.springframework.boot.autoconfigure.web.servlet.error.BasicErrorController.error', emptyRuntime('spring'))).toBe(false);
 });

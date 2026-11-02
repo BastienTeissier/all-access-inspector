@@ -123,23 +123,24 @@ test('Coverage is reported per area, gaps and all, and never fails the check', (
   expect(result.status, result.out).toBe(0);
   const lines = result.out.split('\n');
   const starts = [
-    'coverage: 12 of 72 endpoints behind a capability',
-    '  Orders: 7 of 11 · products: 5 of 6',
+    'coverage: 14 of 72 endpoints behind a capability',
+    '  Orders: 7 of 11 · products: 5 of 6 · api.invoices: 2 of 4',
     '  first-party, behind no capability: ',
-    '  third-party, behind no capability: 22 (admin 17, contenttypes 2, django 2, shop 1) · --third-party lists them',
+    '  third-party, behind no capability: 21 (admin 17, contenttypes 2, django 2) · --third-party lists them',
     '  unnamed capabilities: none',
-    '  areas with no term: none',
+    '  areas with no term: api.invoices',
     'open findings: 0',
   ];
   const at = starts.map(s => lines.findIndex(l => l.startsWith(s)));
   expect(at.every((i, n) => i >= 0 && (n === 0 || i === at[n - 1]! + 1)), result.out).toBe(true);
-  expect(result.out).toContain('GET+HEAD /api/invoices/, OPTIONS /api/invoices/, DELETE /api/invoices/{pk}/');
+  expect(result.out).toContain('OPTIONS /api/invoices/, OPTIONS /api/invoices/{pk}/, OPTIONS /api/orders/{pk}/');
+  expect(result.out).toContain('ANY /hooks/ping'); // a dotted handler the runtime lists as first-party
   expect(result.out).not.toContain('admin: ANY /admin/');
 });
 
 test('--third-party lists the third-party endpoints behind no capability by package', () => {
   const result = map('check', '.', '--third-party');
-  expect(result.out).toContain('  third-party, behind no capability: 22 (admin 17, contenttypes 2, django 2, shop 1)\n    admin: ANY /admin/\n');
+  expect(result.out).toContain('  third-party, behind no capability: 21 (admin 17, contenttypes 2, django 2)\n    admin: ANY /admin/\n');
   expect(result.out).toContain('    django: ANY /admin/shop/order/{object_id}/');
   expect(result.out).not.toContain('--third-party lists them');
 });
@@ -148,7 +149,14 @@ test('A capability and an area are named from the code when the vocabulary does 
   const data = buildData(project);
   expect(data.areas.find(a => a.id === 'shop.product')).toMatchObject({ name: 'products', defined_at: 'shop/models.py:4' });
   expect(data.areas.flatMap(a => a.capabilities).find(c => c.id === 'shop.product.add')?.name).toBe('Add product');
-  expect(data.coverage).toMatchObject({ covered: 12, total: 72, third_party: { total: 22 } });
+  expect(data.coverage).toMatchObject({ covered: 14, total: 72, third_party: { total: 21 } });
+});
+
+test('A capability derived from a REST resource is named by the vocabulary and decided like any other', () => {
+  const derived = buildData(project).areas.flatMap(a => a.capabilities).find(c => c.id === 'resource.api.invoices.list');
+  expect(derived).toMatchObject({ name: 'See invoices', area: 'api.invoices', basis: 'inferred', derived: 'resource' });
+  expect(map('decide', '.', 'resource.api.invoices.list', 'manager', '--verdict', 'safe', '--reason', 'Admins only, in get_permissions()')).toMatchObject({ status: 0 });
+  expect(buildData(project).cells.find(c => c.capability === 'resource.api.invoices.list' && c.role === 'manager')?.decision?.state).toBe('valid');
 });
 
 test('A decision goes outdated when the cell changes', () => {
@@ -269,7 +277,11 @@ test('The Agent raises a signal on a cell through review append, counted on the 
     expect.objectContaining({ v: 2, event: 'triaged', capability: ['shop.order.view', 'manager'] }),
   ]);
   const withSignal = buildData(project);
-  expect(withSignal.alerts.map(a => a.kind)).toEqual(['undecided']);
+  expect(withSignal.alerts.filter(a => a.kind !== 'open').map(a => a.kind)).toEqual(['undecided']);
+  // the invoices resource is decided in get_permissions(), which the map cannot read
+  expect(withSignal.alerts.filter(a => a.kind === 'open').map(a => a.cell)).toEqual(
+    ['list', 'delete'].flatMap(verb => ['clerk', 'manager', 'owner'].map(role => [`resource.api.invoices.${verb}`, role])),
+  );
   expect(withSignal.queue.signals).toBe(withSignal.endpoints.reduce((n, e) => n + e.signals.length, 0) + 1);
   const before = log();
   const refused = run(REVIEW_CLI, ['append', '.', '--agent', '--model', 'm'], JSON.stringify({ event: 'triaged', capability: ['export-orders', 'cashier'] }));

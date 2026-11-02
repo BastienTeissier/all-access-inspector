@@ -351,7 +351,7 @@ function renderDrawer() {
     <dl>
       ${v.scope ? `<div><dt>Records</dt><dd>${esc(v.scope.label)} <code>${esc(v.scope.at)}</code> <span class="muted">${esc(BASIS[v.scope.basis])}</span></dd></div>` : ""}
       <div><dt>Decision</dt><dd>${decisionHtml(v.decision, c.id, r.id)}</dd></div>
-      <div><dt>Enforced by</dt><dd><code>${esc(c.check)}</code>${c.at ? ` at <code>${esc(c.at)}</code>` : ""} <span class="muted">${esc(BASIS[c.basis])}</span>${c.reason ? `<br><span class="muted">${esc(c.reason)}</span>` : ""}</dd></div>
+      <div><dt>Enforced by</dt><dd><code>${esc(c.check)}</code>${c.at ? ` at <code>${esc(c.at)}</code>` : ""} <span class="muted">${esc(BASIS[c.basis])}${c.derived ? ", derived from the paths" : ""}</span>${c.reason ? `<br><span class="muted">${esc(c.reason)}</span>` : ""}</dd></div>
       <div><dt>Reached (${v.seen.reached.length})</dt><dd><ul>${v.seen.reached.map(ep).join("") || `<li class="muted">none</li>`}</ul></dd></div>
       <div><dt>Not reached (${v.seen.missed.length})</dt><dd><ul>${v.seen.missed.map(ep).join("") || `<li class="muted">none</li>`}</ul></dd></div>
       ${r.at ? `<div><dt>Role</dt><dd><code>${esc(r.at)}</code>${r.includes.length ? ` · includes ${r.includes.map(i => esc(roleById(i)?.name ?? i)).join(", ")}` : ""}${r.staff ? " · staff" : ""}</dd></div>` : ""}
