@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { WHO_KINDS, type Runtime, type WhoKind } from './runtime.ts';
 
 /** A project file:line written by hand somewhere in the vocabulary. */
-const REFERENCE = /\b((?:[\w-]+\/)*[\w-]+\.(?:py|html|ts|tsx|js|java|kt|php|twig|ya?ml|xml|md)):(\d+)\b/g;
+const REFERENCE = /\b((?:[\w.-]+\/)*[\w.-]+\.(?:py|html|ts|tsx|js|java|kt|php|twig|ya?ml|xml|md)):(\d+)\b/g;
 const AT = /^[^\s:]+:\d+$/;
 
 export interface Area {

@@ -85,6 +85,16 @@ test('A relation role no check names, and a check naming no role, fail the check
   expect(result.out).toContain('a check names role holder, which is not a role');
 });
 
+test('A roles check naming no role fails the check', () => {
+  editJson('tools/access-map/vocabulary.json', data => {
+    const checks = (data as unknown as { route_checks: Record<string, { who: string; roles: string[] }[]> }).route_checks['/api/orders/{pk}/'];
+    checks![0] = { ...checks![0]!, who: 'groups', roles: ['ghost'] };
+  });
+  const result = map('check', '.');
+  expect(result.status).toBe(1);
+  expect(result.out).toContain('a check names role ghost, which is not a role');
+});
+
 test('An area folds the extracted areas it contains; one that matches none fails the check', () => {
   editJson('tools/access-map/vocabulary.json', data => {
     data.areas?.push({ id: 'catalogue', name: 'Catalogue', contains: ['shop.product', 'shop.basket'] });
@@ -287,4 +297,22 @@ test('The Agent raises a signal on a cell through review append, counted on the 
   const refused = run(REVIEW_CLI, ['append', '.', '--agent', '--model', 'm'], JSON.stringify({ event: 'triaged', capability: ['export-orders', 'cashier'] }));
   expect(refused).toMatchObject({ status: 2, out: expect.stringContaining('stdin line 1: no cell export-orders for cashier on the access map') });
   expect(log()).toBe(before);
+});
+
+test('A NestJS project maps each endpoint to the roles its guards let through', () => {
+  const nest = join(import.meta.dirname, '..', '..', '..', '..', 'fixtures', 'nestjs-demo');
+  project = join(mkdtempSync(join(tmpdir(), 'map-')), 'nestjs-demo');
+  cpSync(nest, project, { recursive: true, filter: src => !/(node_modules|tests)$/.test(src) });
+  copyFileSync(join(nest, 'expected', 'inventory.json'), join(project, 'tools', 'access-inspector', 'inventory.json'));
+  copyFileSync(join(nest, 'expected', 'runtime.json'), join(project, 'tools', 'access-map', 'runtime.json'));
+  const data = buildData(project);
+  const reach = (method: string, path: string) => data.endpoints.find(e => e.method === method && e.path === path)?.reach;
+  expect(reach('DELETE', '/api/admin/users/{id}')).toEqual({ anonymous: 'no', admin: 'yes', partner: 'no', user: 'no' });
+  expect(reach('GET+HEAD', '/api/products')).toEqual({ anonymous: 'yes', admin: 'yes', partner: 'yes', user: 'yes' });
+  expect(reach('GET+HEAD', '/api/admin/users/stats')).toMatchObject({ anonymous: 'no', admin: 'yes', user: 'yes' });
+  const cells = (capability: string) => Object.fromEntries(data.cells.filter(c => c.capability === capability).map(c => [c.role, c.state]));
+  expect(cells('resource.api.admin.users.list')).toEqual({ anonymous: 'no', admin: 'pass', partner: 'no', user: 'no' });
+  expect(cells('resource.api.products.list')).toEqual({ anonymous: 'pass', admin: 'pass', partner: 'pass', user: 'pass' });
+  const result = map('check', '.');
+  expect(result.status, result.out).toBe(0);
 });

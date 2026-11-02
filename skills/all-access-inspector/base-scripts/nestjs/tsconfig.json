@@ -13,5 +13,5 @@
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["access_inspector", "tests", "vitest.config.ts"]
+  "include": ["access_inspector", "access_map", "tests", "vitest.config.ts"]
 }

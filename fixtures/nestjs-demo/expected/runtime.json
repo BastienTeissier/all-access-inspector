@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "stack": "nestjs",
+  "base_script": {"stack": "nestjs", "version": "0.4.0"},
+  "about": {"reads": "Every route the booted app serves, the guards and metadata on its handler and controller, the Adapted Script's Recognition Rules, and the Map Rules in tools/access-map/project.ts.", "holds": ["Roles, staff, grants, scopes and capabilities from the Map Rules in tools/access-map/project.ts", "The signed-in role, at the first Recognition Rule outside RELATION_RULES that requires sign-in", "Per endpoint, the roles a roles guard lets through, read from the metadata its Recognition Rule names", "Per endpoint, the relation roles a Recognition Rule in RELATION_RULES lets through", "Handlers whose class or function is declared under the FIRST_PARTY directories"], "heuristics": ["A handler is first-party when a class or function of its name is declared under a FIRST_PARTY directory"], "command": "tools/access-inspector/inspect.sh map"},
+  "roles": [
+    {"id": "admin", "kind": "group", "at": "src/admin/admin.controller.ts:9", "basis": "rule", "includes": [], "staff": null},
+    {"id": "partner", "kind": "relation", "at": "src/partner/partner-key.middleware.ts:7", "basis": "rule", "includes": [], "staff": null},
+    {"id": "user", "kind": "signed_in", "at": "src/auth/session.guard.ts:8", "basis": "rule", "includes": [], "staff": null}
+  ],
+  "areas": [],
+  "grants": {},
+  "scopes": [],
+  "scoped": [],
+  "capabilities": [],
+  "endpoints": [
+    {"method": "GET", "path": "/api/admin/users", "handler": "AdminController.list", "layers": [], "permissions": [], "verdict": {"kind": "groups", "roles": ["admin"], "basis": "extracted", "how": "roles: RolesGuard roles=[\"admin\"]"}, "fallback": null, "notes": []},
+    {"method": "DELETE", "path": "/api/admin/users/{id}", "handler": "AdminController.remove", "layers": [], "permissions": [], "verdict": {"kind": "groups", "roles": ["admin"], "basis": "extracted", "how": "roles: RolesGuard roles=[\"admin\"]"}, "fallback": null, "notes": []},
+    {"method": "GET", "path": "/api/partner/orders", "handler": "PartnerController.orders", "layers": [], "permissions": [], "verdict": {"kind": "relations", "roles": ["partner"], "basis": "rule", "how": "Recognition rule partner_key (src/partner/partner-key.middleware.ts:7)"}, "fallback": null, "notes": []}
+  ],
+  "first_party": [
+    "AccountController.me",
+    "AccountController.update",
+    "AdminController.list",
+    "AdminController.remove",
+    "AdminController.stats",
+    "CatalogController.list",
+    "CatalogController.show",
+    "HealthController.check",
+    "PartnerController.orders",
+    "WebhooksController.payments",
+    "legacyStatus",
+    "robotsTxt"
+  ],
+  "snippets": {}
+}

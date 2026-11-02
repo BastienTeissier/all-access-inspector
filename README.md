@@ -38,8 +38,8 @@ An agent skill fits the toolkit to your project **once**. It leaves a small scri
 
 | Stack | Base Script | Discovery | Notes |
 |---|---|---|---|
-| Django (+ Django REST framework) | `base-scripts/django/` | runtime, URL resolver | Django admin, DRF permissions, `login_required`, mixins, `LoginRequiredMiddleware` |
-| NestJS | `base-scripts/nestjs/` | runtime, Express router | Tested on NestJS 11 (CommonJS, jest) and 12 (ESM, vitest), Express adapter; runs through the project's own vitest or jest |
+| Django (+ Django REST framework) | `base-scripts/django/` | runtime, URL resolver | Django admin, DRF permissions, `login_required`, mixins, `LoginRequiredMiddleware`. Map Introspect: the admin registry, groups and grants |
+| NestJS | `base-scripts/nestjs/` | runtime, Express router | Tested on NestJS 11 (CommonJS, jest) and 12 (ESM, vitest), Express adapter; runs through the project's own vitest or jest. Map Introspect: the roles `@Roles()` guards let through |
 | Spring Boot (Spring MVC + Spring Security) | `base-scripts/spring/` | runtime, `DispatcherServlet` handler mappings | Tested on Spring Boot 4.1 (Spring Security 7), Java 21, Maven 3.9 and Gradle 9; runs as one test through the project's own build. Filter chains, `@PreAuthorize`, `@Secured`, JSR-250 |
 | Symfony (+ API Platform) | `base-scripts/symfony/` | runtime, the router | Tested on Symfony 8.1 and API Platform 5.0, PHP 8.5 (needs PHP 8.2 or later). Firewalls, `access_control`, `#[IsGranted]`, `denyAccessUnlessGranted()`, API Platform `security` |
 | Anything else (FastAPI, Flask, Express, Laravel, Rails…) | improvised from the closest one | runtime when the framework has a route registry, else static | Always `coverage: best-effort`. See [Fit an unsupported stack](#fit-an-unsupported-stack) |
@@ -462,7 +462,7 @@ Once the inventory is committed:
 
 The Agent reads before it writes ([ADR 0005](docs/adr/0005-access-facts-are-read-before-they-are-written.md)):
 
-1. On Django, it vendors the Map Introspect into `tools/access-map/`. The introspect boots the app through the Adapted Script's `boot.py` and reads the admin registry. The Agent then writes **Map Rules** in its project section for the roles, grants, scopes and capabilities your code declares: a groups dict, a sign-in adapter, a `get_queryset` filter. It shows you each one with its `file:line` before saving it. Other stacks have no introspect yet, so every fact is written by hand and the summary lists what could be extracted.
+1. On Django and NestJS, it vendors the Map Introspect into `tools/access-map/`. The introspect boots the app through the Adapted Script's `boot.py` (`boot.ts`) and reads the admin registry on Django, the roles each `@Roles()` guard lets through on NestJS. The Agent then writes **Map Rules** in its project section for the roles, grants, scopes and capabilities your code declares: a groups dict, a sign-in adapter, a `get_queryset` filter. It shows you each one with its `file:line` before saving it. Other stacks have no introspect yet, so every fact is written by hand and the summary lists what could be extracted.
 2. It maps each role and each area to your docs: `CONTEXT.md`, else the README or `docs/`. It reports a role the docs name and the code does not, or the reverse. It never writes your `CONTEXT.md`.
 3. It writes `tools/access-map/vocabulary.json` with you, only for what no program can read: capability names in your words, capabilities spanning several endpoints, checks inside handler bodies. Each entry gives its reason.
 4. It runs `map pin`, `map check` and `map build`, commits on a new branch, and prints the coverage, the partial capabilities left for you to decide, and the "could be extracted" list.
@@ -470,7 +470,8 @@ The Agent reads before it writes ([ADR 0005](docs/adr/0005-access-facts-are-read
 ```
 tools/access-map/
 ├── introspect.py, admin.py, runtime.py   # Django Map Introspect, Base Script: do not edit
-├── project.py                            # project section: Map Rules
+├── introspect.ts, runtime.ts, introspect.spec.ts  # NestJS Map Introspect, Base Script: do not edit
+├── project.py (project.ts on NestJS)     # project section: Map Rules
 ├── runtime.json                          # the Map Runtime: committed, byte-stable, checked in CI
 ├── vocabulary.json                       # the Map Vocabulary: written with you, every file:line pinned
 ├── .gitattributes                        # runtime.json -diff linguist-generated
@@ -501,7 +502,8 @@ A Capability Decision uses a Verdict's words and fields (`safe`, `accepted` with
 | Command | Exit 1 when |
 |---|---|
 | `<run> python tools/access-map/introspect.py --check` (Django) | `runtime.json` differs from what the app declares now |
-| `node <skill>/map/src/cli.ts check <project>` | a pinned `file:line` no longer shows its line, a vocabulary entry duplicates a Map Rule, the runtime and the inventory disagree, a partial has no valid decision or an outdated one, a term is missing from `CONTEXT.md`, a group role holds no grant |
+| `tools/access-inspector/inspect.sh map --check` (NestJS) | `runtime.json` differs from what the app declares now |
+| `node <skill>/map/src/cli.ts check <project>` | a pinned `file:line` no longer shows its line, a vocabulary entry duplicates a Map Rule, the runtime and the inventory disagree, a partial has no valid decision or an outdated one, a term is missing from `CONTEXT.md`, a group role holds no grant and no roles check names it |
 
 Both exit 2 when a file is unreadable or invalid. `map check` also prints the coverage and the open findings, which never fail it.
 

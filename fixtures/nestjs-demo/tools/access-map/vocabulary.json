@@ -1,0 +1,35 @@
+{
+  "areas": [
+    {
+      "id": "api.admin.users",
+      "name": "Users",
+      "term": "User",
+      "defined_at": "src/admin/admin.controller.ts:8"
+    },
+    {
+      "id": "api.products",
+      "name": "Products",
+      "term": "Product",
+      "defined_at": "src/catalog/catalog.controller.ts:7"
+    }
+  ],
+  "roles": [
+    {
+      "id": "user",
+      "name": "User"
+    },
+    {
+      "id": "admin",
+      "name": "Admin"
+    },
+    {
+      "id": "partner",
+      "name": "Partner"
+    }
+  ],
+  "capabilities": [],
+  "anchors": {
+    "src/admin/admin.controller.ts:8": "export class AdminController {",
+    "src/catalog/catalog.controller.ts:7": "export class CatalogController {"
+  }
+}

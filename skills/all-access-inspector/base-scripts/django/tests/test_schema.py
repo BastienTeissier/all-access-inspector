@@ -219,6 +219,15 @@ def test_canonical_input_describes_the_canonical_inventory() -> None:
     assert neutral == load(CANONICAL)
 
 
+@pytest.mark.parametrize(
+    "path",
+    sorted((REPO / "fixtures").glob("*/expected/runtime.json")),
+    ids=lambda p: str(p.relative_to(REPO)),
+)
+def test_fixture_runtime_validates(path: Path) -> None:
+    RUNTIME_VALIDATOR.validate(load(path))
+
+
 def test_runtime_with_areas_capability_names_and_first_party_validates() -> None:
     runtime = load(RUNTIME)
     runtime["areas"] = [
