@@ -44,7 +44,7 @@ An agent skill fits the toolkit to your project **once**. It leaves a small scri
 | Symfony (+ API Platform) | `base-scripts/symfony/` | runtime, the router | Tested on Symfony 8.1 and API Platform 5.0, PHP 8.5 (needs PHP 8.2 or later). Firewalls, `access_control`, `#[IsGranted]`, `denyAccessUnlessGranted()`, API Platform `security` |
 | Anything else (FastAPI, Flask, Express, Laravel, Rails…) | improvised from the closest one | runtime when the framework has a route registry, else static | Always `coverage: best-effort`. See [Fit an unsupported stack](#fit-an-unsupported-stack) |
 
-Base Script version: see [`skills/all-access-inspector/VERSION`](skills/all-access-inspector/VERSION) (currently 0.4.0). Every inventory records the version that produced it.
+Base Script version: see [`skills/all-access-inspector/VERSION`](skills/all-access-inspector/VERSION) (currently 0.5.0). Every inventory records the version that produced it.
 
 ## Install the skill
 
@@ -264,7 +264,7 @@ The output is deterministic: sorted, with no timestamps and no absolute paths. T
   "discovery_mode": "runtime",
   "coverage": "complete",
   "coverage_note": null,
-  "base_script": {"stack": "django", "version": "0.4.0"},
+  "base_script": {"stack": "django", "version": "0.5.0"},
   "boot_environment": {"entry": "config.settings", "environ": […], "stubs": […], "pinned": […]},
   "project_dimensions": {"access_tier": ["public", "customer", "staff"]},
   "expected_access": {"access_tier": {"staff": {"authentication": ["required"], "authorization": ["rule"]}, …}},
