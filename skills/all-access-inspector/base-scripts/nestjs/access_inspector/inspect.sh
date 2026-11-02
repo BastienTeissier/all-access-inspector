@@ -69,7 +69,7 @@ done
 out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
 # The runner's own report stays off stdout; it is shown only when the harness never reported.
-ACCESS_INSPECTOR_MODE="$mode" ACCESS_MAP_MODE="$mode" ACCESS_INSPECTOR_SPEC="$spec" ACCESS_INSPECTOR_OUT="$out" "${run[@]}" "${args[@]}" >"$out/runner.log" 2>&1 || true
+ACCESS_INSPECTOR_MODE="$mode" ACCESS_INSPECTOR_SPEC="$spec" ACCESS_INSPECTOR_OUT="$out" "${run[@]}" "${args[@]}" >"$out/runner.log" 2>&1 || true
 if [ ! -f "$out/status" ]; then
   cat "$out/runner.log" >&2
   echo "access-inspector: $runner stopped before the inspector reported; its output is above" >&2

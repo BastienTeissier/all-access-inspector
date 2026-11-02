@@ -65,7 +65,7 @@ test(
     const dir = process.env.ACCESS_INSPECTOR_OUT;
     if (!dir) throw new Error(`run ${COMMAND}; this file is not a project test`);
     const [out, err]: [string[], string[]] = [[], []];
-    const status = await main(process.env.ACCESS_MAP_MODE ?? 'write', out, err);
+    const status = await main(process.env.ACCESS_INSPECTOR_MODE ?? 'write', out, err);
     const lines = (xs: string[]): string => xs.map(x => `${x}\n`).join('');
     writeFileSync(join(dir, 'stdout'), lines(out));
     writeFileSync(join(dir, 'stderr'), lines(err));
