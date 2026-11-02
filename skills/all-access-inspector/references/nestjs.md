@@ -115,9 +115,27 @@ Each value then gets an expected access in `EXPECTED`, keyed like `DIMENSIONS`: 
 
 ## Map introspect
 
-No Map Introspect ships for NestJS yet: `tools/access-map/` holds only `vocabulary.json`, the runtime is empty, and the page's "How it's built" tab says so. Every fact is hand-written (dotted ✎), each with its `at` and `reason`: a role is `{"id", "kind", "at", "reason", "includes"?, "staff"?}` in the vocabulary's `roles`. The map does not guess which role a route rule names, so an endpoint guarded by a role rule shows as not resolved (dashed) until an introspect reads the grants. List each fact below that the project declares in a readable form under "could be extracted" in the summary.
+Copy every `*.ts` of `<skill>/base-scripts/nestjs/access_map/` into `tools/access-map/`, and write `tools/access-map/.gitattributes` with the line `runtime.json -diff linguist-generated`. It boots the app through the Adapted Script's `boot.ts`, so the Boot Environment is pinned once. Run it as `<inspect> map`: it writes `tools/access-map/runtime.json`. `<inspect> map --check` regenerates it in memory and exits 1 with a per-key diff when it differs from the committed file, 2 when the boot fails, a Map Rule is invalid or the runtime is missing. Project code goes only in the project section of `project.ts`; the other files stay byte-identical to the Base Script.
 
-REST resources need no introspect: the map derives one capability per resource and verb from the inventory's paths (`resource.api.products.list`, basis `inferred`). Name one with `extends` in the vocabulary, or drop it with a hand-written capability's `replaces`.
+What it reads with no Map Rule:
+
+- per endpoint, the Recognition Rule its authorization resolves to: when that rule has `rawMetadata`, the metadata it reads (`@Roles('admin')`) is the roles the check lets through (`who` `groups`). Each role it names must be declared by `roles()`;
+- the signed-in role `user`, at the first Recognition Rule with `safeAuthn: 'required'` an endpoint goes through, unless `roles()` declares a `signed_in` role;
+- each handler whose class or function is declared under `FIRST_PARTY`, as `first_party`, so coverage counts it with the project's gaps.
+
+Blind spots:
+
+- A guard comparing something other than a role (`user.tier === 'gold'`, a feature flag, the record's owner) has no role list to read. Leave its rule without `rawMetadata`, and name it in `RELATION_RULES` or a vocabulary `route_checks` entry.
+- Roles come from `roles()`, not from the `Role` enum: declare each one there.
+- Grants and areas are not read: write the areas in the vocabulary.
+
+REST resources need no Map Rule: the map derives one capability per resource and verb from the inventory's paths (`resource.api.products.list`, basis `inferred`). Name one with `extends` in the vocabulary, or drop it with a hand-written capability's `replaces`.
+
+The project section of `project.ts`:
+
+- `FIRST_PARTY`: the directories whose classes and functions are the project's own (`['src']`).
+- `RELATION_RULES`: Recognition Rule name → the ids of the `relation` roles it lets through (an API key middleware: `{ partner_key: ['partner'] }`).
+- The Map Rules (`roles()`, `includes()`, `scopes()`, `scoped()`, `capabilities()`), each returning facts with `at` from `lineOf(ROOT, '<file>', '<text on the line>')`. Each function's JSDoc holds the example as code.
 
 Where roles, grants and scopes live on NestJS:
 

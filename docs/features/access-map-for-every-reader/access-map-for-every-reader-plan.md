@@ -195,12 +195,14 @@ Phases continue the previous plan (last: 9d). One PR per phase; each ends green 
 
 ### Phase 14 — UF24 A NestJS Map Introspect
 
-- [ ] **Runtime port**: `nestjs/access_map/runtime.ts` (`KEYS`, `IDENTITY`, `toCanonicalJson`, `check`); `tests/map-runtime.spec.ts` byte-equal to the Python output on the Django golden.
-- [ ] **Project section**: `access_map/project.ts` (`FIRST_PARTY`, rule lists, Map Rule functions with docstring examples, `lineOf`); `tests/map-rules.spec.ts`.
-- [ ] **Introspect**: `access_map/introspect.ts` (boot via `access_inspector/boot.ts`, routes via `discovery.ts`, roles metadata via the Adapted Script's `RECOGNITION` rules with `rawMetadata` and `classify.ts metadata()`, `verdict`/`fallback`, Map Rules, `about`); `introspect.spec.ts` entry with `ACCESS_MAP_MODE`; `inspect.sh map [--check]`; `tests/map-introspect.spec.ts`.
-- [ ] **Fixture**: vendor to `fixtures/nestjs-demo/tools/access-map/`; `project.ts` `roles()` ⇒ `admin`, `partner` with `at`; `vocabulary.json` (areas `api.admin.users`, `api.products`; role names); golden `expected/runtime.json`; `tests/map-golden.spec.ts`; `typecheck-nestjs` includes `access_map/`.
-- [ ] **Skill and docs**: `references/nestjs.md § Map introspect` (vendor, run, what it reads: Recognition Rules with `rawMetadata`, blind spots: guards comparing non-role claims); `workflows/map.md` stack branch; README stack table.
-- [ ] **Verify**: `make test-nestjs typecheck-nestjs` green; `map build` on `fixtures/nestjs-demo` resolves `DELETE /api/admin/users/{id}` to `admin` only, `GET /api/products` to everyone, `GET /api/admin/users/stats` signed-in staff (no roles) ; `map check` exit 0; `--check` after editing `@Roles('admin')` exits 1.
+- [x] **Runtime port**: `nestjs/access_map/runtime.ts` (`KEYS`, `IDENTITY`, `toCanonicalJson`, `check`); `tests/map-runtime.spec.ts` byte-equal to the Python output on the Django golden.
+- [x] **Project section**: `access_map/project.ts` (`FIRST_PARTY`, rule lists, Map Rule functions with docstring examples, `lineOf`); `tests/map-rules.spec.ts`.
+- [x] **Introspect**: `access_map/introspect.ts` (boot via `access_inspector/boot.ts`, routes via `discovery.ts`, roles metadata via the Adapted Script's `RECOGNITION` rules with `rawMetadata` and `classify.ts metadata()`, `verdict`/`fallback`, Map Rules, `about`); `introspect.spec.ts` entry with `ACCESS_MAP_MODE`; `inspect.sh map [--check]`; `tests/map-introspect.spec.ts`.
+- [x] **Fixture**: vendor to `fixtures/nestjs-demo/tools/access-map/`; `project.ts` `roles()` ⇒ `admin`, `partner` with `at`; `vocabulary.json` (areas `api.admin.users`, `api.products`; role names); golden `expected/runtime.json`; `tests/map-golden.spec.ts`; `typecheck-nestjs` includes `access_map/`.
+- [x] **Skill and docs**: `references/nestjs.md § Map introspect` (vendor, run, what it reads: Recognition Rules with `rawMetadata`, blind spots: guards comparing non-role claims); `workflows/map.md` stack branch; README stack table.
+- [x] **Verify**: `make test-nestjs typecheck-nestjs` green; `map build` on `fixtures/nestjs-demo` resolves `DELETE /api/admin/users/{id}` to `admin` only, `GET /api/products` to everyone, `GET /api/admin/users/stats` signed-in staff (no roles) ; `map check` exit 0; `--check` after editing `@Roles('admin')` exits 1.
+  - Verified: `make check-all test-nestjs test-review test-django` green; `map build` on a copy of `fixtures/nestjs-demo` (13 endpoints, 16 cells): `DELETE /api/admin/users/{id}` admin only, `GET+HEAD /api/products` everyone, `GET+HEAD /api/admin/users/stats` signed-in (no anonymous); `map check` 0; `map --check` 1 after removing `@Roles('admin')` (`tests/map-golden.spec.ts`, map `tests/cli.spec.ts`).
+  - Deviations: roles come from the `roles()` Map Rule, not from the `Role` enum (enum extraction deferred). `map check` lets a group role pass with no grant when a roles check names it, and vocabulary references accept dotted file names (`admin.controller.ts`).
 
 ### Phase 15 — Release
 
