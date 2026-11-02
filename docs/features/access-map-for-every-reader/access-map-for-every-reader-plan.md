@@ -188,10 +188,10 @@ Phases continue the previous plan (last: 9d). One PR per phase; each ends green 
 
 ### Phase 13 — UF23 The skill split by branch
 
-- [ ] **Workflows**: `workflows/fit.md` (steps 1–8), `update.md` (Update mode), `triage.md`, `map.md` from `SKILL.md` lines 38–182; stack facts replaced by pointers to `references/<stack>.md § <section>`; each ends on a completion criterion (fit: every unknown acknowledged, inventory `--check` 0; update: rules whose evidence vanished named; triage: every row in scope carries one event, one batch; map: every unfolded capability named, every first-party gap covered or listed with why).
-- [ ] **Router**: `SKILL.md` ≤ 1,200 words: stack terms, hard rules once with positive phrasing, branch table (trigger → workflow file → reference section), description ≤ 40 words; apply `/writing-for-agents`.
-- [ ] **References**: `references/*.md` hold every stack fact removed from SKILL.md (move, no copy); `assets/summary-template.md` pointers updated; README skill section links.
-- [ ] **Verify**: `wc -w SKILL.md` ≤ 1,200; `docs-consistency` on `workflows/`; grep each hard rule occurs once; a subagent runs triage on `fixtures/django-demo` reading only SKILL.md + `workflows/triage.md` + `references/django.md § Triage checklist` (record which files it opened).
+- [x] **Workflows**: `workflows/fit.md` (steps 1–8), `update.md` (Update mode), `triage.md`, `map.md` from `SKILL.md` lines 38–182; stack facts replaced by pointers to `references/<stack>.md § <section>`; each ends on a completion criterion (fit: every unknown acknowledged, inventory `--check` 0; update: rules whose evidence vanished named; triage: every row in scope carries one event, one batch; map: every unfolded capability named, every first-party gap covered or listed with why).
+- [x] **Router**: `SKILL.md` ≤ 1,200 words: stack terms, hard rules once with positive phrasing, branch table (trigger → workflow file → reference section), description ≤ 40 words; apply `/writing-for-agents`.
+- [x] **References**: `references/*.md` hold every stack fact removed from SKILL.md (move, no copy); `assets/summary-template.md` pointers updated; README skill section links.
+- [x] **Verify**: `wc -w SKILL.md` ≤ 1,200; `docs-consistency` on `workflows/`; grep each hard rule occurs once; a subagent runs triage on `fixtures/django-demo` reading only SKILL.md + `workflows/triage.md` + `references/django.md § Triage checklist` (record which files it opened).
 
 ### Phase 14 — UF24 A NestJS Map Introspect
 
@@ -274,6 +274,7 @@ Phases continue the previous plan (last: 9d). One PR per phase; each ends green 
 - `resources.ts` tolerates a trailing slash so Django (`/api/invoices/`) and Nest (`/api/products`) paths match the same rule; the slug drops it.
 - Derived capability ids start with `resource.` so a Map Rule or vocabulary id never collides.
 - The queue line links to the app's `/queue`; the static page prints the count with no link unless `method.queueHref` is set at build.
+- Phase 13 verify: `SKILL.md` 787 words, description 37; each hard rule's key phrase in one file; a cold subagent triaging a copy of `fixtures/django-demo` opened `SKILL.md`, `workflows/triage.md` and `references/django.md` § Triage checklist only. The Stack terms table moved into each reference's "Vendor and run" (UF23: no table restates it).
 - Phase 15 regenerates every golden; keep it last so Phases 10–14 diff only the files they touch.
 - Proof table (fill at Phase 15): action-tracking coverage before 142 of 287 → after; alerts 196 → 0; unnamed capabilities before N → 0; first-party gaps 23 → M (listed with why).
 
