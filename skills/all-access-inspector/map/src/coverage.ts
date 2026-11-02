@@ -55,7 +55,8 @@ export const coverage = ({ areas, found, endpoints, domains, firstParty }: Cover
     byArea.set(f.cap.area, set);
   }
   // A gap belongs to the area whose covered paths share its longest prefix, else to its domain, else to no area.
-  const prefixes = [...byArea].flatMap(([area, set]) => [...set].map(e => ({ area, prefix: prefixOf(e.path) })));
+  // A bare `/` (the root, or a path that opens on a parameter) is under every path: it owns no gap.
+  const prefixes = [...byArea].flatMap(([area, set]) => [...set].map(e => ({ area, prefix: prefixOf(e.path) }))).filter(p => p.prefix !== '/');
   const gapsOf = new Map<string, MapEndpoint[]>();
   for (const e of endpoints.filter(e => !covered.has(e))) {
     const owner =

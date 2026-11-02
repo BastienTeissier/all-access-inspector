@@ -71,6 +71,23 @@ describe('coverage', () => {
     ]);
   });
 
+  test('a covered root or parameter-first path owns no gap', () => {
+    const home = at('GET', '/');
+    const page = at('GET', '/{slug}/');
+    const c = coverage({
+      areas: [{ id: 'pages', name: 'Pages', term: 'Page', folded: false, capabilities: [view] }],
+      found: [{ cap: { ...view, area: 'pages' }, found: [home, page] }],
+      endpoints: [home, page, health, stray],
+      domains: [{ id: 'ops', name: 'Operations', prefixes: ['/health/'] }],
+      firstParty,
+    });
+    expect(c.areas.map(a => [a.id, a.total, a.gaps])).toEqual([
+      ['pages', 2, []],
+      ['ops', 1, [health.key]],
+      ['no area', 1, [stray.key]],
+    ]);
+  });
+
   test('third-party gaps are counted per package, a django.contrib app by its name', () => {
     expect(report([list, change, login, index]).third_party.packages.map(p => [p.name, p.count])).toEqual([
       ['admin', 1],
