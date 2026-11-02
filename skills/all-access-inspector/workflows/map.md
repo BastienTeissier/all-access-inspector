@@ -14,7 +14,7 @@ The user asks for the access map: per Role and per Capability, whether the role 
 - Read before you write. A fact the code declares in a form a program can read (a dict, an enum, a config file, an annotation, a filter used the same way everywhere) is a Map Rule in the introspect's project section, with its `file:line`. The vocabulary holds only what no program can read, each entry with the `reason` it was not extracted. `map check` fails on a vocabulary entry a Map Rule already produces.
 - Roles are the ones the code defines; the toolkit adds "not signed in".
 - Whether a role passes a capability is computed. A route check's `who` says only what its cited line settles.
-- A Capability Decision is a human's, through `<map> decide` or the review app; you leave every cell undecided.
+- You leave every cell undecided: `<map> decide` and the review app are the user's tools (SKILL.md § Hard rules, Human decisions).
 - The project's `CONTEXT.md` belongs to the team: propose changes in the summary. A pinned anchor is fixed at its source, then pinned again.
 
 ## Steps
@@ -42,6 +42,6 @@ node <skill>/review/src/cli.ts append <project> --agent --model <your model id> 
 EOF2
 ```
 
-A Signal counts in the "Review queue: N signals" line of the Alerts tab until a later `triaged` closes it. It leaves the cell undecided: the events you append are `signal_raised` and `triaged`, and `<map> decide` is the user's.
+A Signal counts in the "Review queue: N signals" line of the Alerts tab until a later `triaged` closes it. It leaves the cell undecided.
 
 Done when every cell in scope carries one event, all appended in one batch.
