@@ -2,10 +2,10 @@
 
 import { basename } from 'node:path';
 
-import { keyText } from '../../../skills/all-access-inspector/review/src/inventory.ts';
+import { keyText, methods } from '../../../skills/all-access-inspector/review/src/inventory.ts';
 import { SIGNAL_IDS } from '../../../skills/all-access-inspector/review/src/signals.ts';
 import { TIERS } from '../../../skills/all-access-inspector/review/src/tiers.ts';
-import { FILTERS, filtersOf, href, projectDir } from '../lib/filters.ts';
+import { FILTERS, filtersOf, href, paramsOf, projectDir } from '../lib/filters.ts';
 import { candidates } from '../lib/history.ts';
 import { type Projected, hasMap, header, history, orphans, project, queue, row, uncommitted, zones } from '../lib/projection.ts';
 import { BulkPanel } from './bulk-panel.tsx';
@@ -30,7 +30,7 @@ const Select = ({ name, label, value, options }: { name: string; label: string; 
 );
 
 export default async function Queue({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const params = new URLSearchParams(Object.entries(await searchParams).flatMap(([k, v]) => (typeof v === 'string' ? [[k, v]] : [])));
+  const params = paramsOf(await searchParams);
   const filters = filtersOf(params);
   const dir = projectDir();
   const { db, error, project: abs } = project(dir);
@@ -160,7 +160,7 @@ export default async function Queue({ searchParams }: { searchParams: Promise<Re
 const QueueRow = ({ r, zone, current, link }: { r: Projected; zone: boolean; current: string | null; link: string }) => (
   <tr aria-current={current === keyText(r.key) ? 'true' : undefined} data-key={keyText(r.key)}>
     <td>
-      <span className="m">{r.head ? `${r.method},HEAD` : r.method}</span>
+      <span className="m">{methods(r)}</span>
     </td>
     <td>
       <a href={link} className="path">

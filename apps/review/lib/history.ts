@@ -3,7 +3,7 @@
 
 import { handlerFile } from '../../../skills/all-access-inspector/review/src/inventory.ts';
 import type { Logged, LoggedCell } from '../../../skills/all-access-inspector/review/src/log.ts';
-import type { Orphan, Row } from '../../../skills/all-access-inspector/review/src/replay.ts';
+import { type Orphan, type Row, cellText } from '../../../skills/all-access-inspector/review/src/replay.ts';
 
 /** An event on an endpoint or on a cell of the access map. */
 export type Entry = Logged | LoggedCell;
@@ -85,10 +85,10 @@ export const candidates = (row: Row, lost: Orphan[]): Orphan[] => {
 
 /** The latest Decision on each cell the map no longer has: shown, never re-attached (UF17). */
 export const orphanedDecisions = (events: Entry[], cells: { capability: string; role: string }[]): LoggedCell[] => {
-  const known = new Set(cells.map(c => JSON.stringify([c.capability, c.role])));
+  const known = new Set(cells.map(c => cellText([c.capability, c.role])));
   const latest = new Map<string, LoggedCell>();
   for (const e of events) {
-    const key = 'capability' in e ? JSON.stringify(e.capability) : null;
+    const key = 'capability' in e ? cellText(e.capability) : null;
     if (key && e.event === 'decided' && !known.has(key) && !latest.has(key)) latest.set(key, e);
   }
   return [...latest.values()];

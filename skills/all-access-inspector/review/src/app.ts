@@ -6,7 +6,7 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { join, resolve } from 'node:path';
 
-import { loadInventory, toolsDir } from './inventory.ts';
+import { inventoryPath, loadInventory } from './inventory.ts';
 import { Refused } from './project.ts';
 
 export const APP_DIR = join(import.meta.dirname, '..', '..', '..', '..', 'apps', 'review');
@@ -27,7 +27,7 @@ const newest = (path: string): number => {
 /** Checks the checkout and the project, and builds the app when needed; the build's output goes to stderr. */
 export const prepare = (project: string, appDir = APP_DIR): App => {
   if (!existsSync(join(appDir, 'package.json'))) throw new Refused('the review app runs from a checkout of all-access-inspector');
-  loadInventory(join(toolsDir(project), 'inventory.json'));
+  loadInventory(inventoryPath(project));
   if (!existsSync(join(appDir, 'node_modules', 'next'))) throw new Refused(`the review app is not installed: run \`make install-review\` in ${resolve(appDir, '..', '..')}`);
   const built = join(appDir, '.next', 'BUILD_ID');
   if (!existsSync(built) || statSync(built).mtimeMs < Math.max(...SOURCES.filter(existsSync).map(newest))) {

@@ -44,27 +44,27 @@ const checkVerdict = (values: Values): string => {
   return verdict;
 };
 
+/** The fields of a Verdict, on an endpoint or on a cell: the optional ones only when given. */
+const verdictFields = (values: Values): Record<string, unknown> => {
+  const fields: Record<string, unknown> = { verdict: values.verdict, reason: values.reason ?? '' };
+  for (const k of ['severity', 'ticket', 'until']) if (values[k] !== undefined) fields[k] = values[k];
+  return fields;
+};
+
+/** The event once the log finds nothing wrong with it; refused otherwise. */
+const checked = <T>(event: Record<string, unknown>): T => {
+  const wrong = problem(event);
+  if (wrong) throw new Refused(wrong);
+  return event as unknown as T;
+};
+
 /** One `reviewed` event per endpoint, all with the same author, time and batch; refused as a whole on the first problem. */
 const reviewed = (project: string, inventory: Inventory, endpoints: Endpoint[], values: Values, batch: string | null): Event[] => {
   const by = gitEmail(project);
   const at = now();
-  return endpoints.map(e => {
-    const event: Record<string, unknown> = {
-      v: VERSION,
-      at,
-      by,
-      event: 'reviewed',
-      batch,
-      endpoint: keyOf(e),
-      seen: seenOf(e, inventory.expected_access),
-      verdict: values.verdict,
-      reason: values.reason ?? '',
-    };
-    for (const k of ['severity', 'ticket', 'until']) if (values[k] !== undefined) event[k] = values[k];
-    const wrong = problem(event);
-    if (wrong) throw new Refused(wrong);
-    return event as unknown as Event;
-  });
+  return endpoints.map(e =>
+    checked<Event>({ v: VERSION, at, by, event: 'reviewed', batch, endpoint: keyOf(e), seen: seenOf(e, inventory.expected_access), ...verdictFields(values) }),
+  );
 };
 
 export const appendVerdict = (project: string, values: Values, positionals: string[]) => {
@@ -102,21 +102,8 @@ export const appendBulk = (project: string, values: Values, keys: Key[]): { even
  */
 export const appendDecision = (project: string, values: Values, capability: CellKey, seen: CellSeen): string => {
   const verdict = checkVerdict(values);
-  const event: Record<string, unknown> = {
-    v: MAP_VERSION,
-    at: now(),
-    by: gitEmail(project),
-    event: 'decided',
-    batch: null,
-    capability,
-    seen,
-    verdict,
-    reason: values.reason ?? '',
-  };
-  for (const k of ['severity', 'ticket', 'until']) if (values[k] !== undefined) event[k] = values[k];
-  const wrong = problem(event);
-  if (wrong) throw new Refused(wrong);
-  append(project, [event as unknown as CellEvent]);
+  const event = checked<CellEvent>({ v: MAP_VERSION, at: now(), by: gitEmail(project), event: 'decided', batch: null, capability, seen, ...verdictFields(values) });
+  append(project, [event]);
   return `decided ${verdict}: ${capability[0]} for ${capability[1]}\n`;
 };
 

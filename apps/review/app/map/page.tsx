@@ -4,10 +4,10 @@
 import { basename } from 'node:path';
 
 import type { PageData } from '../../../../skills/all-access-inspector/map/src/data.ts';
-import { projectDir } from '../../lib/filters.ts';
+import { cellHref, paramsOf, projectDir } from '../../lib/filters.ts';
 import { accessMap, cellHistory, hasMap, project, uncommitted } from '../../lib/projection.ts';
 import { CellPanel } from './cell-panel.tsx';
-import { BASIS, KINDS, STATE, StateChip, cellHref } from './labels.tsx';
+import { BASIS, KINDS, STATE, StateChip } from './labels.tsx';
 import { Routes } from './routes.tsx';
 
 export const dynamic = 'force-dynamic';
@@ -179,7 +179,7 @@ const Method = ({ data }: { data: PageData }) => {
 };
 
 export default async function AccessMap({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const params = new URLSearchParams(Object.entries(await searchParams).flatMap(([k, v]) => (typeof v === 'string' ? [[k, v]] : [])));
+  const params = paramsOf(await searchParams);
   const dir = projectDir();
   const { db, project: abs } = project(dir);
   if (!hasMap(abs))

@@ -1,14 +1,14 @@
 // The join: one map endpoint per review row, its check layers, who can pass and on what basis.
 
-import { type Axis, handlerFile } from '../../review/src/inventory.ts';
+import { type Axis, type Key, handlerFile } from '../../review/src/inventory.ts';
 import type { output } from '../../review/src/output.ts';
-import { BASES, type Basis, type Layer, type Runtime, type RuntimeEndpoint, type Who, indexRuntime } from './runtime.ts';
+import { BASES, type Basis, type Layer, type Runtime, type RuntimeEndpoint, type Who, indexRuntime, runtimeKey } from './runtime.ts';
 import type { Domain, Resource, RouteCheck, Vocabulary } from './vocabulary.ts';
 
 export type StatusRow = ReturnType<typeof output>;
 
 export interface MapEndpoint {
-  key: [string, string, string];
+  key: Key;
   method: string; // GET+HEAD when the HEAD is folded into its GET
   path: string;
   handler: string;
@@ -137,7 +137,7 @@ export const joiner = (runtime: Runtime, vocabulary: Vocabulary): Join => ({ run
 
 export const endpoint = (row: StatusRow, j: Join): MapEndpoint => {
   const path = row.path;
-  const rt = j.byKey.get(`${row.method} ${path} ${row.handler}`) ?? NOTHING;
+  const rt = j.byKey.get(runtimeKey(row)) ?? NOTHING;
   const layers = [...routeLayers(row), ...rt.layers];
   let verdict = rt.verdict;
   const checks: RouteCheck[] = j.vocabulary.route_checks?.[path] ?? [];

@@ -1,6 +1,6 @@
 // The endpoint panel: everything needed to judge one row, then its Verdict form.
 
-import { type Axis, type SeenAxis, classification, keyText } from '../../../skills/all-access-inspector/review/src/inventory.ts';
+import { type Axis, type SeenAxis, classification, keyText, methods } from '../../../skills/all-access-inspector/review/src/inventory.ts';
 import type { Logged } from '../../../skills/all-access-inspector/review/src/log.ts';
 import type { Orphan } from '../../../skills/all-access-inspector/review/src/replay.ts';
 import type { Projected } from '../lib/projection.ts';
@@ -61,7 +61,7 @@ export const EndpointPanel = ({
     <aside className="panel" aria-label="Endpoint">
       <header className="panel-head">
         <h2>
-          <span className="m">{row.head ? `${row.method},HEAD` : row.method}</span> <span className="path">{row.path}</span>
+          <span className="m">{methods(row)}</span> <span className="path">{row.path}</span>
         </h2>
         <a href={close} className="btn" aria-label="Close">
           ×

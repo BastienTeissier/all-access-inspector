@@ -3,15 +3,7 @@ import { describe, expect, test } from 'vitest';
 import { capabilityList } from '../src/cells.ts';
 import type { MapEndpoint } from '../src/join.ts';
 import { resources } from '../src/resources.ts';
-import { endpoint, runtime, vocabulary, who } from './fixtures.ts';
-
-const at = (method: string, path: string, handler = 'app/views.py:1'): MapEndpoint => ({
-  ...endpoint(method, path, who('signed_in')),
-  key: [method, path, handler.replace(/:\d+$/, '')],
-  handler,
-});
-
-const firstParty = (handler: string) => /:\d+$/.test(handler);
+import { at, firstParty, runtime, vocabulary } from './fixtures.ts';
 
 const derive = (...endpoints: MapEndpoint[]) => resources(endpoints, firstParty);
 const ids = (...endpoints: MapEndpoint[]) => derive(...endpoints).map(c => c.id);

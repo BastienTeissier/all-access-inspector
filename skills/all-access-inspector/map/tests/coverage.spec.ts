@@ -3,14 +3,7 @@ import { describe, expect, test } from 'vitest';
 import type { Capability } from '../src/cells.ts';
 import { coverage, gaps, packageOf } from '../src/coverage.ts';
 import type { MapEndpoint } from '../src/join.ts';
-import { endpoint, who } from './fixtures.ts';
-
-const at = (method: string, path: string, handler = 'app/views.py:1', domain: string | null = null): MapEndpoint => ({
-  ...endpoint(method, path, who('signed_in')),
-  key: [method, path, handler.replace(/:\d+$/, '')],
-  handler,
-  domain,
-});
+import { at, firstParty } from './fixtures.ts';
 
 const capability = (id: string, area: string, name = id): Capability => ({
   id,
@@ -26,8 +19,6 @@ const capability = (id: string, area: string, name = id): Capability => ({
   reason: null,
   derived: null,
 });
-
-const firstParty = (handler: string) => /:\d+$/.test(handler);
 
 const list = at('GET', '/orders/');
 const change = at('POST', '/orders/{id}/change/');

@@ -6,11 +6,11 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-import { project as mapProject } from '../../../skills/all-access-inspector/map/src/data.ts';
 import { appendBulk, appendDecision, appendVerdict } from '../../../skills/all-access-inspector/review/src/append.ts';
 import { InventoryError, type Key, keyText } from '../../../skills/all-access-inspector/review/src/inventory.ts';
+import type { CellKey } from '../../../skills/all-access-inspector/review/src/log.ts';
 import { Refused } from '../../../skills/all-access-inspector/review/src/project.ts';
-import { filtersOf, href, projectDir } from '../lib/filters.ts';
+import { cellHref, filtersOf, href, projectDir } from '../lib/filters.ts';
 import { accessMap, confirmation, endpointName, openFinding, project, queue } from '../lib/projection.ts';
 
 export interface FormState {
@@ -24,15 +24,21 @@ const text = (form: FormData, name: string): string | undefined => {
   return value || undefined;
 };
 
-/** The Review Key the form posted, or null when it is not one. */
-const keyOf = (value: FormDataEntryValue | null): Key | null => {
+/** The `n` strings the form posted as one JSON list, or null when it is not one. */
+const tupleOf = (value: FormDataEntryValue | null, n: number): string[] | null => {
   try {
-    const key: unknown = JSON.parse(String(value));
-    return Array.isArray(key) && key.length === 3 && key.every(k => typeof k === 'string') ? (key as Key) : null;
+    const tuple: unknown = JSON.parse(String(value));
+    return Array.isArray(tuple) && tuple.length === n && tuple.every(k => typeof k === 'string') ? (tuple as string[]) : null;
   } catch {
     return null;
   }
 };
+
+/** The Review Key the form posted, or null when it is not one. */
+const keyOf = (value: FormDataEntryValue | null): Key | null => tupleOf(value, 3) as Key | null;
+
+/** The cell the form posted, or null when it is not one. */
+const cellOf = (value: FormDataEntryValue | null): CellKey | null => tupleOf(value, 2) as CellKey | null;
 
 /** What is missing from the Verdict fields, or null; nothing is written while anything is. */
 const fieldErrors = (form: FormData): FormState['errors'] | null => {
@@ -107,16 +113,6 @@ export const saveBulk = async (_previous: FormState, form: FormData): Promise<Fo
   redirect(href(filters));
 };
 
-/** The cell the form posted, or null when it is not one. */
-const cellOf = (value: FormDataEntryValue | null): [string, string] | null => {
-  try {
-    const cell: unknown = JSON.parse(String(value));
-    return Array.isArray(cell) && cell.length === 2 && cell.every(k => typeof k === 'string') ? (cell as [string, string]) : null;
-  } catch {
-    return null;
-  }
-};
-
 /** A Capability Decision on one cell, recording the cell as the map computes it now; then the next undecided partial. */
 export const saveDecision = async (_previous: FormState, form: FormData): Promise<FormState> => {
   const cell = cellOf(form.get('cell'));
@@ -124,16 +120,13 @@ export const saveDecision = async (_previous: FormState, form: FormData): Promis
   const errors = fieldErrors(form);
   if (errors) return { errors };
   const dir = projectDir();
-  let seen;
-  try {
-    seen = mapProject(dir).cells.find(c => c.capability === cell[0] && c.role === cell[1])?.seen;
-  } catch (error) {
-    return { errors: { form: (error as Error).message } };
-  }
+  const map = accessMap(dir);
+  if (map.error) return { errors: { form: map.error } };
+  const seen = map.data?.cells.find(c => c.capability === cell[0] && c.role === cell[1])?.seen;
   if (!seen) return { errors: { form: 'This cell is no longer on the access map: reload the page.' } };
   const refused = appended(() => appendDecision(dir, values(form), cell, seen));
   if (refused) return refused;
   revalidatePath('/map');
   const next = accessMap(dir).data?.alerts.find(a => a.kind === 'undecided')?.cell;
-  redirect(next ? `/map?tab=roles&cap=${encodeURIComponent(next[0])}&role=${encodeURIComponent(next[1])}` : '/map?tab=alerts');
+  redirect(next ? cellHref(next[0], next[1]) : '/map?tab=alerts');
 };

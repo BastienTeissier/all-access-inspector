@@ -26,3 +26,14 @@ export const who = (kind: Who['kind'], extra: Partial<Who> = {}): Who => ({ kind
 /** A map endpoint with only its key and `who`; the page fields the cells never read are left empty. */
 export const endpoint = (method: string, path: string, w: Who): MapEndpoint =>
   ({ key: [method, path, 'app/views.py'], method, path, handler: 'app/views.py:1', who: w }) as MapEndpoint;
+
+/** A signed-in endpoint at a handler, its key as the review strips it; `domain` only matters to the coverage. */
+export const at = (method: string, path: string, handler = 'app/views.py:1', domain: string | null = null): MapEndpoint => ({
+  ...endpoint(method, path, who('signed_in')),
+  key: [method, path, handler.replace(/:\d+$/, '')],
+  handler,
+  domain,
+});
+
+/** First-party as a Django project has it: a file:line handler. */
+export const firstParty = (handler: string): boolean => /:\d+$/.test(handler);

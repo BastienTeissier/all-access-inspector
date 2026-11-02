@@ -1,5 +1,6 @@
 // The map's columns: not signed in first, the roles the code defines (groups, then relations), superusers last; and whether one passes a `who`.
 
+import { byText } from '../../review/src/inventory.ts';
 import type { Basis, Runtime, Who } from './runtime.ts';
 import type { Vocabulary } from './vocabulary.ts';
 
@@ -54,7 +55,7 @@ export const roleList = (runtime: Runtime, vocabulary: Vocabulary): Role[] => {
     };
   });
   const anonymous: Role = { id: ANONYMOUS, name: 'Not signed in', kind: 'anonymous', at: null, basis: 'extracted', doc_at: null, includes: [], staff: false };
-  return [anonymous, ...roles].sort((a, b) => ORDER[a.kind] - ORDER[b.kind] || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return [anonymous, ...roles].sort((a, b) => ORDER[a.kind] - ORDER[b.kind] || byText(a.id, b.id));
 };
 
 /** Whether one role passes one endpoint's `who`, in the order of plan §1. */

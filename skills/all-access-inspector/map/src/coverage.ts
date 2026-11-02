@@ -1,6 +1,6 @@
 // Coverage: which endpoints a capability lists, per area, and the gaps: first-party named, third-party counted per package.
 
-import type { Key } from '../../review/src/inventory.ts';
+import { type Key, byText } from '../../review/src/inventory.ts';
 import type { Capability } from './cells.ts';
 import type { MapEndpoint } from './join.ts';
 import type { Domain } from './vocabulary.ts';
@@ -99,7 +99,7 @@ export const coverage = ({ areas, found, endpoints, domains, firstParty }: Cover
     ],
     third_party: {
       total: thirdParty.length,
-      packages: [...packages].sort(([a], [b]) => (a < b ? -1 : 1)).map(([name, keys]) => ({ name, count: keys.length, endpoints: keys })),
+      packages: [...packages].sort(([a], [b]) => byText(a, b)).map(([name, keys]) => ({ name, count: keys.length, endpoints: keys })),
     },
     unnamed: unfolded.flatMap(a => a.capabilities.filter(c => c.name === c.id).map(c => c.id)),
     untermed: unfolded.filter(a => a.capabilities.length && !a.term).map(a => a.id),

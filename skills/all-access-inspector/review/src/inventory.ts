@@ -8,6 +8,8 @@ export const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 /** Where the toolkit keeps a project's inventory and Review Log. */
 export const toolsDir = (project: string): string => join(project, 'tools', 'access-inspector');
 
+export const inventoryPath = (project: string): string => join(toolsDir(project), 'inventory.json');
+
 /** What a review keeps of an axis: evidence is left out, it moves with unrelated edits. */
 export const SEEN_FIELDS = ['value', 'layer', 'raw', 'rule'] as const;
 
@@ -59,6 +61,9 @@ export interface Folded extends Endpoint {
   head: boolean;
 }
 
+/** A row's methods as a reader sees them: its method, and HEAD when one is folded into it. */
+export const methods = (row: Pick<Folded, 'method' | 'head'>): string => (row.head ? `${row.method},HEAD` : row.method);
+
 export class InventoryError extends Error {}
 
 export const loadInventory = (path: string): Inventory => {
@@ -78,6 +83,9 @@ export const loadInventory = (path: string): Inventory => {
 export const keyOf = (e: { method: string; path: string; handler: string }): Key => [e.method, e.path, e.handler.replace(/:\d+$/, '')];
 
 export const keyText = (key: Key): string => JSON.stringify(key);
+
+/** Code-point order: the order of every sorted list of the toolkit. */
+export const byText = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
 /** The file of a project handler (`file:line`), or null for a framework handler (a dotted name), which serves unrelated paths. */
 export const handlerFile = (handler: string): string | null => (/:\d+$/.test(handler) ? handler.replace(/:\d+$/, '') : null);

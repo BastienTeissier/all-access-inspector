@@ -8,16 +8,17 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
-import { type Inventory, type Key, keyText, toolsDir } from '../../../skills/all-access-inspector/review/src/inventory.ts';
-import { type Logged, type LoggedCell, logPath, readLog } from '../../../skills/all-access-inspector/review/src/log.ts';
+import { type Inventory, type Key, inventoryPath, keyText, methods } from '../../../skills/all-access-inspector/review/src/inventory.ts';
+import { type Logged, type LoggedCell, logPath, today } from '../../../skills/all-access-inspector/review/src/log.ts';
 import { load } from '../../../skills/all-access-inspector/review/src/project.ts';
 import { type Orphan, type Row, cellText } from '../../../skills/all-access-inspector/review/src/replay.ts';
 import { siblings } from '../../../skills/all-access-inspector/review/src/signals.ts';
 import { queue as reviewQueue } from '../../../skills/all-access-inspector/review/src/tiers.ts';
-import { check } from '../../../skills/all-access-inspector/map/src/check.ts';
-import { type PageData, buildData } from '../../../skills/all-access-inspector/map/src/data.ts';
+import { checkProject } from '../../../skills/all-access-inspector/map/src/check.ts';
+import { type PageData, pageData, project as mapProject } from '../../../skills/all-access-inspector/map/src/data.ts';
 import { runtimePath } from '../../../skills/all-access-inspector/map/src/runtime.ts';
 import { vocabularyPath } from '../../../skills/all-access-inspector/map/src/vocabulary.ts';
+import type { Entry } from './history.ts';
 
 // Next bundles this file, so its own location means nothing at run time: `review app` and the tests run from apps/review.
 const VERSION_FILE = join(process.cwd(), '..', '..', 'skills', 'all-access-inspector', 'VERSION');
@@ -48,7 +49,7 @@ export type Projected = Row & { siblings: Key[] };
 export const openFinding = (r: Row): boolean => r.state === 'valid' && r.verdict?.verdict === 'finding';
 
 /** A row as the reviewer reads it: its methods, HEAD folded, and its path. */
-export const endpointName = (r: Row): string => `${r.head ? `${r.method},HEAD` : r.method} ${r.path}`;
+export const endpointName = (r: Row): string => `${methods(r)} ${r.path}`;
 
 /**
  * What saving the selection must be confirmed against: the open findings it would replace, named, and their keys as the
@@ -71,8 +72,6 @@ export interface Projection {
 export const cachePath = (project: string): string =>
   join(homedir(), '.cache', 'all-access-inspector', `${createHash('sha256').update(project).digest('hex').slice(0, 16)}.sqlite`);
 
-const inventoryPath = (project: string) => join(toolsDir(project), 'inventory.json');
-
 /** What the cache was built from: when any of it differs, the cache is stale. */
 const fingerprint = (project: string): Record<string, string> => {
   const stat = (path: string) => (existsSync(path) ? statSync(path) : null);
@@ -87,7 +86,7 @@ const fingerprint = (project: string): Record<string, string> => {
     // the shape of the tables below: a cache of another shape is rebuilt, not read
     projection: '3',
     // an `accepted` Verdict goes outdated the day after its `until`: a new day is a new replay
-    today: new Date().toISOString().slice(0, 10),
+    today: today(),
   };
 };
 
@@ -101,8 +100,6 @@ const SCHEMA = `
 
 /** The event table's key: an endpoint's Review Key, or `cell:` and the cell's. */
 export const cellKey = (cell: [string, string]): string => `cell:${cellText(cell)}`;
-
-type Entry = Logged | LoggedCell;
 
 const build = (path: string, meta: Record<string, string>, inventory: Inventory, rows: Row[], orphans: Orphan[], events: Entry[]) => {
   const temp = `${path}.${process.pid}.tmp`;
@@ -168,8 +165,7 @@ export const project = (dir: string): Projection => {
   let db = connect(path);
   if (db && !stale(db, meta)) return { project: abs, error: null, db };
   try {
-    const { inventory, rows, orphans } = load(abs);
-    const { events, cells } = readLog(abs);
+    const { inventory, events, cells, rows, orphans } = load(abs);
     mkdirSync(join(path, '..'), { recursive: true });
     build(path, meta, inventory, rows, orphans, [...events, ...cells]);
     // only now: until the new file is in place, the open handle is the last good state
@@ -213,19 +209,20 @@ export const row = (db: DatabaseSync, key: string): Projected | null => {
   return r ? parse(r) : null;
 };
 
+/** The event table's payloads, newest first; `key` narrows them to one Review Key or one cell. */
+const payloads = <T>(db: DatabaseSync, key?: string): T[] => {
+  const sql = `SELECT payload FROM event${key === undefined ? '' : ' WHERE key = ?'} ORDER BY at DESC, line DESC`;
+  return (db.prepare(sql).all(...(key === undefined ? [] : [key])) as { payload: string }[]).map(e => JSON.parse(e.payload) as T);
+};
+
 /** The events of one Review Key, newest first. */
-export const history = (db: DatabaseSync, key: string): Logged[] =>
-  (db.prepare('SELECT payload FROM event WHERE key = ? ORDER BY at DESC, line DESC').all(key) as { payload: string }[]).map(e => JSON.parse(e.payload) as Logged);
+export const history = (db: DatabaseSync, key: string): Logged[] => payloads(db, key);
 
 /** The events of one cell of the access map, newest first. */
-export const cellHistory = (db: DatabaseSync, cell: [string, string]): LoggedCell[] =>
-  (db.prepare('SELECT payload FROM event WHERE key = ? ORDER BY at DESC, line DESC').all(cellKey(cell)) as { payload: string }[]).map(
-    e => JSON.parse(e.payload) as LoggedCell,
-  );
+export const cellHistory = (db: DatabaseSync, cell: [string, string]): LoggedCell[] => payloads(db, cellKey(cell));
 
 /** Every event of the log, on endpoints and on cells, newest first. */
-export const events = (db: DatabaseSync): Entry[] =>
-  (db.prepare('SELECT payload FROM event ORDER BY at DESC, line DESC').all() as { payload: string }[]).map(e => JSON.parse(e.payload) as Entry);
+export const events = (db: DatabaseSync): Entry[] => payloads(db);
 
 /** The Verdicts on keys the inventory no longer has. */
 export const orphans = (db: DatabaseSync): Orphan[] =>
@@ -276,11 +273,12 @@ let built: { project: string; key: string; data: PageData; problems: string[] } 
 export const accessMap = (dir: string): AccessMap => {
   const abs = resolve(dir);
   const stat = (path: string) => (existsSync(path) ? `${statSync(path).size}:${statSync(path).mtimeMs}` : '-');
-  const key = [inventoryPath(abs), runtimePath(abs), vocabularyPath(abs), logPath(abs)].map(stat).join(' ') + new Date().toISOString().slice(0, 10);
+  const key = [inventoryPath(abs), runtimePath(abs), vocabularyPath(abs), logPath(abs)].map(stat).join(' ') + today();
   if (built?.project === abs && built.key === key) return { data: built.data, problems: built.problems, error: null };
   try {
-    const data = buildData(abs);
-    built = { project: abs, key, data, problems: check(abs).problems };
+    const p = mapProject(abs);
+    const data = pageData(p, abs);
+    built = { project: abs, key, data, problems: checkProject(p, abs).problems };
     return { data, problems: built.problems, error: null };
   } catch (error) {
     const last = built?.project === abs ? built : null;

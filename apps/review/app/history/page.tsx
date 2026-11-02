@@ -2,7 +2,7 @@
 
 import { basename } from 'node:path';
 
-import { projectDir } from '../../lib/filters.ts';
+import { cellHref, projectDir } from '../../lib/filters.ts';
 import { type Group, endpoints, eventText, groups, kinds, orphanedDecisions, page, reason } from '../../lib/history.ts';
 import { accessMap, events, hasMap, orphans, project } from '../../lib/projection.ts';
 
@@ -30,7 +30,7 @@ const GroupItem = ({ group }: { group: Group }) => {
                   <span className="m">{e.endpoint[0]}</span> <span className="path">{e.endpoint[1]}</span>
                 </>
               ) : (
-                <a href={`/map?tab=roles&cap=${encodeURIComponent(e.capability[0])}&role=${encodeURIComponent(e.capability[1])}`}>
+                <a href={cellHref(e.capability[0], e.capability[1])}>
                   {e.capability[0]} for {e.capability[1]}
                 </a>
               )}{' '}

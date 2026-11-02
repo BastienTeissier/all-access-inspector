@@ -36,8 +36,7 @@ const decide = (dir: string, options: Options, values: Record<string, string | b
   const p = project(dir, options);
   if (!p.caps.some(c => c.id === capability)) throw new Refused(`no capability ${capability} on the map`);
   if (!p.roles.some(r => r.id === role)) throw new Refused(`no role ${role} on the map`);
-  const cell = p.cells.find(c => cellText([c.capability, c.role]) === cellText([capability, role]));
-  return appendDecision(dir, values, [capability, role], (cell as NonNullable<typeof cell>).seen);
+  return appendDecision(dir, values, [capability, role], p.current.get(cellText([capability, role]))!);
 };
 
 export const main = (argv: string[]): { code: number; stdout: string; stderr: string } => {

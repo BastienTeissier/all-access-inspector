@@ -4,7 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { appendFileSync, closeSync, existsSync, openSync, readFileSync, writeSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { type Key, SEEN_FIELDS, type Seen, seenAxis, toolsDir } from './inventory.ts';
+import { type Key, SEEN_FIELDS, type Seen, byText, seenAxis, toolsDir } from './inventory.ts';
 
 export const VERSION = 1; // an event on an endpoint
 export const MAP_VERSION = 2; // an event on a capability, for a role
@@ -193,7 +193,7 @@ export const serialize = (e: Event | CellEvent): string => {
           event: e.event,
           batch: e.batch,
           capability: e.capability,
-          seen: { state: e.seen.state, reached: e.seen.reached, missed: e.seen.missed, who: Object.fromEntries(Object.entries(e.seen.who).sort(([a], [b]) => (a < b ? -1 : 1))) },
+          seen: { state: e.seen.state, reached: e.seen.reached, missed: e.seen.missed, who: Object.fromEntries(Object.entries(e.seen.who).sort(([a], [b]) => byText(a, b))) },
         }
       : {
           v: e.v,
@@ -267,3 +267,6 @@ export const append = (project: string, events: (Event | CellEvent)[]): void => 
 export const newBatch = (): string => `b-${randomBytes(4).toString('hex')}`;
 
 export const now = (): string => new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+/** Today, YYYY-MM-DD: an `accepted` Verdict is outdated the day after its `until`. */
+export const today = (): string => now().slice(0, 10);

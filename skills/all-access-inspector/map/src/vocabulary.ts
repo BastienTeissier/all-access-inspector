@@ -3,6 +3,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { byText } from '../../review/src/inventory.ts';
 import { WHO_KINDS, type Runtime, type WhoKind } from './runtime.ts';
 
 /** A project file:line written by hand somewhere in the vocabulary. */
@@ -233,7 +234,7 @@ export const pin = (project: string, path: string, vocabulary: Vocabulary): stri
     anchors[ref] = found;
     out.push(`pinned ${ref}: ${found}`);
   }
-  vocabulary.anchors = Object.fromEntries(Object.entries(anchors).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+  vocabulary.anchors = Object.fromEntries(Object.entries(anchors).sort(([a], [b]) => byText(a, b)));
   writeFileSync(path, `${JSON.stringify(vocabulary, null, 2)}\n`);
   return out;
 };

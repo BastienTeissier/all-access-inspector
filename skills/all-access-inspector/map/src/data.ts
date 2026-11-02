@@ -3,8 +3,9 @@
 import { basename, resolve } from 'node:path';
 
 import { output } from '../../review/src/output.ts';
-import { readLog, now } from '../../review/src/log.ts';
+import { today } from '../../review/src/log.ts';
 import { load } from '../../review/src/project.ts';
+import { byQueue } from '../../review/src/tiers.ts';
 import { type Alert, type Queue, alerts, queue } from './alerts.ts';
 import { type Capability, type Cell, cells, capabilityList, endpointsOf } from './cells.ts';
 import { type Coverage, type Gap, coverage, gaps } from './coverage.ts';
@@ -72,10 +73,8 @@ export interface PageData {
   };
 }
 
-export const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
-
 /** Every row, highest tier first, then path and method: the Review Queue's order, verdicts included. */
-const ordered = (rows: StatusRow[]): StatusRow[] => [...rows].sort((a, b) => a.tier - b.tier || byText(a.path, b.path) || byText(a.method, b.method));
+const ordered = (rows: StatusRow[]): StatusRow[] => [...rows].sort(byQueue);
 
 /** Vocabulary areas first, in their order, then any area a capability names that the vocabulary does not.
  * Name and defined_at: vocabulary, else the runtime's area, else the id; term: vocabulary, else the area's extracted capabilities'. */
@@ -111,7 +110,7 @@ const count = (xs: string[]): Record<string, number> => {
 /** The project as the map reads it, plus what `map check` needs that the page does not draw. */
 export const project = (dir: string, options: Options = {}) => {
   const vocabulary = loadVocabulary(options.vocabulary ?? vocabularyPath(dir));
-  const { inventory, rows: all } = load(dir);
+  const { inventory, rows: all, cells: logged } = load(dir);
   const rows = ordered(all.map(output));
   const { runtime, note } = loadRuntime(options.runtime ?? runtimePath(dir), inventory.stack);
   const j = joiner(runtime, vocabulary);
@@ -121,16 +120,24 @@ export const project = (dir: string, options: Options = {}) => {
   const derived = resources(endpoints, firstParty);
   const caps = capabilityList(runtime, vocabulary, derived);
   const found = caps.map(cap => ({ cap, ...endpointsOf(cap, endpoints) }));
-  const computed = cells(caps, roles, endpoints, runtime, vocabulary, readLog(dir).cells, now().slice(0, 10));
+  const computed = cells(caps, roles, endpoints, runtime, vocabulary, logged, today());
   const areas = areaList(vocabulary, runtime, caps);
   const covers = coverage({ areas, found, endpoints, domains: vocabulary.domains, firstParty });
   return { inventory, rows, runtime, note, vocabulary, endpoints, roles, derived, caps, found, areas, coverage: covers, ...computed };
 };
 
-export const buildData = (dir: string, options: Options = {}): PageData => {
-  const p = project(dir, options);
-  const names = new Map(p.caps.map(c => [c.id, c.name]));
-  const roleNames = new Map(p.roles.map(r => [r.id, r.name]));
+export type Project = ReturnType<typeof project>;
+
+/** A cell as a reader names it: the capability's name for the role's name, an id where the map has no name. */
+export const cellLabel = (caps: Capability[], roles: Role[]): ((cap: string, role: string) => string) => {
+  const names = new Map(caps.map(c => [c.id, c.name]));
+  const roleNames = new Map(roles.map(r => [r.id, r.name]));
+  return (cap, role) => `${names.get(cap) ?? cap} for ${roleNames.get(role) ?? role}`;
+};
+
+/** The page data of a project already read: the app reads a project once for its page and its check. */
+export const pageData = (p: Project, dir: string): PageData => {
+  const name = cellLabel(p.caps, p.roles);
   const rules = new Set(p.inventory.endpoints.flatMap(e => [e.authentication.rule, e.authorization.rule]).filter(r => r?.startsWith('recognition:')));
   return {
     project: { name: basename(resolve(dir)), stack: p.inventory.stack },
@@ -146,7 +153,7 @@ export const buildData = (dir: string, options: Options = {}): PageData => {
       };
     }),
     endpoints: p.endpoints.map(e => ({ ...e, reach: Object.fromEntries(p.roles.map(r => [r.id, reach(e.who, r)])) })),
-    alerts: alerts(p.cells, ([c, r]) => `${names.get(c) ?? c} for ${roleNames.get(r) ?? r}`),
+    alerts: alerts(p.cells, ([c, r]) => name(c, r)),
     queue: queue(p.endpoints, p.agents),
     coverage: p.coverage,
     gaps: gaps(p.coverage),
@@ -165,3 +172,5 @@ export const buildData = (dir: string, options: Options = {}): PageData => {
     },
   };
 };
+
+export const buildData = (dir: string, options: Options = {}): PageData => pageData(project(dir, options), dir);

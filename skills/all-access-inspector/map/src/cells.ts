@@ -1,6 +1,6 @@
 // Capabilities and cells: per capability and role, whether the role passes, its scope, and on what basis.
 
-import { type Key, keyText } from '../../review/src/inventory.ts';
+import { type Key, byText, keyText } from '../../review/src/inventory.ts';
 import type { CellSeen, LoggedCell } from '../../review/src/log.ts';
 import { type CellAgent, type Cells, type Decision, cellText, decide } from '../../review/src/replay.ts';
 import { type MapEndpoint, weakest } from './join.ts';
@@ -100,7 +100,6 @@ export const cellState = (reaches: Reach[]): CellState => {
   return 'open';
 };
 
-const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 const sortKeys = (keys: Key[]): Key[] => [...keys].sort((a, b) => byText(keyText(a), keyText(b)));
 
 /** The scope narrowing a capability for a role: a Map Rule's or the introspect's (`inferred`), else hand-written (`curated`).
@@ -132,7 +131,8 @@ export const cell = (cap: Capability, role: Role, endpoints: MapEndpoint[], runt
   return { capability: cap.id, role: role.id, state, scope, basis, seen };
 };
 
-/** Every cell, its decision joined from the Review Log; decisions on cells that no longer exist are orphaned. */
+/** Every cell, its decision joined from the Review Log, and `current`, the cells by cellText as an append fingerprints them;
+ * decisions on cells that no longer exist are orphaned. */
 export const cells = (
   caps: Capability[],
   roles: Role[],
@@ -141,7 +141,7 @@ export const cells = (
   vocabulary: Vocabulary,
   logged: LoggedCell[],
   today: string,
-): { cells: Cell[]; orphans: Decision[]; agents: CellAgent[] } => {
+): { cells: Cell[]; current: Cells; orphans: Decision[]; agents: CellAgent[] } => {
   const computed = caps.flatMap(cap => {
     const found = endpointsOf(cap, endpoints).found;
     return roles.map(role => cell(cap, role, found, runtime, vocabulary));
@@ -151,6 +151,7 @@ export const cells = (
   const byCell = new Map(decisions.map(d => [cellText(d.key), d]));
   return {
     cells: computed.map(c => ({ ...c, decision: byCell.get(cellText([c.capability, c.role])) ?? null })),
+    current,
     orphans: decisions.filter(d => d.state === 'orphaned'),
     agents,
   };

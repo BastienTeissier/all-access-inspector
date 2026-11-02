@@ -6,11 +6,10 @@ import { parseArgs } from 'node:util';
 import { project as mapProject } from '../../map/src/data.ts';
 import { type App, prepare, serve } from './app.ts';
 import { type CellsNow, appendAgent, appendVerdict } from './append.ts';
-import { InventoryError, classification } from './inventory.ts';
-import type { CellSeen } from './log.ts';
+import { InventoryError, classification, methods } from './inventory.ts';
 import { output } from './output.ts';
 import { Refused, load } from './project.ts';
-import { type Row, cellText } from './replay.ts';
+import { type Cells, type Row, cellText } from './replay.ts';
 import { TIERS, queue } from './tiers.ts';
 
 const USAGE = `usage:
@@ -22,10 +21,10 @@ const USAGE = `usage:
 
 /** The access map's cells, built on the first line that names one; a map that cannot be built refuses the append. */
 const cellsNow = (dir: string): CellsNow => {
-  let cells: Map<string, CellSeen> | undefined;
+  let cells: Cells | undefined;
   return cell => {
     try {
-      cells ??= new Map(mapProject(dir).cells.map(c => [cellText([c.capability, c.role]), c.seen]));
+      cells ??= mapProject(dir).current;
     } catch (error) {
       if (error instanceof Refused || error instanceof InventoryError) throw error;
       throw new Refused(`the access map cannot be built: ${(error as Error).message}`);
@@ -35,8 +34,6 @@ const cellsNow = (dir: string): CellsNow => {
 };
 
 const zones = (row: Row) => Object.values(row.dimensions).join(',');
-
-const methods = (row: Row) => (row.head ? `${row.method},HEAD` : row.method);
 
 /** Why the row is where it is: its Verdict when it has one, then every Signal it carries. */
 const detail = (row: Row): string => {

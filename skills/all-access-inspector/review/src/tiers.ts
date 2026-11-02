@@ -1,5 +1,6 @@
 // The Review Queue: every endpoint without a valid Verdict, by its highest tier, then path and method.
 
+import { byText } from './inventory.ts';
 import type { Signal } from './signals.ts';
 
 export const TIERS: Record<number, string> = {
@@ -45,10 +46,14 @@ export const tierOf = (row: Tiered): number => {
   return Math.min(fallback, ...row.signals.map(s => SIGNAL_TIER[s.id]));
 };
 
-const byCodePoint = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+/** By path, then method: an endpoint's methods side by side. */
+export const byPath = <T extends { path: string; method: string }>(a: T, b: T): number => byText(a.path, b.path) || byText(a.method, b.method);
+
+/** The Review Queue's order: highest tier first, then by path. */
+export const byQueue = <T extends { tier: number; path: string; method: string }>(a: T, b: T): number => a.tier - b.tier || byPath(a, b);
 
 /** Rows still needing a human: no valid `safe` or `accepted` Verdict. */
 export const queue = <T extends Tiered & { tier: number }>(rows: T[]): T[] =>
   rows
     .filter(r => !(r.state === 'valid' && r.verdict?.verdict !== 'finding'))
-    .sort((a, b) => a.tier - b.tier || byCodePoint(a.path, b.path) || byCodePoint(a.method, b.method));
+    .sort(byQueue);

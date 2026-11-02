@@ -15,6 +15,13 @@ export const href = (filters: Filters, e?: string): string => {
   return text ? `/?${text}` : '/';
 };
 
+/** A cell's URL: the Roles tab with its panel open. */
+export const cellHref = (cap: string, role: string): string => `/map?tab=roles&cap=${encodeURIComponent(cap)}&role=${encodeURIComponent(role)}`;
+
+/** A page's search params as the filters read them: the first value of each, repeated ones left out. */
+export const paramsOf = (searchParams: Record<string, string | string[] | undefined>): URLSearchParams =>
+  new URLSearchParams(Object.entries(searchParams).flatMap(([k, v]) => (typeof v === 'string' ? [[k, v]] : [])));
+
 /** The project the app reviews: `review app` passes it, absolute. */
 export const projectDir = (): string => {
   const dir = process.env.REVIEW_PROJECT;

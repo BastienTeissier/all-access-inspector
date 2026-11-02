@@ -1,15 +1,23 @@
 // map check: every problem that fails CI, then coverage and open findings. The CLI prints it, the review app shows it.
 
 import { type Key, keyText } from '../../review/src/inventory.ts';
-import { type Options, byText, project } from './data.ts';
+import { byPath } from '../../review/src/tiers.ts';
+import { type Options, type Project, cellLabel, project } from './data.ts';
 import { runtimeKey } from './runtime.ts';
 import { duplicates, missingTerms, staleReferences } from './vocabulary.ts';
 
+export interface Check {
+  code: number;
+  stdout: string;
+  problems: string[];
+}
+
 /** Every problem that fails CI, then coverage and open findings, which never do; `thirdParty` lists the third-party gaps one by one. */
-export const check = (dir: string, options: Options & { thirdParty?: boolean } = {}): { code: number; stdout: string; problems: string[] } => {
-  const { thirdParty = false } = options;
-  const p = project(dir, options);
-  const name = (cap: string, role: string) => `${p.caps.find(c => c.id === cap)?.name ?? cap} for ${p.roles.find(r => r.id === role)?.name ?? role}`;
+export const check = (dir: string, options: Options & { thirdParty?: boolean } = {}): Check => checkProject(project(dir, options), dir, options.thirdParty);
+
+/** `check` on a project already read: the app checks the project it draws. */
+export const checkProject = (p: Project, dir: string, thirdParty = false): Check => {
+  const name = cellLabel(p.caps, p.roles);
   const rows = new Set(p.endpoints.map(e => runtimeKey({ method: e.key[0], path: e.path, handler: e.handler })));
   const problems = [
     ...staleReferences(dir, p.vocabulary),
@@ -44,7 +52,7 @@ export const check = (dir: string, options: Options & { thirdParty?: boolean } =
   const labels = (keys: Key[]) =>
     keys
       .map(k => byKey.get(keyText(k)) ?? { method: k[0], path: k[1] })
-      .sort((a, b) => byText(a.path, b.path) || byText(a.method, b.method))
+      .sort(byPath)
       .map(e => `${e.method} ${e.path}`);
   const gaps = labels(cov.areas.flatMap(a => a.gaps));
   const packages = cov.third_party.packages;

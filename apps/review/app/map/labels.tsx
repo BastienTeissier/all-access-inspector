@@ -36,9 +36,6 @@ export const KINDS: Record<string, string> = {
   open: 'Not resolved',
 };
 
-/** A cell's URL: the Roles tab with its panel open. */
-export const cellHref = (cap: string, role: string): string => `/map?tab=roles&cap=${encodeURIComponent(cap)}&role=${encodeURIComponent(role)}`;
-
 export const StateChip = ({ state, basis }: { state: string; basis: string }) => <span className={`state c-${state} b-${basis}`}>{STATE[state]?.[0]}</span>;
 
 export const Who = ({ who, roles }: { who: PageEndpoint['who']; roles: Role[] }) => {
