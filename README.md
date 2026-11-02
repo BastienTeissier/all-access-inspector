@@ -482,10 +482,14 @@ tools/access-map/
 
 `node <skill>/map/src/cli.ts build <project>` writes one static page, `tools/access-map/out/access-map.html`, that you can open or share. The review app shows the same map under **Access map**, with a decision form on each cell. Both draw the same data, computed in `map/src/`.
 
-- **Alerts**: partial capabilities with no valid decision, open `finding` decisions, cells not resolved, endpoints behind no capability, the Agent's signals, the review Signals, and endpoints outside their expected access.
+- **Alerts**: partial capabilities with no valid decision, open `finding` decisions and cells not resolved, then a **Coverage** group listing, per area, the first-party endpoints behind no capability. The review Signals and the Agent's signals stay in the Review Queue: the page counts them in one line and never lists them.
 - **Roles**: areas × roles. Not signed in is the first column, the superuser the last. Each cell **passes**, is **partial** (the role reaches some of the capability's endpoints), **does not pass**, is **switched off** for everyone, or is **not resolved**. A cell shows its scope, and its basis as a border: solid when read from the code, ≈ inferred, dotted ✎ hand-written, dashed not resolved. Click a cell for its check, its evidence, and the endpoints the role reaches and misses.
 - **Routes**: one row per endpoint with who passes and the chain of checks, filterable.
 - **How it's built**: what each source contributed, and every heuristic behind an inferred badge.
+
+Every endpoint is meant to sit behind a capability. One comes from the code when a Map Introspect or a Map Rule reads it (an admin action), else it is **derived** from the inventory: a REST resource, a collection `<prefix>` with a detail sibling `<prefix>/{param}`, gives one capability per verb (`List invoices`, `Delete invoices`) and one per action nested under its detail path, with basis inferred. Derivation reads only paths and methods, so it is the same on Django, NestJS, Spring and Symfony, and only first-party handlers are derived from ([ADR 0007](docs/adr/0007-derived-facts-come-from-the-inventory.md)). The vocabulary renames a derived capability with `extends`, drops it with `replaces`, and folds its area into one of yours.
+
+A capability takes its vocabulary name, else the name its source gives (the admin's verbose names on Django, the verb and path segment when derived), else its id; an area takes its vocabulary name, else the extracted one. **Coverage** counts, per area, the endpoints a capability lists. A first-party endpoint behind none is named; a third-party one (an installed package's views) is counted per package.
 
 ### Decide a partial capability
 
@@ -505,7 +509,7 @@ A Capability Decision uses a Verdict's words and fields (`safe`, `accepted` with
 | `tools/access-inspector/inspect.sh map --check` (NestJS) | `runtime.json` differs from what the app declares now |
 | `node <skill>/map/src/cli.ts check <project>` | a pinned `file:line` no longer shows its line, a vocabulary entry duplicates a Map Rule, the runtime and the inventory disagree, a partial has no valid decision or an outdated one, a term is missing from `CONTEXT.md`, a group role holds no grant and no roles check names it |
 
-Both exit 2 when a file is unreadable or invalid. `map check` also prints the coverage and the open findings, which never fail it.
+Both exit 2 when a file is unreadable or invalid. `map check` also prints the coverage, which never fails it: the total, one line per area, every first-party endpoint behind no capability, the third-party ones counted per package (`--third-party` lists them), the capabilities still named by their id and the areas with no term. Then it prints the open findings, which never fail it either.
 
 ## Wire it into CI
 
