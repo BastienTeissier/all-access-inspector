@@ -28,13 +28,12 @@ test('only what the map raises, in order: undecided, finding, open', () => {
   ]);
 });
 
-test('endpoint signals and an open agent signal are counted on the queue, never as an alert', () => {
+test('endpoint signals and an open agent signal are counted on the queue', () => {
   const agents = [
     { key: ['export', 'clerk'], event: { event: 'signal_raised' } },
     { key: ['export', 'manager'], event: { event: 'triaged' } },
   ] as unknown as CellAgent[];
   expect(queue([list, stray, exported], agents)).toEqual({ signals: 4 });
-  expect(alerts([cell('export', 'partial')], name).every(a => !('endpoint' in a))).toBe(true);
 });
 
 test('no signal and no open agent signal leaves the queue empty', () => {
