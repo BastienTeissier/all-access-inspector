@@ -64,8 +64,8 @@ export const verdict = (row: Row, recognition: Rule[] = RECOGNITION, relations =
       return {
         kind: 'groups',
         roles: [...new Set(named)].sort(),
-        basis: 'rule',
-        how: `Recognition rule ${guard.name} (${guard.evidence}) lets through ${guard.rawMetadata}=${JSON.stringify(value)}`,
+        basis: 'extracted',
+        how: `${guard.name}: ${row.authorization.raw}`,
       };
     }
   }

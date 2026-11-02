@@ -76,7 +76,7 @@ test('nestjs map role roles() does not declare', () => {
   edit('src/admin/admin.controller.ts', "  @Roles('admin')\n  @Delete(':id')", "  @Roles('owner')\n  @Delete(':id')");
   const result = run();
   expect(result.status).toBe(2);
-  expect(result.stderr).toContain(`DELETE /api/admin/users/{id}: Recognition rule roles (src/auth/roles.guard.ts:8) lets through roles=["owner"] names role 'owner' that roles() does not declare`);
+  expect(result.stderr).toContain(`DELETE /api/admin/users/{id}: roles: RolesGuard roles=["owner"] names role 'owner' that roles() does not declare`);
   expect(existsSync(output())).toBe(false);
 });
 

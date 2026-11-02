@@ -46,14 +46,14 @@ const row = (authz: Axis, metadata = {}, authn = axis('required', 'recognition:s
   metadata,
 });
 
-const guarded = (roles: unknown) => row(axis('rule', 'recognition:roles'), { roles });
+const guarded = (roles: unknown) => row({ ...axis('rule', 'recognition:roles'), raw: `RolesGuard roles=${JSON.stringify(roles)}` }, { roles });
 
 test('a roles guard lets through the roles its metadata names', () => {
   expect(verdict(guarded(['b', 'a', 'a']), RECOGNITION, {})).toEqual({
     kind: 'groups',
     roles: ['a', 'b'],
-    basis: 'rule',
-    how: 'Recognition rule roles (src/auth/roles.guard.ts:8) lets through roles=["b","a","a"]',
+    basis: 'extracted',
+    how: 'roles: RolesGuard roles=["b","a","a"]',
   });
   expect(verdict(guarded('admin'), RECOGNITION, {})).toMatchObject({ kind: 'groups', roles: ['admin'] });
 });
@@ -141,6 +141,6 @@ test('the runtime holds only endpoints with a verdict, each naming a declared ro
   ]);
   expect(runtime).toMatchObject({ stack: 'nestjs', base_script: { stack: 'nestjs', version: '0.5.0' }, grants: {}, areas: [] });
   expect(() => build([guarded(['admin', 'owner'])], '0.5.0', RECOGNITION)).toThrow(
-    `GET /users: Recognition rule roles (src/auth/roles.guard.ts:8) lets through roles=["admin","owner"] names role 'owner' that roles() does not declare`,
+    `GET /users: roles: RolesGuard roles=["admin","owner"] names role 'owner' that roles() does not declare`,
   );
 });
