@@ -4,6 +4,11 @@ Tested with Symfony 8.1 (SecurityBundle 8.1) and API Platform 5.0 on PHP 8.5. Sy
 
 ## Vendor and run
 
+- App root: the directory that holds `composer.json` and `src/Kernel.php`.
+- Boot, rules and dimensions files: `src/Boot.php`, `src/Rules.php`, `src/Dimensions.php` in `tools/access-inspector/`. Their project section runs from `// --- project ---` to `// --- end project ---`.
+- Production entry: `Boot::KERNEL`, the kernel class, and `Boot::ENV`, its `APP_ENV`. Boot entries: `Env` in `Boot::environ()`.
+- Rule fields: `Rule::construct`, `Rule::pathPrefix`, `->safe(…)`, `->withRaw(…)`.
+
 Copy `<skill>/base-scripts/symfony/tools/access-inspector/` into `tools/access-inspector/` with `cp -RL` (`VERSION` is a symlink in the toolkit). Never copy the toolkit's `composer.json`, `composer.lock`, `phpunit.xml`, `tests/` or `vendor/`.
 
 The script runs on the project's own `vendor/autoload.php`: run `composer install` first. It needs `symfony/framework-bundle`. It reads `access_control` only with `symfony/security-bundle` and API Platform operations only with `api-platform/core`, and `.env` files only with `symfony/dotenv`.
@@ -52,7 +57,7 @@ The script prints `cannot boot <kernel> with env <env>: <exception>: <message>`.
 | `<kernel> is final` | ask the team to remove `final` |
 | `class App\Kernel not found`, `ClassNotFoundError` | `composer install` not run, or a dev-only bundle registered for `all` in `config/bundles.php`: report it |
 
-Never set a variable that changes `security.yaml`, routes or API Platform security away from production, and never an `Env` holding a real secret.
+What decides the routes and the access checks stays as production builds it: `security.yaml`, a voter, a controller, the kernel. Never set a variable that changes `security.yaml`, routes or API Platform security away from production, and never an `Env` holding a real secret.
 
 ## Built-in rules
 
@@ -93,7 +98,7 @@ An entry or attribute listing several roles is read as the default `affirmative`
 
 ## Triage checklist
 
-Read each handler in the Triage scope (`SKILL.md` § Triage) for what the inventory cannot see. Raise a Signal on the first item that holds; otherwise mark it `triaged`.
+Read each handler in the triage scope (`workflows/triage.md`) for what the inventory cannot see. Raise a Signal on the first item that holds; otherwise mark it `triaged`.
 
 - **Name and verb against the check.** An action named `delete*`, `approve`, `export`, `impersonate` or `refund` with `required/none` or an `anonymous` write is a Signal. So is a `PUT`/`PATCH` operation any signed-in user reaches on a resource whose `POST` needs a role: raise it on the open one.
 - **`methods:` filters.** `#[IsGranted(…, methods: ['POST'])]` or an `access_control` entry with `methods` leaves the other verbs to the next check; the inventory shows it. Raise a Signal only when that leaves a write reachable.

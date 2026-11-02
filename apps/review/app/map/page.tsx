@@ -187,7 +187,7 @@ export default async function AccessMap({ searchParams }: { searchParams: Promis
       <main className="wrap">
         <h1>No access map for {basename(abs)}</h1>
         <p className="note-box">
-          <code>tools/access-map/</code> is missing: ask the Agent to map the access of this project (§ Map of the skill), then reload.
+          <code>tools/access-map/</code> is missing: ask the Agent to map the access of this project (the skill's map workflow), then reload.
         </p>
       </main>
     );

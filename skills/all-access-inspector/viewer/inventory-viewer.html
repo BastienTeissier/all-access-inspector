@@ -229,7 +229,7 @@ function overview() {
 
 function zones() {
   const dims = Object.keys(INV.project_dimensions);
-  if (!dims.length) return '<p class="note-box">This inventory declares no Project Dimension. The skill proposes them in its step 6; once the team confirms some, endpoints are grouped by zone here.</p>';
+  if (!dims.length) return '<p class="note-box">This inventory declares no Project Dimension. The skill proposes them when it fits the project; once the team confirms some, endpoints are grouped by zone here.</p>';
   if (!dims.includes(dim)) dim = dims[0];
   let h = dims.length > 1
     ? `<label class="picker">Dimension <select id="dim">${dims.map(d => `<option ${d === dim ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select></label>` : '';
