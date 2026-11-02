@@ -145,7 +145,7 @@ export const buildData = (dir: string, options: Options = {}): PageData => {
     }),
     endpoints: p.endpoints.map(e => ({ ...e, reach: Object.fromEntries(p.roles.map(r => [r.id, reach(e.who, r)])) })),
     alerts: alerts(p.cells, ([c, r]) => `${names.get(c) ?? c} for ${roleNames.get(r) ?? r}`),
-    queue: queue(p.endpoints, p.agents, p.found),
+    queue: queue(p.endpoints, p.agents),
     coverage: p.coverage,
     gaps: gaps(p.coverage),
     snippets: p.runtime.snippets,
