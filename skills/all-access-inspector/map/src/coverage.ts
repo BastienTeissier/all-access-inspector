@@ -61,7 +61,7 @@ export const coverage = ({ areas, found, endpoints, domains, firstParty }: Cover
   for (const e of endpoints.filter(e => !covered.has(e))) {
     const owner =
       prefixes.filter(p => under(e.path, p.prefix)).sort((a, b) => b.prefix.length - a.prefix.length)[0]?.area ?? e.domain ?? NO_AREA;
-    gapsOf.set(owner, [...(gapsOf.get(owner) ?? []), e]);
+    gapsOf.set(owner, gapsOf.get(owner) ?? []).get(owner)?.push(e);
   }
   const line = (id: string, name: string): CoverageArea => {
     const gaps = gapsOf.get(id) ?? [];
@@ -72,7 +72,10 @@ export const coverage = ({ areas, found, endpoints, domains, firstParty }: Cover
   const rest = [...gapsOf.keys()].filter(id => !listed.some(a => a.id === id)).sort((a, b) => Number(a === NO_AREA) - Number(b === NO_AREA));
   const thirdParty = endpoints.filter(e => !covered.has(e) && !firstParty(e.handler));
   const packages = new Map<string, Key[]>();
-  for (const e of thirdParty) packages.set(packageOf(e.handler), [...(packages.get(packageOf(e.handler)) ?? []), e.key]);
+  for (const e of thirdParty) {
+    const name = packageOf(e.handler);
+    packages.set(name, packages.get(name) ?? []).get(name)?.push(e.key);
+  }
   const unfolded = areas.filter(a => !a.folded);
   return {
     covered: covered.size,
