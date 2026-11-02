@@ -16,7 +16,7 @@ export const ABOUT = {
     "Every route the booted app serves, the guards and metadata on its handler and controller, the Adapted Script's" +
     ' Recognition Rules, and the Map Rules in tools/access-map/project.ts.',
   holds: [
-    'Roles, scopes and capabilities from the Map Rules in tools/access-map/project.ts',
+    'Roles, staff, grants, scopes and capabilities from the Map Rules in tools/access-map/project.ts',
     'The signed-in role, at the first Recognition Rule outside RELATION_RULES that requires sign-in',
     'Per endpoint, the roles a roles guard lets through, read from the metadata its Recognition Rule names',
     'Per endpoint, the relation roles a Recognition Rule in RELATION_RULES lets through',
@@ -79,7 +79,7 @@ export const verdict = (row: Row, recognition: Rule[] = RECOGNITION, relations =
 };
 
 /** The facts one Map Rule returns, each holding `keys`. */
-const facts = (rule: 'roles' | 'includes' | 'scopes' | 'scoped' | 'capabilities', keys: string[]): Fact[] => {
+const facts = (rule: 'roles' | 'includes' | 'staff' | 'grants' | 'scopes' | 'scoped' | 'capabilities', keys: string[]): Fact[] => {
   const found = project[rule]();
   for (const fact of found) {
     const missing = keys.filter(k => !(k in fact));
@@ -105,8 +105,20 @@ export const roles = (found: Row[], recognition: Rule[] = RECOGNITION, relations
     if (role === undefined) throw new MapRuleError(`includes(): no role '${String(i.role)}'`);
     role.includes.push({ role: i.includes, at: i.at });
   }
+  for (const s of facts('staff', ['role', 'at'])) {
+    const role = declared.get(s.role as string);
+    if (role === undefined) throw new MapRuleError(`staff(): no role '${String(s.role)}'`);
+    role.staff = { at: s.at };
+  }
   for (const role of declared.values()) role.includes.sort((a, b) => compareTuples([a.role, a.at] as string[], [b.role, b.at] as string[]));
   return [...declared.values()];
+};
+
+/** grants(), by permission. */
+export const grants = (): Record<string, Fact[]> => {
+  const found: Record<string, Fact[]> = {};
+  for (const g of facts('grants', ['permission', 'role', 'at'])) (found[g.permission as string] ??= []).push({ role: g.role, at: g.at });
+  return found;
 };
 
 /** Handlers whose controller class or function is declared under a FIRST_PARTY directory. */
@@ -144,7 +156,7 @@ export const build = (found: Row[], version: string, recognition: Rule[] = RECOG
     about: ABOUT,
     roles: declared,
     areas: [],
-    grants: {},
+    grants: grants(),
     scopes: facts('scopes', ['id', 'label', 'at']).map(s => ({ ...pick(s, ['id', 'label', 'at']), basis: 'inferred' })),
     scoped: facts('scoped', ['capability', 'role', 'scope', 'at']).map(s => ({ ...pick(s, ['capability', 'role', 'scope', 'at']), basis: 'rule' })),
     capabilities: facts('capabilities', capability).map(c => ({ ...pick(c, capability), basis: 'rule' })),

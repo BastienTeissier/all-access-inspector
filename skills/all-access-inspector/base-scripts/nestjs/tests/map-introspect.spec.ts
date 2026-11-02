@@ -11,6 +11,8 @@ import type { Fact } from '../access_map/runtime.js';
 const rules = vi.hoisted(() => ({
   roles: [] as Fact[],
   includes: [] as Fact[],
+  staff: [] as Fact[],
+  grants: [] as Fact[],
   scopes: [] as Fact[],
   scoped: [] as Fact[],
   capabilities: [] as Fact[],
@@ -20,6 +22,8 @@ vi.mock('../access_map/project.js', () => ({
   RELATION_RULES: {},
   roles: () => rules.roles,
   includes: () => rules.includes,
+  staff: () => rules.staff,
+  grants: () => rules.grants,
   scopes: () => rules.scopes,
   scoped: () => rules.scoped,
   capabilities: () => rules.capabilities,
@@ -106,12 +110,37 @@ test('the signed-in role sits at the first rule an endpoint requires sign-in by,
   expect(roles(found, RECOGNITION).map(r => r.id)).toEqual(['member']);
 });
 
+test('staff() marks a role, grants() gives each permission its holders', () => {
+  rules.roles = [{ id: 'admin', kind: 'group', at: 'src/a.ts:3' }];
+  rules.staff = [{ role: 'admin', at: 'src/a.ts:5' }];
+  rules.grants = [
+    { permission: 'users.delete', role: 'admin', at: 'src/p.ts:2' },
+    { permission: 'users.read', role: 'admin', at: 'src/p.ts:2' },
+    { permission: 'users.read', role: 'user', at: 'src/p.ts:3' },
+  ];
+  const runtime = build([], '0.5.0', RECOGNITION);
+  expect(runtime.roles).toMatchObject([{ id: 'admin', staff: { at: 'src/a.ts:5' } }]);
+  expect(runtime.grants).toEqual({
+    'users.delete': [{ role: 'admin', at: 'src/p.ts:2' }],
+    'users.read': [
+      { role: 'admin', at: 'src/p.ts:2' },
+      { role: 'user', at: 'src/p.ts:3' },
+    ],
+  });
+});
+
 test('a Map Rule fact without its keys, or including an undeclared role, is refused', () => {
   rules.roles = [{ id: 'admin', kind: 'group' }];
   expect(() => roles([], RECOGNITION)).toThrow('roles() returned {"id":"admin","kind":"group"} without at');
   rules.roles = [];
   rules.includes = [{ role: 'admin', includes: 'user', at: 'src/a.ts:1' }];
   expect(() => roles([], RECOGNITION)).toThrow("includes(): no role 'admin'");
+  rules.includes = [];
+  rules.staff = [{ role: 'admin', at: 'src/a.ts:1' }];
+  expect(() => roles([], RECOGNITION)).toThrow("staff(): no role 'admin'");
+  rules.staff = [];
+  rules.grants = [{ permission: 'users.read', role: 'admin' }];
+  expect(() => build([], '0.5.0', RECOGNITION)).toThrow('grants() returned {"permission":"users.read","role":"admin"} without at');
 });
 
 test('first-party handlers are the classes and functions declared under the FIRST_PARTY directories', () => {

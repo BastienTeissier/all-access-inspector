@@ -44,6 +44,24 @@ export const roles = (): Fact[] => [
 export const includes = (): Fact[] => [];
 
 /**
+ * {role, at}: accounts of `role` pass staff checks (a vocabulary route check with who `staff`).
+ *
+ * A guard letting through every account flagged staff, which only admins are:
+ *   return [{ role: 'admin', at: lineOf(ROOT, 'src/auth/staff.guard.ts', 'user.isStaff') }];
+ */
+export const staff = (): Fact[] => [];
+
+/**
+ * {permission, role, at}: `role` holds `permission`.
+ *
+ * A permission map keyed by role (`import { PERMISSIONS } from '../../src/auth/permissions.js';` in this section):
+ *   return Object.entries(PERMISSIONS).flatMap(([role, permissions]) =>
+ *     permissions.map(permission => ({ permission, role, at: lineOf(ROOT, 'src/auth/permissions.ts', `${role}: [`) })),
+ *   );
+ */
+export const grants = (): Fact[] => [];
+
+/**
  * {id, label, at}: a filter on which records a role sees.
  *
  * A repository query filtered on the caller's company:

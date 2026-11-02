@@ -127,7 +127,7 @@ Blind spots:
 
 - A guard comparing something other than a role (`user.tier === 'gold'`, a feature flag, the record's owner) has no role list to read. Leave its rule without `rawMetadata`, and name it in `RELATION_RULES` or a vocabulary `route_checks` entry.
 - Roles come from `roles()`, not from the `Role` enum: declare each one there.
-- Grants and areas are not read: write the areas in the vocabulary.
+- Grants and areas are not read: declare the grants in `grants()`, and write the areas in the vocabulary.
 
 REST resources need no Map Rule: the map derives one capability per resource and verb from the inventory's paths (`resource.api.products.list`, basis `inferred`). Name one with `extends` in the vocabulary, or drop it with a hand-written capability's `replaces`.
 
@@ -135,7 +135,7 @@ The project section of `project.ts`:
 
 - `FIRST_PARTY`: the directories whose classes and functions are the project's own (`['src']`).
 - `RELATION_RULES`: Recognition Rule name → the ids of the `relation` roles it lets through (an API key middleware: `{ partner_key: ['partner'] }`).
-- The Map Rules (`roles()`, `includes()`, `scopes()`, `scoped()`, `capabilities()`), each returning facts with `at` from `lineOf(ROOT, '<file>', '<text on the line>')`. Each function's JSDoc holds the example as code.
+- The Map Rules (`roles()`, `includes()`, `staff()`, `grants()`, `scopes()`, `scoped()`, `capabilities()`), each returning facts with `at` from `lineOf(ROOT, '<file>', '<text on the line>')`. Each function's JSDoc holds the example as code.
 
 Where roles, grants and scopes live on NestJS:
 
