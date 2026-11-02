@@ -12,6 +12,10 @@ SCHEMA = json.loads(
     (SKILL / "schema" / "inventory.schema.json").read_text(encoding="utf-8")
 )
 VALIDATOR = Draft202012Validator(SCHEMA)
+RUNTIME_VALIDATOR = Draft202012Validator(
+    json.loads((SKILL / "schema" / "runtime.schema.json").read_text(encoding="utf-8"))
+)
+RUNTIME = REPO / "fixtures" / "django-demo" / "expected" / "runtime.json"
 CANONICAL = SKILL / "schema" / "samples" / "canonical.json"
 SAMPLES = sorted(
     [
@@ -213,3 +217,31 @@ def test_canonical_input_describes_the_canonical_inventory() -> None:
     neutral["endpoints"].sort(key=lambda e: (e["path"], e["method"], e["handler"]))
 
     assert neutral == load(CANONICAL)
+
+
+def test_runtime_with_areas_and_capability_names_validates() -> None:
+    runtime = load(RUNTIME)
+    runtime["areas"] = [
+        {"id": "shop.order", "name": "orders", "at": "shop/models.py:8"}
+    ]
+    runtime["capabilities"][0]["name"] = "Add order"
+
+    RUNTIME_VALIDATOR.validate(runtime)
+
+
+def test_runtime_rejects_an_area_with_an_extra_key() -> None:
+    runtime = load(RUNTIME)
+    runtime["areas"] = [
+        {
+            "id": "shop.order",
+            "name": "orders",
+            "at": "shop/models.py:8",
+            "term": "Order",
+        }
+    ]
+
+    errors = list(RUNTIME_VALIDATOR.iter_errors(runtime))
+
+    assert [(e.validator, list(e.absolute_path)) for e in errors] == [
+        ("additionalProperties", ["areas", 0])
+    ]

@@ -13,6 +13,7 @@ KEYS = (
     "base_script",
     "about",
     "roles",
+    "areas",
     "grants",
     "scopes",
     "scoped",
@@ -23,6 +24,7 @@ KEYS = (
 # How each list is sorted and how one of its items is named in a diff.
 IDENTITY: dict[str, tuple[str, ...]] = {
     "roles": ("id",),
+    "areas": ("id",),
     "scopes": ("id",),
     "scoped": ("capability", "role", "scope"),
     "capabilities": ("id",),
@@ -49,6 +51,10 @@ def _identity(name: str, item: dict[str, Any]) -> tuple[str, ...]:
 
 def canonical(runtime: dict[str, Any]) -> dict[str, Any]:
     """Keys in schema order, lists sorted, grants by role: equal content gives equal bytes."""
+    runtime = {
+        "areas": [],
+        **runtime,
+    }  # optional: a runtime written before 0.5.0 has none
     out = {key: runtime[key] for key in KEYS}
     for name in IDENTITY:
         out[name] = sorted(runtime[name], key=lambda item: _identity(name, item))
