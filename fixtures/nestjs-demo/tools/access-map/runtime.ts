@@ -66,7 +66,7 @@ const sortedEntries = <T>(o: Record<string, T>): [string, T][] => Object.entries
 
 /** Keys in schema order, lists sorted, grants by role: equal content gives equal bytes. */
 export const canonical = (runtime: Runtime): Runtime => {
-  const full: Runtime = { areas: [], first_party: [], ...runtime }; // optional: a runtime written before 0.5.0 has neither
+  const full: Runtime = { areas: [], first_party: [], ...runtime }; // optional in the schema: a committed runtime may leave both out
   const out: Runtime = Object.fromEntries(KEYS.map(k => [k, full[k]]));
   for (const name of Object.keys(IDENTITY)) {
     out[name] = [...(full[name] as Fact[])].sort((a, b) => compareTuples(identity(name, a), identity(name, b)));
