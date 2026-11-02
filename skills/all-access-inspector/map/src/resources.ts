@@ -62,8 +62,9 @@ export const resources = (endpoints: MapEndpoint[], firstParty: (handler: string
       const rows = (at.get(side === 'collection' ? key : `${key}/{}`) ?? []).filter(e => (methods as readonly string[]).includes(e.key[0]));
       add(prefix, verb, `${capitalise(verb)} ${last}`, verb !== 'list' && verb !== 'read', rows);
     }
+    const under = `${key}/{}/`;
     for (const nested of [...at.keys()].sort()) {
-      const segment = nested.startsWith(`${key}/{}/`) ? nested.slice(key.length + 4) : '';
+      const segment = nested.startsWith(under) ? nested.slice(under.length) : '';
       if (!segment || segment.includes('/') || segment === '{}' || isResource(nested)) continue;
       const rows = at.get(nested)!.filter(e => ACTION_METHODS.includes(e.key[0]));
       add(prefix, segment, capitalise(segment), rows.some(e => e.key[0] !== 'GET'), rows);
