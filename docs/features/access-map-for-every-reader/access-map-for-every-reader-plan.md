@@ -52,7 +52,7 @@ No database. Contracts: `skills/all-access-inspector/schema/runtime.schema.json`
 - **Runtime capability** (`runtime.capabilities[]`): optional `name` (string). Django: `"<Action> <verbose_name>"` for add/change/delete, `"View <verbose_name_plural>"` for view, `short_description` or function name for custom actions.
 - **Vocabulary**: shapes unchanged. `areas[].name` and `capabilities[].extends.name` keep precedence over runtime names. `resources[]` (regex → label) unchanged, still feeds the Routes column.
 - **Map `Capability`** (`cells.ts`): `name` precedence vocabulary > `runtime.name` > `id`; new `derived`.
-- **`PageArea`** (`data.ts`): `name` precedence vocabulary > `runtime.areas[].name` > `id`; `term` from vocabulary, else the area's capabilities' `term` (extracted), else null; `defined_at` from vocabulary else `runtime.areas[].at`.
+- **`PageArea`** (`data.ts`): `name` precedence vocabulary > `runtime.areas[].name` > `id`; `term` from vocabulary (required unless the area folds others); an area with no vocabulary entry takes its capabilities' extracted `term`, else null; `defined_at` from vocabulary else `runtime.areas[].at`.
 - **`Alert`** (`alerts.ts`): `kind` narrowed to `undecided | finding | open`.
 - **`PageData`**: `coverage` replaced by the structure above; `queue` added; `alerts` holds the three kinds only.
 - **`check.ts` output**: coverage block per § 1 Business Rules; `--third-party` flag lists third-party gap endpoints.
@@ -177,7 +177,8 @@ Phases continue the previous plan (last: 9d). One PR per phase; each ends green 
 
 ### Phase 12 — UF20 Capabilities from resources
 
-- [ ] **First-party test**: `join.ts isFirstParty(handler, stack)` over ⚪ `handlerFile`; `join.spec.ts` cases.
+- [x] **First-party test**: `join.ts isFirstParty(handler, stack)` over ⚪ `handlerFile`, shipped in Phase 10 (coverage needs it), cases in `data.spec.ts`.
+- [ ] **First-party as an introspect fact**: a dotted first-party handler (`shop.views.PingHook`) has no file:line and is read as third-party; record first-party in the runtime instead of guessing it in `join.ts` (PR #20 review).
 - [ ] **ADR 0007**: `docs/adr/0007-derived-facts-come-from-the-inventory.md`: the map derives resource capabilities from inventory shapes, same rule on every stack, basis `inferred`; options rejected: introspect-written, Agent-proposed; consequences: `replaces` overrides, coverage reported not failed, `CONTEXT.md` ladder gains a derived rung.
 - [ ] **Derivation**: `resources.ts` + `resources.spec.ts`; `cells.ts capabilityList(runtime, vocabulary, derived)` with `derived` field and `replaces` on derived; `data.ts project()` wires it.
 - [ ] **Check and page**: a derived capability shows `inferred` basis badge, `derived` tag in cell panel (`page.html`, `cell-panel.tsx`); `check.ts` unnamed list excludes derived names (they are named); `cli.spec.ts` derived decision round trip.
