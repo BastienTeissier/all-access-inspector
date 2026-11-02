@@ -54,7 +54,7 @@ export const capabilityList = (runtime: Runtime, vocabulary: Vocabulary): Capabi
     .filter(c => !replaced.has(c.id))
     .map((c): Capability => {
       const n = named.get(c.id);
-      return { ...c, name: n?.name ?? c.id, sub: n?.sub ?? null, area: n?.area ?? foldedInto(c.area, vocabulary.areas) ?? c.area, reason: null };
+      return { ...c, name: n?.name ?? c.name ?? c.id, sub: n?.sub ?? null, area: n?.area ?? foldedInto(c.area, vocabulary.areas) ?? c.area, reason: null };
     });
   const curated = written.map(
     (c): Capability => ({

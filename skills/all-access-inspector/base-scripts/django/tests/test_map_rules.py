@@ -83,6 +83,7 @@ def runtime(**more: Any) -> dict[str, Any]:
             {"id": "manager", "kind": "group", "at": "r.py:3"},
             {"id": "clerk", "kind": "group", "at": "r.py:2"},
         ],
+        "areas": [],
         "grants": {
             "shop.view": [
                 {"role": "manager", "at": "r.py:3"},
@@ -110,6 +111,16 @@ def test_runtime_serialisation_is_sorted_and_stable() -> None:
     assert '    {"id": "clerk", "kind": "group", "at": "r.py:2"},\n' in text
     assert '  "scopes": [],\n' in text
     assert to_canonical_json(json.loads(text)) == text
+
+
+def test_runtime_check_reads_a_runtime_without_areas() -> None:
+    committed = runtime()
+    del committed["areas"]
+    area = {"id": "shop.order", "name": "orders", "at": "shop/models.py:8"}
+
+    assert check(committed, runtime(areas=[area])) == [
+        '+ areas shop.order: {"id": "shop.order", "name": "orders", "at": "shop/models.py:8"}'
+    ]
 
 
 def test_runtime_check() -> None:

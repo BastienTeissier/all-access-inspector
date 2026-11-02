@@ -2,7 +2,7 @@
 // good state kept when a file breaks.
 
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, copyFileSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -11,7 +11,7 @@ import { beforeEach, expect, test } from 'vitest';
 import { keyText } from '../../../skills/all-access-inspector/review/src/inventory.ts';
 import { load } from '../../../skills/all-access-inspector/review/src/project.ts';
 import { queue as reviewQueue } from '../../../skills/all-access-inspector/review/src/tiers.ts';
-import { cachePath, header, history, project, queue, row, uncommitted } from '../lib/projection.ts';
+import { accessMap, cachePath, header, history, project, queue, row, uncommitted } from '../lib/projection.ts';
 
 const REPO = join(import.meta.dirname, '..', '..', '..');
 const INVENTORY = join(REPO, 'fixtures', 'django-demo', 'expected', 'inventory.json');
@@ -104,4 +104,12 @@ test('before the first commit, every line of the log is not committed', () => {
   execFileSync('git', ['init', '-q'], { cwd: dir });
   execFileSync('git', ['add', '-A'], { cwd: dir });
   expect(uncommitted(dir)).toBe(readFileSync(tools('reviews.jsonl'), 'utf8').split('\n').filter(Boolean).length);
+});
+
+test('the access map carries coverage per area and the third-party gaps', () => {
+  cpSync(join(REPO, 'fixtures', 'django-demo', 'tools', 'access-map'), join(dir, 'tools', 'access-map'), { recursive: true });
+  const { data, error } = accessMap(dir);
+  expect(error).toBeNull();
+  expect(data?.coverage).toMatchObject({ covered: 12, total: 72, third_party: { total: 22 }, unnamed: [], untermed: [] });
+  expect(data?.coverage.areas.map(a => a.name)).toContain('products');
 });

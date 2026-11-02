@@ -71,7 +71,7 @@ ABOUT = {
     "command": "python tools/access-map/introspect.py",
 }
 
-Who = dict[str, str]
+Who = dict[str, Any]
 Layer = dict[str, Any]
 Override = dict[str, str]
 Admin = dict[str, Any]
@@ -125,6 +125,32 @@ def superuser_role() -> dict[str, Any]:
     return {"id": "superuser", "kind": "superuser", "at": at, "basis": "extracted"}
 
 
+def action_name(action: str, singular: str, plural: str) -> str:
+    """A model page's name as the admin words it: `Add order`, `View orders`."""
+    return f"View {plural}" if action == "view" else f"{action.capitalize()} {singular}"
+
+
+def view_name(view: Callable[..., Any]) -> str:
+    """A custom admin view's name: its short_description, else its function name."""
+    return str(getattr(view, "short_description", None) or view.__name__)
+
+
+# A value each built-in converter accepts: `1` for int, str, slug and path, a UUID for uuid.
+PLACEHOLDERS = ("1", "00000000-0000-0000-0000-000000000000")
+
+
+def view_of(path: str) -> Callable[..., Any] | None:
+    """The view a custom admin URL resolves to, a placeholder standing in for each parameter."""
+    from django.urls import Resolver404, resolve
+
+    for placeholder in PLACEHOLDERS:
+        try:
+            return resolve(re.sub(r"\{\w+\}", placeholder, path)).func  # type: ignore[no-any-return]
+        except Resolver404:
+            continue
+    return None
+
+
 def admin_entries() -> list[Admin]:
     """Every ModelAdmin of a mounted admin site: URL prefix, permission per action, first-party overrides."""
     from django.contrib.admin.sites import all_sites
@@ -158,6 +184,9 @@ def admin_entries() -> list[Admin]:
                     "prefix": prefix,
                     "model": f"{opts.app_label}.{opts.model_name}",
                     "term": opts.object_name,
+                    "name": str(opts.verbose_name),
+                    "plural": str(opts.verbose_name_plural),
+                    "model_at": location(model)["at"],
                     "admin_at": location(cls)["at"] if is_first_party(cls) else None,
                     "at": location(cls if is_first_party(cls) else model)["at"],
                     "permissions": {
@@ -463,6 +492,7 @@ class Introspect:
                     cap_id = f"{admin['prefix'].strip('/').replace('/', '.')}.{action}"
                 found[cap_id] = {
                     "id": cap_id,
+                    "name": action_name(action, admin["name"], admin["plural"]),
                     "area": admin["model"],
                     "term": admin["term"],
                     "verb": "read" if action == "view" else "write",
@@ -481,8 +511,10 @@ class Introspect:
             suffix = path[len(custom_admin["prefix"]) :].strip("/").split("/")
             name = ".".join(s for s in suffix if not s.startswith("{"))
             cap_id = f"{custom_admin['model']}.{name}"
+            view = view_of(path)
             found[cap_id] = {
                 "id": cap_id,
+                "name": view_name(view) if view else name,
                 "area": custom_admin["model"],
                 "term": custom_admin["term"],
                 "verb": "read" if custom["action"] == "view" else "write",
@@ -491,6 +523,14 @@ class Introspect:
                 "at": custom["at"],
                 "basis": "extracted",
             }
+        return list(found.values())
+
+    def areas(self) -> list[dict[str, str]]:
+        """Each admin model as an area: its verbose_name_plural, its class's file:line."""
+        found = {
+            a["model"]: {"id": a["model"], "name": a["plural"], "at": a["model_at"]}
+            for a in self.admins
+        }
         return list(found.values())
 
     def scope_candidates(self) -> list[dict[str, Any]]:

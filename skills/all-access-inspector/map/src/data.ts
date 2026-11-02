@@ -7,9 +7,10 @@ import { readLog, now } from '../../review/src/log.ts';
 import { load } from '../../review/src/project.ts';
 import { type Alert, alerts } from './alerts.ts';
 import { type Capability, type Cell, cells, capabilityList, endpointsOf } from './cells.ts';
-import { type MapEndpoint, type StatusRow, endpoint, joiner } from './join.ts';
+import { type Coverage, coverage } from './coverage.ts';
+import { type MapEndpoint, type StatusRow, endpoint, isFirstParty, joiner } from './join.ts';
 import { type Reach, type Role, reach, roleList } from './roles.ts';
-import { type About, loadRuntime, runtimePath } from './runtime.ts';
+import { type About, type Runtime, loadRuntime, runtimePath } from './runtime.ts';
 import { type Vocabulary, loadVocabulary, vocabularyPath } from './vocabulary.ts';
 
 export interface Options {
@@ -52,7 +53,7 @@ export interface PageData {
   cells: PageCell[];
   endpoints: PageEndpoint[];
   alerts: Alert[];
-  coverage: { covered: number; total: number };
+  coverage: Coverage;
   snippets: Record<string, string>;
   method: {
     rows: number;
@@ -68,20 +69,31 @@ export interface PageData {
   };
 }
 
-const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+export const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /** Every row, highest tier first, then path and method: the Review Queue's order, verdicts included. */
 const ordered = (rows: StatusRow[]): StatusRow[] => [...rows].sort((a, b) => a.tier - b.tier || byText(a.path, b.path) || byText(a.method, b.method));
 
-/** Vocabulary areas first, in their order, then any area a capability names that the vocabulary does not. */
-const areaList = (vocabulary: Vocabulary, caps: Capability[]): PageArea[] => {
-  const areas: PageArea[] = vocabulary.areas.map(a => ({ id: a.id, name: a.name, term: a.term ?? null, defined_at: a.defined_at ?? null, folded: Boolean(a.contains?.length), capabilities: [] }));
+/** Vocabulary areas first, in their order, then any area a capability names that the vocabulary does not.
+ * Name and defined_at: vocabulary, else the runtime's area, else the id; term: vocabulary, else the area's extracted capabilities'. */
+export const areaList = (vocabulary: Vocabulary, runtime: Runtime, caps: Capability[]): PageArea[] => {
+  const extracted = new Map((runtime.areas ?? []).map(a => [a.id, a]));
+  const areas: PageArea[] = vocabulary.areas.map(a => ({
+    id: a.id,
+    name: a.name,
+    term: a.term ?? null,
+    defined_at: a.defined_at ?? extracted.get(a.id)?.at ?? null,
+    folded: Boolean(a.contains?.length),
+    capabilities: [],
+  }));
   for (const cap of caps) {
     let area = areas.find(a => a.id === cap.area);
     if (!area) {
-      area = { id: cap.area, name: cap.area, term: cap.term, defined_at: null, folded: false, capabilities: [] };
+      const e = extracted.get(cap.area);
+      area = { id: cap.area, name: e?.name ?? cap.area, term: null, defined_at: e?.at ?? null, folded: false, capabilities: [] };
       areas.push(area);
     }
+    if (!vocabulary.areas.some(a => a.id === area.id)) area.term ??= cap.term;
     area.capabilities.push(cap);
   }
   return areas;
@@ -105,7 +117,10 @@ export const project = (dir: string, options: Options = {}) => {
   const caps = capabilityList(runtime, vocabulary);
   const found = caps.map(cap => ({ cap, ...endpointsOf(cap, endpoints) }));
   const computed = cells(caps, roles, endpoints, runtime, vocabulary, readLog(dir).cells, now().slice(0, 10));
-  return { inventory, rows, runtime, note, vocabulary, endpoints, roles, caps, found, ...computed };
+  const areas = areaList(vocabulary, runtime, caps);
+  const firstParty = (handler: string) => isFirstParty(handler, inventory.stack);
+  const covers = coverage({ areas, found, endpoints, domains: vocabulary.domains, firstParty });
+  return { inventory, rows, runtime, note, vocabulary, endpoints, roles, caps, found, areas, coverage: covers, ...computed };
 };
 
 export const buildData = (dir: string, options: Options = {}): PageData => {
@@ -118,7 +133,7 @@ export const buildData = (dir: string, options: Options = {}): PageData => {
     project: { name: basename(resolve(dir)), stack: p.inventory.stack },
     inventory: { count: p.inventory.endpoints.length, base_script: (p.inventory as unknown as { base_script?: unknown }).base_script ?? null },
     roles: p.roles,
-    areas: areaList(p.vocabulary, p.caps),
+    areas: p.areas,
     cells: p.cells.map(c => {
       const d = c.decision;
       const { verdict, by, at, reason, severity, ticket, until } = d?.decision ?? ({} as Record<string, never>);
@@ -129,7 +144,7 @@ export const buildData = (dir: string, options: Options = {}): PageData => {
     }),
     endpoints: p.endpoints.map(e => ({ ...e, reach: Object.fromEntries(p.roles.map(r => [r.id, reach(e.who, r)])) })),
     alerts: alerts(p.cells, p.agents, p.endpoints, covered, ([c, r]) => `${names.get(c) ?? c} for ${roleNames.get(r) ?? r}`),
-    coverage: { covered: covered.size, total: p.endpoints.length },
+    coverage: p.coverage,
     snippets: p.runtime.snippets,
     method: {
       rows: p.rows.length,

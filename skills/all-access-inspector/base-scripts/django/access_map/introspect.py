@@ -95,6 +95,7 @@ def build(inventory: dict[str, Any], admin_actions: dict[str, Any]) -> dict[str,
         },
         "about": admin.ABOUT,
         "roles": roles(),
+        "areas": introspect.areas(),
         "grants": grants(),
         "scopes": introspect.scope_candidates()
         + [

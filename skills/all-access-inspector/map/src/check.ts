@@ -1,11 +1,13 @@
 // map check: every problem that fails CI, then coverage and open findings. The CLI prints it, the review app shows it.
 
-import { type Options, project } from './data.ts';
+import { type Key, keyText } from '../../review/src/inventory.ts';
+import { type Options, byText, project } from './data.ts';
 import { runtimeKey } from './runtime.ts';
 import { duplicates, missingTerms, staleReferences } from './vocabulary.ts';
 
-/** Every problem that fails CI, then coverage and open findings, which never do. */
-export const check = (dir: string, options: Options = {}): { code: number; stdout: string; problems: string[] } => {
+/** Every problem that fails CI, then coverage and open findings, which never do; `thirdParty` lists the third-party gaps one by one. */
+export const check = (dir: string, options: Options & { thirdParty?: boolean } = {}): { code: number; stdout: string; problems: string[] } => {
+  const { thirdParty = false } = options;
   const p = project(dir, options);
   const name = (cap: string, role: string) => `${p.caps.find(c => c.id === cap)?.name ?? cap} for ${p.roles.find(r => r.id === role)?.name ?? role}`;
   const rows = new Set(p.endpoints.map(e => runtimeKey({ method: e.key[0], path: e.path, handler: e.handler })));
@@ -33,11 +35,28 @@ export const check = (dir: string, options: Options = {}): { code: number; stdou
       (a.contains ?? []).filter(c => !p.runtime.capabilities.some(x => x.area === c || x.area.startsWith(`${c}.`))).map(c => `area ${a.id} contains ${c}, which matches no extracted area`),
     ),
   ];
-  const covered = new Set(p.found.flatMap(f => f.found)).size;
+  const cov = p.coverage;
+  const byKey = new Map(p.endpoints.map(e => [keyText(e.key), e]));
+  // By path, then method: an endpoint's methods side by side.
+  const labels = (keys: Key[]) =>
+    keys
+      .map(k => byKey.get(keyText(k)) ?? { method: k[0], path: k[1] })
+      .sort((a, b) => byText(a.path, b.path) || byText(a.method, b.method))
+      .map(e => `${e.method} ${e.path}`);
+  const gaps = labels(cov.areas.flatMap(a => a.gaps));
+  const packages = cov.third_party.packages;
   const findings = p.cells.filter(c => c.decision?.state === 'valid' && c.decision.decision.verdict === 'finding');
   const out = [
     ...problems,
-    `coverage: ${covered} of ${p.endpoints.length} endpoints behind a capability`,
+    `coverage: ${cov.covered} of ${cov.total} endpoints behind a capability`,
+    ...(cov.areas.some(a => a.covered) ? [`  ${cov.areas.filter(a => a.covered).map(a => `${a.name}: ${a.covered} of ${a.total}`).join(' · ')}`] : []),
+    ...(gaps.length ? [`  first-party, behind no capability: ${gaps.join(', ')}`] : []),
+    ...(packages.length
+      ? [`  third-party, behind no capability: ${cov.third_party.total} (${packages.map(x => `${x.name} ${x.count}`).join(', ')})${thirdParty ? '' : ' · --third-party lists them'}`]
+      : []),
+    ...(thirdParty ? packages.flatMap(x => labels(x.endpoints).map(e => `    ${x.name}: ${e}`)) : []),
+    `  unnamed capabilities: ${cov.unnamed.join(', ') || 'none'}`,
+    `  areas with no term: ${cov.untermed.join(', ') || 'none'}`,
     `open findings: ${findings.length}`,
     ...findings.map(c => `  ${c.decision?.decision.severity} ${name(c.capability, c.role)}: ${c.decision?.decision.reason}`),
     ...p.orphans.map(d => `orphaned decision on ${d.key.join(' for ')}: ${d.decision.reason}`),

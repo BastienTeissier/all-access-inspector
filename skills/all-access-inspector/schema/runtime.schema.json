@@ -156,6 +156,33 @@
         }
       }
     },
+    "areas": {
+      "description": "Areas the code names, sorted by id; an area with capabilities and no entry keeps its id as name. Optional: a runtime written before 0.5.0 has none.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "description": "The area's name as the code declares it, e.g. a model's verbose_name_plural.",
+            "type": "string",
+            "minLength": 1
+          },
+          "at": {
+            "$ref": "#/$defs/at"
+          }
+        }
+      }
+    },
     "grants": {
       "description": "Permission name → the roles holding it, each with the file:line that grants it.",
       "type": "object",
@@ -263,6 +290,11 @@
         ],
         "properties": {
           "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "description": "The capability's name as the code declares it, e.g. `Add order`; optional.",
             "type": "string",
             "minLength": 1
           },

@@ -117,6 +117,40 @@ test('A decided partial capability passes the check', () => {
   expect(result.out).toContain('open findings: 0');
 });
 
+test('Coverage is reported per area, gaps and all, and never fails the check', () => {
+  expect(accept().status).toBe(0);
+  const result = map('check', '.');
+  expect(result.status, result.out).toBe(0);
+  const lines = result.out.split('\n');
+  const starts = [
+    'coverage: 12 of 72 endpoints behind a capability',
+    '  Orders: 7 of 11 · products: 5 of 6',
+    '  first-party, behind no capability: ',
+    '  third-party, behind no capability: 22 (admin 17, contenttypes 2, django 2, shop 1) · --third-party lists them',
+    '  unnamed capabilities: none',
+    '  areas with no term: none',
+    'open findings: 0',
+  ];
+  const at = starts.map(s => lines.findIndex(l => l.startsWith(s)));
+  expect(at.every((i, n) => i >= 0 && (n === 0 || i === at[n - 1]! + 1)), result.out).toBe(true);
+  expect(result.out).toContain('GET+HEAD /api/invoices/, OPTIONS /api/invoices/, DELETE /api/invoices/{pk}/');
+  expect(result.out).not.toContain('admin: ANY /admin/');
+});
+
+test('--third-party lists the third-party endpoints behind no capability by package', () => {
+  const result = map('check', '.', '--third-party');
+  expect(result.out).toContain('  third-party, behind no capability: 22 (admin 17, contenttypes 2, django 2, shop 1)\n    admin: ANY /admin/\n');
+  expect(result.out).toContain('    django: ANY /admin/shop/order/{object_id}/');
+  expect(result.out).not.toContain('--third-party lists them');
+});
+
+test('A capability and an area are named from the code when the vocabulary does not name them', () => {
+  const data = buildData(project);
+  expect(data.areas.find(a => a.id === 'shop.product')).toMatchObject({ name: 'products', defined_at: 'shop/models.py:4' });
+  expect(data.areas.flatMap(a => a.capabilities).find(c => c.id === 'shop.product.add')?.name).toBe('Add product');
+  expect(data.coverage).toMatchObject({ covered: 12, total: 72, third_party: { total: 22 } });
+});
+
 test('A decision goes outdated when the cell changes', () => {
   expect(accept().status).toBe(0);
   editJson('tools/access-map/runtime.json', data => {

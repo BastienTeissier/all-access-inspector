@@ -19,7 +19,7 @@ export const PAGE = join(dirname(fileURLToPath(import.meta.url)), '..', 'page.ht
 
 const USAGE = `usage:
   map build <project> [--out <file>] [--vocabulary <file>] [--runtime <file>]
-  map check <project> [--vocabulary <file>] [--runtime <file>]
+  map check <project> [--vocabulary <file>] [--runtime <file>] [--third-party]   (--third-party lists the third-party endpoints behind no capability)
   map pin <project> [--vocabulary <file>]     (anchor every new file:line to the text of its line)
   map decide <project> <capability> <role> --verdict safe|accepted|finding --reason <text> [--severity low|medium|high] [--ticket <url>] [--until YYYY-MM-DD]
 <project> is the directory holding tools/access-inspector/inventory.json and tools/access-map/vocabulary.json.
@@ -54,6 +54,7 @@ export const main = (argv: string[]): { code: number; stdout: string; stderr: st
         severity: { type: 'string' },
         ticket: { type: 'string' },
         until: { type: 'string' },
+        'third-party': { type: 'boolean' },
       },
     });
     const [command, dir, ...rest] = positionals;
@@ -61,7 +62,7 @@ export const main = (argv: string[]): { code: number; stdout: string; stderr: st
     const options = { vocabulary: values.vocabulary, runtime: values.runtime };
     if (command === 'build' && !rest.length)
       return { code: 0, stdout: build(dir, options, values.out ?? join(dir, 'tools', 'access-map', 'out', 'access-map.html')), stderr: '' };
-    if (command === 'check' && !rest.length) return { ...check(dir, options), stderr: '' };
+    if (command === 'check' && !rest.length) return { ...check(dir, { ...options, thirdParty: values['third-party'] }), stderr: '' };
     if (command === 'pin' && !rest.length) {
       const path = values.vocabulary ?? vocabularyPath(dir);
       return { code: 0, stdout: `${pin(dir, path, loadVocabulary(path)).join('\n')}\n`, stderr: '' };

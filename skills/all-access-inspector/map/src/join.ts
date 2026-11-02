@@ -1,6 +1,6 @@
 // The join: one map endpoint per review row, its check layers, who can pass and on what basis.
 
-import type { Axis } from '../../review/src/inventory.ts';
+import { type Axis, handlerFile } from '../../review/src/inventory.ts';
 import type { output } from '../../review/src/output.ts';
 import { BASES, type Basis, type Layer, type Runtime, type RuntimeEndpoint, type Who, indexRuntime } from './runtime.ts';
 import type { Domain, Resource, RouteCheck, Vocabulary } from './vocabulary.ts';
@@ -40,6 +40,14 @@ export const fromAxis = (axis: Axis): { basis: Basis; how: string } =>
 
 /** A badge takes the weakest basis of what it rests on. */
 export const weakest = (...bases: Basis[]): Basis => bases.reduce((a, b) => (BASES.indexOf(b) > BASES.indexOf(a) ? b : a), 'extracted');
+
+/** A handler in the project's code: one with a file:line; on stacks whose handlers carry no line, any outside the framework's packages. */
+export const isFirstParty = (handler: string, stack: string): boolean => {
+  if (handlerFile(handler) !== null) return true;
+  if (stack === 'nestjs') return !handler.startsWith('@nestjs/');
+  if (stack === 'spring') return !handler.startsWith('org.springframework.');
+  return false;
+};
 
 /** The vocabulary's domain for a path; none when the vocabulary defines no domains. */
 export const domainOf = (path: string, domains: Domain[] | undefined): string | null => {

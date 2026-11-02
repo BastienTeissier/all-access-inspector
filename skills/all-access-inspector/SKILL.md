@@ -177,7 +177,7 @@ Hard rules for the map, besides the ones above:
 6. Run `<map> pin <project>`, which records the text of every `file:line` the vocabulary cites, then `<map> check <project>`. Exit 2 names an invalid file: fix it. Exit 1 lists the problems: fix each one except the partial capabilities, which the user decides. Leave those listed.
 7. Run `<map> build <project>` and give the user the absolute path of `tools/access-map/out/access-map.html`. Propose ignoring `tools/access-map/out/`. Tell them the same map, with a decision form on each cell, is the review app's Access map (`node <skill>/review/src/cli.ts app <project>`).
 8. Branch (fallback `access-map/fit`) and commit as in step 8 of the fit: stage `tools/access-map/` without `out/`, plus the linter exclusions. The body lists every Map Rule and every vocabulary entry with its reason.
-9. Print the "Access map" part of `<skill>/assets/summary-template.md`: the coverage `map check` prints, the partial capabilities left for the user to decide, the docs mismatches, and the "could be extracted" list.
+9. Print the "Access map" part of `<skill>/assets/summary-template.md`: the coverage block `map check` prints (per area, first-party and third-party endpoints behind no capability, unnamed capabilities, areas with no term), each first-party gap with why it stays open, the partial capabilities left for the user to decide, the docs mismatches, and the "could be extracted" list.
 
 ### Look at the map
 
