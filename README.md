@@ -48,7 +48,7 @@ Base Script version: see [`skills/all-access-inspector/VERSION`](skills/all-acce
 
 ## Install the skill
 
-The skill is the directory `skills/all-access-inspector/`. It holds `SKILL.md`, the Base Scripts, the stack references, the CI templates and the viewer.
+The skill is the directory `skills/all-access-inspector/`. It holds `SKILL.md` (stack detection, hard rules and the router), `workflows/` (fit, update, triage, map), the Base Scripts, the stack references, the CI templates and the viewer.
 
 **Claude Code, copied by hand.** Copy the directory into a skills folder, either for you alone or for one project:
 
@@ -79,7 +79,7 @@ Open your agent in the project and ask:
 
 Or in plain words: *"inventory the endpoints of this app with their access control"*, *"fit the access inspector"*, *"resolve the access-inspector unknowns"*.
 
-The Agent follows [`SKILL.md`](skills/all-access-inspector/SKILL.md). Expect a few questions; nothing is guessed.
+The Agent follows [`SKILL.md`](skills/all-access-inspector/SKILL.md), which routes it to [`workflows/fit.md`](skills/all-access-inspector/workflows/fit.md). Expect a few questions; nothing is guessed.
 
 ### 1. Detect the stack
 
@@ -761,7 +761,8 @@ The full lists are under "Blind spots" in each stack reference.
 
 ```
 skills/all-access-inspector/
-├── SKILL.md                     # the Agent's workflow
+├── SKILL.md                     # stack detection, hard rules, router to a workflow
+├── workflows/                   # fit, update, triage, map: the Agent's steps
 ├── VERSION
 ├── base-scripts/django/         # Base Script + tests (uv, pytest, ruff, mypy); access_map/: the Map Introspect
 ├── base-scripts/nestjs/         # Base Script + tests (pnpm, vitest, tsc)
