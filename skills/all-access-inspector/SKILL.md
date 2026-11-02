@@ -29,12 +29,12 @@ Read one workflow file, then follow it with the stack reference open beside it.
 
 | The user asks to | Entry condition | Workflow | Reference sections it reads |
 |---|---|---|---|
-| inventory the endpoints, fit the inspector, resolve its unknowns | no `tools/access-inspector/` in the app root | `<skill>/workflows/fit.md` | Vendor and run, Production entry, Environment, Boot failure, Writing a Recognition Rule, Blind spots, Candidate dimensions, Linters |
+| inventory the endpoints, fit the inspector, resolve its unknowns | no `tools/access-inspector/` in the app root | `<skill>/workflows/fit.md` | Vendor and run, Where access is decided, by layer, Production entry, Environment, Boot failure, Writing a Recognition Rule, Acknowledged Unknowns, Blind spots, Candidate dimensions, Linters |
 | fit, update or refresh the fitting | `tools/access-inspector/` exists | `<skill>/workflows/update.md` | the same as the fit, for what changed |
 | triage the inventory, point at the handlers to read first | `inventory.json` committed | `<skill>/workflows/triage.md` | Triage checklist |
 | build the access map, or look at it | `inventory.json` committed | `<skill>/workflows/map.md` | Map introspect, Linters |
 
-A run that fits and then maps reads `fit.md`, then `map.md`. An unsupported stack follows `fit.md` with `unsupported.md` beside the closest stack's reference.
+For the first two rows the entry condition picks the workflow: "fit" or "resolve its unknowns" on a project that has `tools/access-inspector/` is an update. A run that fits and then maps reads `fit.md`, then `map.md`. An unsupported stack follows `fit.md` with `unsupported.md` beside the closest stack's reference.
 
 ## Hard rules
 
