@@ -1,5 +1,5 @@
-// Runs run.spec.ts with the project's own jest config: its transform and moduleNameMapper, none of its tests,
-// setup files or coverage.
+// Runs run.spec.ts, or the spec inspect.sh names, with the project's own jest config: its transform and
+// moduleNameMapper, none of its tests, setup files or coverage.
 
 const { existsSync, readFileSync } = require('node:fs');
 const { join, resolve } = require('node:path');
@@ -45,7 +45,7 @@ module.exports = async () => {
   return {
     ...config,
     rootDir: ROOT,
-    testMatch: ['<rootDir>/tools/access-inspector/run.spec.ts'],
+    testMatch: [`<rootDir>/${process.env.ACCESS_INSPECTOR_SPEC ?? 'tools/access-inspector/run.spec.ts'}`],
     // The Base Script imports its siblings as ./name.js, as Node ESM requires.
     moduleNameMapper: { '^(\\.{1,2}/.*)\\.js$': '$1', ...mapper },
     testTimeout: 600_000,

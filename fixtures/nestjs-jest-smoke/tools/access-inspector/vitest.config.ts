@@ -1,5 +1,5 @@
-// Runs run.spec.ts with the project's own vitest config: its transform, aliases and tsconfig paths, none of its
-// tests, setup files, test environment or coverage.
+// Runs run.spec.ts, or the spec inspect.sh names, with the project's own vitest config: its transform, aliases and
+// tsconfig paths, none of its tests, setup files, test environment or coverage.
 
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -36,7 +36,7 @@ export default defineConfig(async env => {
     root: ROOT,
     test: {
       ...test,
-      include: ['tools/access-inspector/run.spec.ts'],
+      include: [process.env.ACCESS_INSPECTOR_SPEC ?? 'tools/access-inspector/run.spec.ts'],
       globals: true,
       watch: false,
       reporters: ['default'],

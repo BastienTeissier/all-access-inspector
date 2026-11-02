@@ -4,25 +4,40 @@
 #   --check      exit 1 with a per-endpoint diff when inventory.json is out of date; write nothing
 #   --table      print a table; write nothing
 #   --unknowns   print unknown endpoints as JSON lines; write nothing
-# Exit codes: 0 ok, 1 drift (--check), 2 boot, rule, dimension or validation error.
+# Map Introspect: tools/access-inspector/inspect.sh map [--check]
+#   map          write tools/access-map/runtime.json
+#   map --check  exit 1 with a diff when runtime.json is out of date; write nothing
+# Exit codes: 0 ok, 1 drift (--check), 2 boot, rule, Map Rule, dimension or validation error.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(dirname "$(dirname "$HERE")")"
 
 usage() {
-  echo "usage: tools/access-inspector/inspect.sh [--check | --table | --unknowns]" >&2
+  echo "usage: tools/access-inspector/inspect.sh [--check | --table | --unknowns] | map [--check]" >&2
   exit 2
 }
 
-[ $# -le 1 ] || usage
-case "${1:-}" in
-  "") mode=write ;;
-  --check) mode=check ;;
-  --table) mode=table ;;
-  --unknowns) mode=unknowns ;;
-  *) usage ;;
-esac
+spec=tools/access-inspector/run.spec.ts
+if [ "${1:-}" = map ]; then
+  spec=tools/access-map/introspect.spec.ts
+  shift
+  [ $# -le 1 ] || usage
+  case "${1:-}" in
+    "") mode=write ;;
+    --check) mode=check ;;
+    *) usage ;;
+  esac
+else
+  [ $# -le 1 ] || usage
+  case "${1:-}" in
+    "") mode=write ;;
+    --check) mode=check ;;
+    --table) mode=table ;;
+    --unknowns) mode=unknowns ;;
+    *) usage ;;
+  esac
+fi
 
 cd "$ROOT"
 runner="$(node -e '
@@ -54,7 +69,7 @@ done
 out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
 # The runner's own report stays off stdout; it is shown only when the harness never reported.
-ACCESS_INSPECTOR_MODE="$mode" ACCESS_INSPECTOR_OUT="$out" "${run[@]}" "${args[@]}" >"$out/runner.log" 2>&1 || true
+ACCESS_INSPECTOR_MODE="$mode" ACCESS_MAP_MODE="$mode" ACCESS_INSPECTOR_SPEC="$spec" ACCESS_INSPECTOR_OUT="$out" "${run[@]}" "${args[@]}" >"$out/runner.log" 2>&1 || true
 if [ ! -f "$out/status" ]; then
   cat "$out/runner.log" >&2
   echo "access-inspector: $runner stopped before the inspector reported; its output is above" >&2
