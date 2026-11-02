@@ -22,7 +22,8 @@ export const RELATION_RULES: Record<string, string[]> = {};
 
 /**
  * Roles: {id, kind: group|signed_in|relation, at}. Every role a roles guard names (a Recognition Rule with
- * rawMetadata, e.g. @Roles('admin')) must be declared here; the signed-in role is read already. A `relation` role
+ * rawMetadata, e.g. @Roles('admin')) must be declared here. The signed-in role is read from the Recognition Rules;
+ * declare it when the app signs in only through passport's AuthGuard. A `relation` role
  * is a relation to the record a check tests, `at` the line of the check; RELATION_RULES names the rules that let
  * it through.
  *

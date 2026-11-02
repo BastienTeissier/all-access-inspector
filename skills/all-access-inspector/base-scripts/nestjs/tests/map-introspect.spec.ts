@@ -78,7 +78,7 @@ test('a relation rule on either axis lets through its relation roles', () => {
   expect(verdict(row(axis('none', 'recognition:partner_key')), RECOGNITION, relations)).toMatchObject({ kind: 'relations' });
 });
 
-test('the signed-in role sits at the first rule an endpoint requires sign-in by', () => {
+test('the signed-in role sits at the first rule an endpoint requires sign-in by, never a relation rule', () => {
   rules.roles = [{ id: 'admin', kind: 'group', at: 'src/a.ts:3' }];
   rules.includes = [
     { role: 'admin', includes: 'user', at: 'src/a.ts:9' },
@@ -99,6 +99,7 @@ test('the signed-in role sits at the first rule an endpoint requires sign-in by'
     },
     { id: 'user', kind: 'signed_in', at: 'src/partner/key.ts:7', basis: 'rule', includes: [], staff: null },
   ]);
+  expect(roles(found, RECOGNITION, { partner_key: ['partner'] }).map(r => r.id)).toEqual(['admin']);
   expect(roles([row(axis('none', 'builtin:AuthGuard'), {}, axis('required', 'builtin:AuthGuard'))], RECOGNITION).map(r => r.id)).toEqual(['admin']);
   rules.roles = [{ id: 'member', kind: 'signed_in', at: 'src/a.ts:1' }];
   rules.includes = [];

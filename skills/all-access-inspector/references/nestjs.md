@@ -120,7 +120,7 @@ Copy every `*.ts` of `<skill>/base-scripts/nestjs/access_map/` into `tools/acces
 What it reads with no Map Rule:
 
 - per endpoint, the Recognition Rule its authorization resolves to: when that rule has `rawMetadata`, the metadata it reads (`@Roles('admin')`) is the roles the check lets through (`who` `groups`). Declare each role it names in `roles()`: `map check` fails on one that is not a role;
-- the signed-in role `user`, at the first Recognition Rule with `authn: 'required'` an endpoint goes through, unless `roles()` declares a `signed_in` role;
+- the signed-in role `user`, at the first Recognition Rule with `authn: 'required'` an endpoint goes through, unless `roles()` declares a `signed_in` role. A rule in `RELATION_RULES` (an API key) never counts. Passport's `AuthGuard` is no Recognition Rule, so an app that signs in only through it gets no signed-in role: declare it in `roles()`, `at` the strategy's `validate`;
 - each handler whose class or function is declared under `FIRST_PARTY`, as `first_party`, so coverage counts it with the project's gaps.
 
 Blind spots:

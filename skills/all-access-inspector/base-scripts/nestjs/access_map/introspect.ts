@@ -17,7 +17,7 @@ export const ABOUT = {
     ' Recognition Rules, and the Map Rules in tools/access-map/project.ts.',
   holds: [
     'Roles, scopes and capabilities from the Map Rules in tools/access-map/project.ts',
-    'The signed-in role, at the first Recognition Rule that requires sign-in',
+    'The signed-in role, at the first Recognition Rule outside RELATION_RULES that requires sign-in',
     'Per endpoint, the roles a roles guard lets through, read from the metadata its Recognition Rule names',
     'Per endpoint, the relation roles a Recognition Rule in RELATION_RULES lets through',
     'Handlers whose class or function is declared under the FIRST_PARTY directories',
@@ -88,13 +88,14 @@ const facts = (rule: 'roles' | 'includes' | 'scopes' | 'scoped' | 'capabilities'
   return found;
 };
 
-/** The Map Rule roles, and the signed-in role at the first Recognition Rule an endpoint requires sign-in by. */
-export const roles = (found: Row[], recognition: Rule[] = RECOGNITION): Fact[] => {
+/** The Map Rule roles, and the signed-in role at the first Recognition Rule an endpoint requires sign-in by,
+ * a relation rule (an API key) left out. */
+export const roles = (found: Row[], recognition: Rule[] = RECOGNITION, relations = project.RELATION_RULES): Fact[] => {
   const declared = new Map<string, Fact & { includes: Fact[] }>();
   for (const r of facts('roles', ['id', 'kind', 'at'])) {
     declared.set(r.id as string, { id: r.id, kind: r.kind, at: r.at, basis: 'rule', includes: [], staff: null });
   }
-  const signIn = recognition.find(r => r.authn === 'required' && found.some(e => ruleOf(e.authentication, [r])));
+  const signIn = recognition.find(r => r.authn === 'required' && relations[r.name] === undefined && found.some(e => ruleOf(e.authentication, [r])));
   if (signIn !== undefined && ![...declared.values()].some(r => r.kind === 'signed_in')) {
     const at = signIn.evidence;
     declared.set('user', { id: 'user', kind: 'signed_in', at, basis: 'rule', includes: [], staff: null });
