@@ -4,7 +4,6 @@
 import { basename } from 'node:path';
 
 import type { PageData } from '../../../../skills/all-access-inspector/map/src/data.ts';
-import { keyText } from '../../../../skills/all-access-inspector/review/src/inventory.ts';
 import { projectDir } from '../../lib/filters.ts';
 import { accessMap, cellHistory, hasMap, project, uncommitted } from '../../lib/projection.ts';
 import { CellPanel } from './cell-panel.tsx';
@@ -20,9 +19,10 @@ const TABS: [string, string][] = [
   ['method', "How it's built"],
 ];
 
+/** The map's own alerts, then the coverage gaps and the review queue's count: each endpoint shows once, signals only as a count. */
 const Alerts = ({ data }: { data: PageData }) => {
   const kinds = Object.keys(KINDS).filter(kind => data.alerts.some(a => a.kind === kind));
-  if (!kinds.length) return <p className="muted">Nothing to look at.</p>;
+  if (!kinds.length && !data.gaps.length && !data.queue.signals) return <p className="muted">Nothing to look at.</p>;
   return (
     <section aria-label="Alerts" className="map-alerts">
       {kinds.map((kind, i) => {
@@ -35,14 +35,32 @@ const Alerts = ({ data }: { data: PageData }) => {
             <ul>
               {list.map(a => (
                 <li key={`${a.text} ${a.label}`}>
-                  <a href={a.cell ? cellHref(a.cell[0], a.cell[1]) : `/?e=${encodeURIComponent(keyText(a.endpoint!))}`}>{a.text}</a>{' '}
-                  <span className="muted">{a.label}</span>
+                  <a href={cellHref(a.cell[0], a.cell[1])}>{a.text}</a> <span className="muted">{a.label}</span>
                 </li>
               ))}
             </ul>
           </details>
         );
       })}
+      {data.gaps.length > 0 && (
+        <details className="group" open={!kinds.length} aria-label="Coverage">
+          <summary>
+            <b>Coverage</b> <span className="muted">{data.gaps.reduce((n, g) => n + g.endpoints.length, 0)}</span>
+          </summary>
+          <ul>
+            {data.gaps.map(g => (
+              <li key={g.id}>
+                <a href={`/map?tab=routes&gap=${encodeURIComponent(g.id)}`}>{g.name}</a> <span className="muted">{g.endpoints.length}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {data.queue.signals > 0 && (
+        <p id="queue">
+          <a href="/">Review queue: {data.queue.signals} signals</a>
+        </p>
+      )}
     </section>
   );
 };

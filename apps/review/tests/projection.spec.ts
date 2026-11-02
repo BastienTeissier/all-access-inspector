@@ -112,4 +112,5 @@ test('the access map carries coverage per area and the third-party gaps', () => 
   expect(error).toBeNull();
   expect(data?.coverage).toMatchObject({ covered: 12, total: 72, third_party: { total: 22 }, unnamed: [], untermed: [] });
   expect(data?.coverage.areas.map(a => a.name)).toContain('products');
+  expect(data?.queue.signals).toBe(48);
 });

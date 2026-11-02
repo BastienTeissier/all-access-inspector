@@ -34,10 +34,6 @@ export const KINDS: Record<string, string> = {
   undecided: 'Partial, not decided',
   finding: 'Findings',
   open: 'Not resolved',
-  uncovered: 'Behind no capability',
-  agent: 'Agent signals',
-  signal: 'Inspector signals',
-  outside_expected: 'Outside expected access',
 };
 
 /** A cell's URL: the Roles tab with its panel open. */

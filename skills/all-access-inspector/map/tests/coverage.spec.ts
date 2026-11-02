@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import type { Capability } from '../src/cells.ts';
-import { coverage, packageOf } from '../src/coverage.ts';
+import { coverage, gaps, packageOf } from '../src/coverage.ts';
 import type { MapEndpoint } from '../src/join.ts';
 import { endpoint, who } from './fixtures.ts';
 
@@ -101,6 +101,18 @@ describe('coverage', () => {
     const c = report([list, change]);
     expect(c).toMatchObject({ covered: 2, total: 2, third_party: { total: 0, packages: [] } });
     expect(c.areas.every(a => !a.gaps.length)).toBe(true);
+  });
+
+  test('the gaps are each area with first-party gaps, then the third-party handlers, no endpoint twice', () => {
+    const lines = gaps(report([list, change, redirect, exported, health, login]));
+    expect(lines).toEqual([
+      { id: 'orders', name: 'Orders', endpoints: [exported.key] },
+      { id: 'ops', name: 'Operations', endpoints: [health.key] },
+      { id: 'third-party', name: 'Third-party handlers', endpoints: [login.key, redirect.key] },
+    ]);
+    const keys = lines.flatMap(l => l.endpoints).map(k => JSON.stringify(k));
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(gaps(report([list, change]))).toEqual([]);
   });
 
   test('unnamed and untermed list unfolded areas only', () => {

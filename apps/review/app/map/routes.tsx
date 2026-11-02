@@ -4,7 +4,7 @@ import type { PageData, PageEndpoint } from '../../../../skills/all-access-inspe
 import { keyText } from '../../../../skills/all-access-inspector/review/src/inventory.ts';
 import { BASIS, Who } from './labels.tsx';
 
-export const ROUTE_FILTERS = ['domain', 'q', 'role', 'write', 'sig', 'out', 'guess', 'cap'] as const;
+export const ROUTE_FILTERS = ['domain', 'q', 'role', 'gap', 'write', 'sig', 'out', 'guess', 'cap'] as const;
 
 const domainOf = (e: PageEndpoint) => e.domain ?? '(no domain)';
 
@@ -14,11 +14,16 @@ const capEndpoints = (data: PageData, cap: string): Set<string> => {
   return new Set(c ? [...c.seen.reached, ...c.seen.missed].map(keyText) : []);
 };
 
-const matches = (e: PageEndpoint, p: URLSearchParams, inCap: Set<string> | null): boolean => {
+/** The endpoints a `gap` filter keeps: one gap, or `any` of them. */
+const gapEndpoints = (data: PageData, gap: string): Set<string> =>
+  new Set(data.gaps.filter(g => gap === 'any' || g.id === gap).flatMap(g => g.endpoints.map(keyText)));
+
+const matches = (e: PageEndpoint, p: URLSearchParams, inCap: Set<string> | null, inGap: Set<string> | null): boolean => {
   const q = p.get('q')?.toLowerCase();
   const role = p.get('role');
   if (p.get('domain') && domainOf(e) !== p.get('domain')) return false;
   if (inCap && !inCap.has(keyText(e.key))) return false;
+  if (inGap && !inGap.has(keyText(e.key))) return false;
   if (p.get('write') && !e.write) return false;
   if (p.get('sig') && !e.signals.length) return false;
   if (p.get('out') && e.inside !== false) return false;
@@ -41,7 +46,8 @@ export const Routes = ({ data, params }: { data: PageData; params: URLSearchPara
   const cap = params.get('cap');
   const caps = data.areas.flatMap(a => a.capabilities);
   const byCap = new Map(caps.map(c => [c.id, capEndpoints(data, c.id)]));
-  const list = data.endpoints.filter(e => matches(e, params, cap ? (byCap.get(cap) ?? new Set()) : null));
+  const gap = params.get('gap');
+  const list = data.endpoints.filter(e => matches(e, params, cap ? (byCap.get(cap) ?? new Set()) : null, gap ? gapEndpoints(data, gap) : null));
   const domains = [...new Set(data.endpoints.map(domainOf))];
   const capsOf = (e: PageEndpoint) => caps.filter(c => byCap.get(c.id)?.has(keyText(e.key)));
   const domainHref = (d: string | null) => {
@@ -67,6 +73,18 @@ export const Routes = ({ data, params }: { data: PageData; params: URLSearchPara
             {data.roles.map(r => (
               <option key={r.id} value={r.id}>
                 {r.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Coverage
+          <select name="gap" defaultValue={gap ?? ''}>
+            <option value="">behind a capability or not</option>
+            <option value="any">behind no capability</option>
+            {data.gaps.map(g => (
+              <option key={g.id} value={g.id}>
+                {g.name}
               </option>
             ))}
           </select>
