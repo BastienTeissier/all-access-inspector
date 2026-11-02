@@ -62,7 +62,7 @@ export const main = (argv: string[]): { code: number; stdout: string; stderr: st
     const options = { vocabulary: values.vocabulary, runtime: values.runtime };
     if (command === 'build' && !rest.length)
       return { code: 0, stdout: build(dir, options, values.out ?? join(dir, 'tools', 'access-map', 'out', 'access-map.html')), stderr: '' };
-    if (command === 'check' && !rest.length) return { ...check(dir, options, values['third-party']), stderr: '' };
+    if (command === 'check' && !rest.length) return { ...check(dir, { ...options, thirdParty: values['third-party'] }), stderr: '' };
     if (command === 'pin' && !rest.length) {
       const path = values.vocabulary ?? vocabularyPath(dir);
       return { code: 0, stdout: `${pin(dir, path, loadVocabulary(path)).join('\n')}\n`, stderr: '' };

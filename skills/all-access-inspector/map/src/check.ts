@@ -6,7 +6,8 @@ import { runtimeKey } from './runtime.ts';
 import { duplicates, missingTerms, staleReferences } from './vocabulary.ts';
 
 /** Every problem that fails CI, then coverage and open findings, which never do; `thirdParty` lists the third-party gaps one by one. */
-export const check = (dir: string, options: Options = {}, thirdParty = false): { code: number; stdout: string; problems: string[] } => {
+export const check = (dir: string, options: Options & { thirdParty?: boolean } = {}): { code: number; stdout: string; problems: string[] } => {
+  const { thirdParty = false } = options;
   const p = project(dir, options);
   const name = (cap: string, role: string) => `${p.caps.find(c => c.id === cap)?.name ?? cap} for ${p.roles.find(r => r.id === role)?.name ?? role}`;
   const rows = new Set(p.endpoints.map(e => runtimeKey({ method: e.key[0], path: e.path, handler: e.handler })));
