@@ -2,7 +2,7 @@
 
 A project already has `tools/access-inspector/`. Keep what the team decided and work only on what changed. `<inspect>` and the file names are the stack reference's "Vendor and run"; the steps named below are those of `workflows/fit.md`.
 
-1. Read the project sections of the boot, rules and dimensions files. Each of these entries survives byte for byte unless step 2 or 4 changes it. If the inventory's `stack` differs from `base_script.stack`, the Adapted Script was improvised: follow `<skill>/references/unsupported.md` § Update mode, which offers a re-base once a Base Script exists for the stack.
+1. Read the project sections of the boot, rules and dimensions files. Each of these entries survives byte for byte unless a step below changes it. If the inventory's `stack` differs from `base_script.stack`, the Adapted Script was improvised: follow `<skill>/references/unsupported.md` § Update mode, which offers a re-base once a Base Script exists for the stack.
 2. Check each Recognition Rule's evidence. If the file and line still show the construct, keep the rule. If the construct moved, grep for it and update the evidence. If it is gone, remove the rule and give the reason in the summary.
 3. Run `<inspect> --check`.
    - Exit 2 from a boot error: fix the boot file under the same toward-production rule, without touching rules.
