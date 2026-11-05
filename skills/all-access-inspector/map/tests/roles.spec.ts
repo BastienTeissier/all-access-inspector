@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { ANONYMOUS, reach, roleList } from '../src/roles.ts';
-import type { RuntimeRole } from '../src/runtime.ts';
+import { type RuntimeRole, roleId } from '../src/runtime.ts';
 import { role, runtime, vocabulary, who } from './fixtures.ts';
 
 const ROLES = {
@@ -71,4 +71,8 @@ describe('roleList', () => {
     const v = vocabulary({ roles: [{ id: 'ops', kind: 'group', at: 'docs/roles.md:2', reason: 'no introspect', staff: { at: 'docs/roles.md:3' } }] });
     expect(roleList(runtime(), v).find(r => r.id === 'ops')).toMatchObject({ basis: 'curated', staff: true });
   });
+});
+
+test('a role id is spelt as the ontology spells it: lower case, - for _', () => {
+  expect(['User', 'api_key', 'Front_Desk', 'clerk'].map(roleId)).toEqual(['user', 'api-key', 'front-desk', 'clerk']);
 });

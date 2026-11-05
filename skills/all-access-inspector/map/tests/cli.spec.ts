@@ -339,7 +339,7 @@ test('build --out and --json write both files', () => {
   expect(result.status, result.out).toBe(0);
   expect(readFileSync(html, 'utf8')).not.toContain('/*__DATA__*/null');
   expect(readFileSync(html, 'utf8')).toContain('"export-orders"');
-  expect(existsSync(json)).toBe(true);
+  expect(JSON.parse(readFileSync(json, 'utf8'))).toEqual(buildData(project));
 });
 
 test('build --json creates the missing parent folders', () => {
@@ -359,4 +359,24 @@ test('--help lists the --json flag', () => {
   const result = map('--help');
   expect(result.status).toBe(0);
   expect(result.out).toContain('--json <file>');
+});
+
+test('build --name gives the same page data in two folders of other names', () => {
+  const other = join(mkdtempSync(join(tmpdir(), 'map-')), 'other-name');
+  cpSync(project, other, { recursive: true });
+  const json = (dir: string) => {
+    const out = join(dir, 'page-data.json');
+    expect(run(CLI, ['build', dir, '--name', 'shop', '--json', out]).status).toBe(0);
+    return readFileSync(out, 'utf8');
+  };
+  expect(JSON.parse(json(project)).project.name).toBe('shop');
+  expect(json(other)).toBe(json(project));
+});
+
+test('role ids in other spellings give the same page data, and decide takes them', () => {
+  const before = buildData(project);
+  for (const file of ['tools/access-map/runtime.json', 'tools/access-map/vocabulary.json']) edit(file, text => text.replaceAll('"clerk"', '"Clerk"'));
+  expect(buildData(project)).toEqual(before);
+  expect(map('decide', '.', 'export-orders', 'Clerk', '--verdict', 'accepted', '--reason', 'Clerks export through a manager').status).toBe(0);
+  expect(JSON.parse(log()).capability).toEqual(['export-orders', 'clerk']);
 });
