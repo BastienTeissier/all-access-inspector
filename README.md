@@ -480,7 +480,7 @@ tools/access-map/
 
 ### Read the map
 
-`node <skill>/map/src/cli.ts build <project>` writes one static page, `tools/access-map/out/access-map.html`, that you can open or share. The review app shows the same map under **Access map**, with a decision form on each cell. Both draw the same data, computed in `map/src/`.
+`node <skill>/map/src/cli.ts build <project>` writes one static page, `tools/access-map/out/access-map.html`, that you can open or share. With `--json <file>` it writes the same data as JSON instead, for a tool that reads the map; give `--out` too to write both. The review app shows the same map under **Access map**, with a decision form on each cell. Both draw the same data, computed in `map/src/`.
 
 - **Alerts**: partial capabilities with no valid decision, open `finding` decisions and cells not resolved, then a **Coverage** group listing, per area, the first-party endpoints behind no capability. The review Signals and the Agent's signals stay in the Review Queue: the page counts them in one line and never lists them.
 - **Roles**: areas × roles. Not signed in is the first column, the superuser the last. Each cell **passes**, is **partial** (the role reaches some of the capability's endpoints), **does not pass**, is **switched off** for everyone, or is **not resolved**. A cell shows its scope, and its basis as a border: solid when read from the code, ≈ inferred, dotted ✎ hand-written, dashed not resolved. Click a cell for its check, its evidence, and the endpoints the role reaches and misses.

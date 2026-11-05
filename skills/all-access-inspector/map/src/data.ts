@@ -1,6 +1,8 @@
 // Page data: everything the static page and the app pages draw, derived from the project's files, never stored.
 
-import { basename, resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { basename, dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { output } from '../../review/src/output.ts';
 import { today } from '../../review/src/log.ts';
@@ -48,6 +50,8 @@ export interface PageCell extends Omit<Cell, 'decision'> {
 }
 
 export interface PageData {
+  schema_version: 1;
+  inspector_version: string;
   project: { name: string; stack: string };
   inventory: { count: number; base_script: unknown };
   roles: Role[];
@@ -72,6 +76,8 @@ export interface PageData {
     runtime_note: string | null;
   };
 }
+
+export const INSPECTOR_VERSION = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'VERSION'), 'utf8').trim();
 
 /** Every row, highest tier first, then path and method: the Review Queue's order, verdicts included. */
 const ordered = (rows: StatusRow[]): StatusRow[] => [...rows].sort(byQueue);
@@ -140,6 +146,8 @@ export const pageData = (p: Project, dir: string): PageData => {
   const name = cellLabel(p.caps, p.roles);
   const rules = new Set(p.inventory.endpoints.flatMap(e => [e.authentication.rule, e.authorization.rule]).filter(r => r?.startsWith('recognition:')));
   return {
+    schema_version: 1,
+    inspector_version: INSPECTOR_VERSION,
     project: { name: basename(resolve(dir)), stack: p.inventory.stack },
     inventory: { count: p.inventory.endpoints.length, base_script: (p.inventory as unknown as { base_script?: unknown }).base_script ?? null },
     roles: p.roles,

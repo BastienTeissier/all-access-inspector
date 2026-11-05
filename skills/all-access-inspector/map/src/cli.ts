@@ -18,18 +18,30 @@ import { VocabularyError, loadVocabulary, pin, vocabularyPath } from './vocabula
 export const PAGE = join(dirname(fileURLToPath(import.meta.url)), '..', 'page.html');
 
 const USAGE = `usage:
-  map build <project> [--out <file>] [--vocabulary <file>] [--runtime <file>]
+  map build <project> [--out <file>] [--json <file>] [--vocabulary <file>] [--runtime <file>]   (--json writes the page data as JSON; with --out too, both are written)
   map check <project> [--vocabulary <file>] [--runtime <file>] [--third-party]   (--third-party lists the third-party endpoints behind no capability)
   map pin <project> [--vocabulary <file>]     (anchor every new file:line to the text of its line)
   map decide <project> <capability> <role> --verdict safe|accepted|finding --reason <text> [--severity low|medium|high] [--ticket <url>] [--until YYYY-MM-DD]
 <project> is the directory holding tools/access-inspector/inventory.json and tools/access-map/vocabulary.json.
-Defaults: --vocabulary tools/access-map/vocabulary.json, --runtime tools/access-map/runtime.json, --out tools/access-map/out/access-map.html.`;
+Defaults: --vocabulary tools/access-map/vocabulary.json, --runtime tools/access-map/runtime.json, --out tools/access-map/out/access-map.html unless only --json is given.`;
 
-const build = (dir: string, options: Options, out: string): string => {
+const write = (file: string, text: string): void => {
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, text);
+};
+
+const build = (dir: string, options: Options, out: string | undefined, json: string | undefined): string => {
   const data = buildData(dir, options);
-  mkdirSync(dirname(out), { recursive: true });
-  writeFileSync(out, readFileSync(PAGE, 'utf8').replace('/*__DATA__*/null', JSON.stringify(data).replaceAll('</', '<\\/')));
-  return `${data.method.runtime_note ? `${data.method.runtime_note}\n` : ''}${data.endpoints.length} endpoints, ${data.cells.length} cells -> ${out}\n`;
+  const targets: string[] = [];
+  if (out) {
+    write(out, readFileSync(PAGE, 'utf8').replace('/*__DATA__*/null', JSON.stringify(data).replaceAll('</', '<\\/')));
+    targets.push(out);
+  }
+  if (json) {
+    write(json, JSON.stringify(data));
+    targets.push(json);
+  }
+  return `${data.method.runtime_note ? `${data.method.runtime_note}\n` : ''}${data.endpoints.length} endpoints, ${data.cells.length} cells -> ${targets.join(', ')}\n`;
 };
 
 const decide = (dir: string, options: Options, values: Record<string, string | boolean | undefined>, capability: string, role: string): string => {
@@ -46,6 +58,8 @@ export const main = (argv: string[]): { code: number; stdout: string; stderr: st
       allowPositionals: true,
       options: {
         out: { type: 'string' },
+        json: { type: 'string' },
+        help: { type: 'boolean' },
         vocabulary: { type: 'string' },
         runtime: { type: 'string' },
         verdict: { type: 'string' },
@@ -56,11 +70,14 @@ export const main = (argv: string[]): { code: number; stdout: string; stderr: st
         'third-party': { type: 'boolean' },
       },
     });
+    if (values.help) return { code: 0, stdout: `${USAGE}\n`, stderr: '' };
     const [command, dir, ...rest] = positionals;
     if (!dir) throw new Refused(USAGE);
     const options = { vocabulary: values.vocabulary, runtime: values.runtime };
-    if (command === 'build' && !rest.length)
-      return { code: 0, stdout: build(dir, options, values.out ?? join(dir, 'tools', 'access-map', 'out', 'access-map.html')), stderr: '' };
+    if (command === 'build' && !rest.length) {
+      const out = values.out ?? (values.json ? undefined : join(dir, 'tools', 'access-map', 'out', 'access-map.html'));
+      return { code: 0, stdout: build(dir, options, out, values.json), stderr: '' };
+    }
     if (command === 'check' && !rest.length) return { ...check(dir, { ...options, thirdParty: values['third-party'] }), stderr: '' };
     if (command === 'pin' && !rest.length) {
       const path = values.vocabulary ?? vocabularyPath(dir);
