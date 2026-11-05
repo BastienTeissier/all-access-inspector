@@ -18,12 +18,12 @@ import { VocabularyError, loadVocabulary, pin, vocabularyPath } from './vocabula
 export const PAGE = join(dirname(fileURLToPath(import.meta.url)), '..', 'page.html');
 
 const USAGE = `usage:
-  map build <project> [--out <file>] [--json <file>] [--vocabulary <file>] [--runtime <file>]   (--json writes the page data as JSON; with --out too, both are written)
+  map build <project> [--out <file>] [--json <file>] [--name <name>] [--vocabulary <file>] [--runtime <file>]   (--json writes the page data as JSON)
   map check <project> [--vocabulary <file>] [--runtime <file>] [--third-party]   (--third-party lists the third-party endpoints behind no capability)
   map pin <project> [--vocabulary <file>]     (anchor every new file:line to the text of its line)
   map decide <project> <capability> <role> --verdict safe|accepted|finding --reason <text> [--severity low|medium|high] [--ticket <url>] [--until YYYY-MM-DD]
 <project> is the directory holding tools/access-inspector/inventory.json and tools/access-map/vocabulary.json.
-Defaults: --vocabulary tools/access-map/vocabulary.json, --runtime tools/access-map/runtime.json, --out tools/access-map/out/access-map.html unless only --json is given.`;
+Defaults: --vocabulary tools/access-map/vocabulary.json, --runtime tools/access-map/runtime.json, --out tools/access-map/out/access-map.html unless only --json is given, --name the project directory's name.`;
 
 const write = (file: string, text: string): void => {
   mkdirSync(dirname(file), { recursive: true });
@@ -59,6 +59,7 @@ export const main = (argv: string[]): { code: number; stdout: string; stderr: st
       options: {
         out: { type: 'string' },
         json: { type: 'string' },
+        name: { type: 'string' },
         help: { type: 'boolean' },
         vocabulary: { type: 'string' },
         runtime: { type: 'string' },
@@ -73,7 +74,7 @@ export const main = (argv: string[]): { code: number; stdout: string; stderr: st
     if (values.help) return { code: 0, stdout: `${USAGE}\n`, stderr: '' };
     const [command, dir, ...rest] = positionals;
     if (!dir) throw new Refused(USAGE);
-    const options = { vocabulary: values.vocabulary, runtime: values.runtime };
+    const options = { vocabulary: values.vocabulary, runtime: values.runtime, name: values.name };
     if (command === 'build' && !rest.length) {
       const out = values.out ?? (values.json ? undefined : join(dir, 'tools', 'access-map', 'out', 'access-map.html'));
       return { code: 0, stdout: build(dir, options, out, values.json), stderr: '' };
