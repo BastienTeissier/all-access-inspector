@@ -12,7 +12,7 @@ import { cellText } from '../../review/src/replay.ts';
 import { check } from './check.ts';
 import { type Options, buildData, project } from './data.ts';
 import { JoinError } from './join.ts';
-import { RuntimeError } from './runtime.ts';
+import { RuntimeError, roleId } from './runtime.ts';
 import { VocabularyError, loadVocabulary, pin, vocabularyPath } from './vocabulary.ts';
 
 export const PAGE = join(dirname(fileURLToPath(import.meta.url)), '..', 'page.html');
@@ -84,7 +84,7 @@ export const main = (argv: string[]): { code: number; stdout: string; stderr: st
       const path = values.vocabulary ?? vocabularyPath(dir);
       return { code: 0, stdout: `${pin(dir, path, loadVocabulary(path)).join('\n')}\n`, stderr: '' };
     }
-    if (command === 'decide' && rest.length === 2) return { code: 0, stdout: decide(dir, options, values, rest[0] as string, rest[1] as string), stderr: '' };
+    if (command === 'decide' && rest.length === 2) return { code: 0, stdout: decide(dir, options, values, rest[0] as string, roleId(rest[1] as string)), stderr: '' };
     throw new Refused(USAGE);
   } catch (error) {
     if (

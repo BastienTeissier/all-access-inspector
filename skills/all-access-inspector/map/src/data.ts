@@ -14,8 +14,8 @@ import { type Coverage, type Gap, coverage, gaps } from './coverage.ts';
 import { type MapEndpoint, type StatusRow, endpoint, isFirstParty, joiner } from './join.ts';
 import { resources } from './resources.ts';
 import { type Reach, type Role, reach, roleList } from './roles.ts';
-import { type About, type Runtime, loadRuntime, runtimePath } from './runtime.ts';
-import { type Vocabulary, loadVocabulary, vocabularyPath } from './vocabulary.ts';
+import { type About, type Runtime, loadRuntime, roleId, runtimeIds, runtimePath } from './runtime.ts';
+import { type Vocabulary, loadVocabulary, vocabularyIds, vocabularyPath } from './vocabulary.ts';
 
 export interface Options {
   vocabulary?: string;
@@ -117,10 +117,13 @@ const count = (xs: string[]): Record<string, number> => {
 
 /** The project as the map reads it, plus what `map check` needs that the page does not draw. */
 export const project = (dir: string, options: Options = {}) => {
-  const vocabulary = loadVocabulary(options.vocabulary ?? vocabularyPath(dir));
-  const { inventory, rows: all, cells: logged } = load(dir);
+  const vocabulary = vocabularyIds(loadVocabulary(options.vocabulary ?? vocabularyPath(dir)));
+  const { inventory, rows: all, cells: read } = load(dir);
+  const logged = read.map(c => ({ ...c, capability: [c.capability[0], roleId(c.capability[1])] as [string, string] }));
   const rows = ordered(all.map(output));
-  const { runtime, note } = loadRuntime(options.runtime ?? runtimePath(dir), inventory.stack);
+  const loaded = loadRuntime(options.runtime ?? runtimePath(dir), inventory.stack);
+  const runtime = runtimeIds(loaded.runtime);
+  const note = loaded.note;
   const j = joiner(runtime, vocabulary);
   const endpoints = rows.map(row => endpoint(row, j));
   const roles = roleList(runtime, vocabulary);

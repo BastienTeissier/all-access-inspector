@@ -4,7 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { byText } from '../../review/src/inventory.ts';
-import { WHO_KINDS, type Runtime, type WhoKind } from './runtime.ts';
+import { WHO_KINDS, type Runtime, type WhoKind, roleId } from './runtime.ts';
 
 /** A project file:line written by hand somewhere in the vocabulary. */
 const REFERENCE = /\b((?:[\w.-]+\/)*[\w.-]+\.(?:py|html|ts|tsx|js|java|kt|php|twig|ya?ml|xml|md)):(\d+)\b/g;
@@ -177,6 +177,18 @@ export const loadVocabulary = (path: string): Vocabulary => {
   if (wrong) throw new VocabularyError(`${path}: ${wrong}`);
   return data as unknown as Vocabulary;
 };
+
+/** Every role id the vocabulary names, spelt by roleId; the file on disk keeps its own spelling. */
+export const vocabularyIds = (vocabulary: Vocabulary): Vocabulary => ({
+  ...vocabulary,
+  roles: vocabulary.roles.map(r => ({ ...r, id: roleId(r.id), ...(r.includes && { includes: r.includes.map(i => ({ ...i, role: roleId(i.role) })) }) })),
+  ...(vocabulary.scoped && { scoped: vocabulary.scoped.map(s => ({ ...s, role: roleId(s.role) })) }),
+  ...(vocabulary.route_checks && {
+    route_checks: Object.fromEntries(
+      Object.entries(vocabulary.route_checks).map(([path, checks]) => [path, checks.map(c => (c.roles ? { ...c, roles: c.roles.map(roleId) } : c))]),
+    ),
+  }),
+});
 
 /** Every file:line in the vocabulary, anchors and the introspect's own `stack` section left out. */
 export const references = (node: unknown): Set<string> => {
