@@ -20,6 +20,7 @@ import { type Vocabulary, loadVocabulary, vocabularyPath } from './vocabulary.ts
 export interface Options {
   vocabulary?: string;
   runtime?: string;
+  name?: string; // the project's name in the page data; the directory's name when absent
 }
 
 export interface PageArea {
@@ -77,7 +78,8 @@ export interface PageData {
   };
 }
 
-export const INSPECTOR_VERSION = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'VERSION'), 'utf8').trim();
+/** The skill's VERSION, read when called: the review app bundles this module and reads its own. */
+export const inspectorVersion = (): string => readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'VERSION'), 'utf8').trim();
 
 /** Every row, highest tier first, then path and method: the Review Queue's order, verdicts included. */
 const ordered = (rows: StatusRow[]): StatusRow[] => [...rows].sort(byQueue);
@@ -142,13 +144,13 @@ export const cellLabel = (caps: Capability[], roles: Role[]): ((cap: string, rol
 };
 
 /** The page data of a project already read: the app reads a project once for its page and its check. */
-export const pageData = (p: Project, dir: string): PageData => {
+export const pageData = (p: Project, about: { name: string; version: string }): PageData => {
   const name = cellLabel(p.caps, p.roles);
   const rules = new Set(p.inventory.endpoints.flatMap(e => [e.authentication.rule, e.authorization.rule]).filter(r => r?.startsWith('recognition:')));
   return {
     schema_version: 1,
-    inspector_version: INSPECTOR_VERSION,
-    project: { name: basename(resolve(dir)), stack: p.inventory.stack },
+    inspector_version: about.version,
+    project: { name: about.name, stack: p.inventory.stack },
     inventory: { count: p.inventory.endpoints.length, base_script: (p.inventory as unknown as { base_script?: unknown }).base_script ?? null },
     roles: p.roles,
     areas: p.areas,
@@ -181,4 +183,5 @@ export const pageData = (p: Project, dir: string): PageData => {
   };
 };
 
-export const buildData = (dir: string, options: Options = {}): PageData => pageData(project(dir, options), dir);
+export const buildData = (dir: string, options: Options = {}): PageData =>
+  pageData(project(dir, options), { name: options.name ?? basename(resolve(dir)), version: inspectorVersion() });

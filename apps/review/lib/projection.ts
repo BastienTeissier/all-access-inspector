@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
 import { type Inventory, type Key, inventoryPath, keyText, methods } from '../../../skills/all-access-inspector/review/src/inventory.ts';
@@ -277,7 +277,7 @@ export const accessMap = (dir: string): AccessMap => {
   if (built?.project === abs && built.key === key) return { data: built.data, problems: built.problems, error: null };
   try {
     const p = mapProject(abs);
-    const data = pageData(p, abs);
+    const data = pageData(p, { name: basename(abs), version: readFileSync(VERSION_FILE, 'utf8').trim() });
     built = { project: abs, key, data, problems: checkProject(p, abs).problems };
     return { data, problems: built.problems, error: null };
   } catch (error) {
