@@ -1,6 +1,8 @@
 // Page data: everything the static page and the app pages draw, derived from the project's files, never stored.
 
-import { basename, resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { basename, dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { output } from '../../review/src/output.ts';
 import { today } from '../../review/src/log.ts';
@@ -12,12 +14,13 @@ import { type Coverage, type Gap, coverage, gaps } from './coverage.ts';
 import { type MapEndpoint, type StatusRow, endpoint, isFirstParty, joiner } from './join.ts';
 import { resources } from './resources.ts';
 import { type Reach, type Role, reach, roleList } from './roles.ts';
-import { type About, type Runtime, loadRuntime, runtimePath } from './runtime.ts';
-import { type Vocabulary, loadVocabulary, vocabularyPath } from './vocabulary.ts';
+import { type About, type Runtime, loadRuntime, roleId, runtimeIds, runtimePath } from './runtime.ts';
+import { type Vocabulary, loadVocabulary, vocabularyIds, vocabularyPath } from './vocabulary.ts';
 
 export interface Options {
   vocabulary?: string;
   runtime?: string;
+  name?: string; // the project's name in the page data; the directory's name when absent
 }
 
 export interface PageArea {
@@ -48,6 +51,8 @@ export interface PageCell extends Omit<Cell, 'decision'> {
 }
 
 export interface PageData {
+  schema_version: 1;
+  inspector_version: string;
   project: { name: string; stack: string };
   inventory: { count: number; base_script: unknown };
   roles: Role[];
@@ -72,6 +77,9 @@ export interface PageData {
     runtime_note: string | null;
   };
 }
+
+/** The skill's VERSION, read when called: the review app bundles this module and reads its own. */
+export const inspectorVersion = (): string => readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'VERSION'), 'utf8').trim();
 
 /** Every row, highest tier first, then path and method: the Review Queue's order, verdicts included. */
 const ordered = (rows: StatusRow[]): StatusRow[] => [...rows].sort(byQueue);
@@ -109,10 +117,13 @@ const count = (xs: string[]): Record<string, number> => {
 
 /** The project as the map reads it, plus what `map check` needs that the page does not draw. */
 export const project = (dir: string, options: Options = {}) => {
-  const vocabulary = loadVocabulary(options.vocabulary ?? vocabularyPath(dir));
-  const { inventory, rows: all, cells: logged } = load(dir);
+  const vocabulary = vocabularyIds(loadVocabulary(options.vocabulary ?? vocabularyPath(dir)));
+  const { inventory, rows: all, cells: read } = load(dir);
+  const logged = read.map(c => ({ ...c, capability: [c.capability[0], roleId(c.capability[1])] as [string, string] }));
   const rows = ordered(all.map(output));
-  const { runtime, note } = loadRuntime(options.runtime ?? runtimePath(dir), inventory.stack);
+  const loaded = loadRuntime(options.runtime ?? runtimePath(dir), inventory.stack);
+  const runtime = runtimeIds(loaded.runtime);
+  const note = loaded.note;
   const j = joiner(runtime, vocabulary);
   const endpoints = rows.map(row => endpoint(row, j));
   const roles = roleList(runtime, vocabulary);
@@ -136,11 +147,13 @@ export const cellLabel = (caps: Capability[], roles: Role[]): ((cap: string, rol
 };
 
 /** The page data of a project already read: the app reads a project once for its page and its check. */
-export const pageData = (p: Project, dir: string): PageData => {
+export const pageData = (p: Project, about: { name: string; version: string }): PageData => {
   const name = cellLabel(p.caps, p.roles);
   const rules = new Set(p.inventory.endpoints.flatMap(e => [e.authentication.rule, e.authorization.rule]).filter(r => r?.startsWith('recognition:')));
   return {
-    project: { name: basename(resolve(dir)), stack: p.inventory.stack },
+    schema_version: 1,
+    inspector_version: about.version,
+    project: { name: about.name, stack: p.inventory.stack },
     inventory: { count: p.inventory.endpoints.length, base_script: (p.inventory as unknown as { base_script?: unknown }).base_script ?? null },
     roles: p.roles,
     areas: p.areas,
@@ -173,4 +186,5 @@ export const pageData = (p: Project, dir: string): PageData => {
   };
 };
 
-export const buildData = (dir: string, options: Options = {}): PageData => pageData(project(dir, options), dir);
+export const buildData = (dir: string, options: Options = {}): PageData =>
+  pageData(project(dir, options), { name: options.name ?? basename(resolve(dir)), version: inspectorVersion() });

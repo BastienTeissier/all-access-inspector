@@ -44,7 +44,7 @@ An agent skill fits the toolkit to your project **once**. It leaves a small scri
 | Symfony (+ API Platform) | `base-scripts/symfony/` | runtime, the router | Tested on Symfony 8.1 and API Platform 5.0, PHP 8.5 (needs PHP 8.2 or later). Firewalls, `access_control`, `#[IsGranted]`, `denyAccessUnlessGranted()`, API Platform `security` |
 | Anything else (FastAPI, Flask, Express, Laravel, Rails…) | improvised from the closest one | runtime when the framework has a route registry, else static | Always `coverage: best-effort`. See [Fit an unsupported stack](#fit-an-unsupported-stack) |
 
-Base Script version: see [`skills/all-access-inspector/VERSION`](skills/all-access-inspector/VERSION) (currently 0.5.0). Every inventory records the version that produced it.
+Base Script version: see [`skills/all-access-inspector/VERSION`](skills/all-access-inspector/VERSION) (currently 0.6.0). Every inventory records the version that produced it.
 
 ## Install the skill
 
@@ -264,7 +264,7 @@ The output is deterministic: sorted, with no timestamps and no absolute paths. T
   "discovery_mode": "runtime",
   "coverage": "complete",
   "coverage_note": null,
-  "base_script": {"stack": "django", "version": "0.5.0"},
+  "base_script": {"stack": "django", "version": "0.6.0"},
   "boot_environment": {"entry": "config.settings", "environ": […], "stubs": […], "pinned": […]},
   "project_dimensions": {"access_tier": ["public", "customer", "staff"]},
   "expected_access": {"access_tier": {"staff": {"authentication": ["required"], "authorization": ["rule"]}, …}},
@@ -480,7 +480,7 @@ tools/access-map/
 
 ### Read the map
 
-`node <skill>/map/src/cli.ts build <project>` writes one static page, `tools/access-map/out/access-map.html`, that you can open or share. The review app shows the same map under **Access map**, with a decision form on each cell. Both draw the same data, computed in `map/src/`.
+`node <skill>/map/src/cli.ts build <project>` writes one static page, `tools/access-map/out/access-map.html`, that you can open or share. With `--json <file>` it writes the same data as JSON instead, for a tool that reads the map; give `--out` too to write both. `--name <name>` sets the project name in the data, so the output does not depend on the directory name. The map spells each role id in lower case, with `-` for `_` (`api_key` becomes `api-key`), and `map decide` accepts either spelling. The review app shows the same map under **Access map**, with a decision form on each cell. Both draw the same data, computed in `map/src/`.
 
 - **Alerts**: partial capabilities with no valid decision, open `finding` decisions and cells not resolved, then a **Coverage** group listing, per area, the first-party endpoints behind no capability. The review Signals and the Agent's signals stay in the Review Queue: the page counts them in one line and never lists them.
 - **Roles**: areas × roles. Not signed in is the first column, the superuser the last. Each cell **passes**, is **partial** (the role reaches some of the capability's endpoints), **does not pass**, is **switched off** for everyone, or is **not resolved**. A cell shows its scope, and its basis as a border: solid when read from the code, ≈ inferred, dotted ✎ hand-written, dashed not resolved. Click a cell for its check, its evidence, and the endpoints the role reaches and misses.

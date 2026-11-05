@@ -316,3 +316,67 @@ test('A NestJS project maps each endpoint to the roles its guards let through', 
   const result = map('check', '.');
   expect(result.status, result.out).toBe(0);
 });
+
+test('build --json writes the page data and names the file', () => {
+  const out = join(project, 'out', 'page-data.json');
+  const result = map('build', '.', '--json', out);
+  expect(result.status, result.out).toBe(0);
+  expect(result.out).toContain(`-> ${out}`);
+  expect(Object.keys(JSON.parse(readFileSync(out, 'utf8')))).toEqual(Object.keys(buildData(project)));
+  expect(existsSync(join(project, 'tools', 'access-map', 'out', 'access-map.html'))).toBe(false);
+});
+
+test('build --json writes the same data as buildData', () => {
+  const out = join(project, 'page-data.json');
+  expect(map('build', '.', '--json', out).status).toBe(0);
+  expect(JSON.parse(readFileSync(out, 'utf8'))).toEqual(buildData(project));
+});
+
+test('build --out and --json write both files', () => {
+  const html = join(project, 'map.html');
+  const json = join(project, 'page-data.json');
+  const result = map('build', '.', '--out', html, '--json', json);
+  expect(result.status, result.out).toBe(0);
+  expect(readFileSync(html, 'utf8')).not.toContain('/*__DATA__*/null');
+  expect(readFileSync(html, 'utf8')).toContain('"export-orders"');
+  expect(JSON.parse(readFileSync(json, 'utf8'))).toEqual(buildData(project));
+});
+
+test('build --json creates the missing parent folders', () => {
+  const out = join(project, 'a', 'b', 'c', 'page-data.json');
+  expect(map('build', '.', '--json', out).status).toBe(0);
+  expect(existsSync(out)).toBe(true);
+});
+
+test('the page data carries its schema version and the inspector version', () => {
+  const data = buildData(project);
+  expect(data.schema_version).toBe(1);
+  expect(data.inspector_version).toMatch(/^\d+\.\d+\.\d+$/);
+  expect(data.inspector_version).toBe(readFileSync(join(import.meta.dirname, '..', '..', 'VERSION'), 'utf8').trim());
+});
+
+test('--help lists the --json flag', () => {
+  const result = map('--help');
+  expect(result.status).toBe(0);
+  expect(result.out).toContain('--json <file>');
+});
+
+test('build --name gives the same page data in two folders of other names', () => {
+  const other = join(mkdtempSync(join(tmpdir(), 'map-')), 'other-name');
+  cpSync(project, other, { recursive: true });
+  const json = (dir: string) => {
+    const out = join(dir, 'page-data.json');
+    expect(run(CLI, ['build', dir, '--name', 'shop', '--json', out]).status).toBe(0);
+    return readFileSync(out, 'utf8');
+  };
+  expect(JSON.parse(json(project)).project.name).toBe('shop');
+  expect(json(other)).toBe(json(project));
+});
+
+test('role ids in other spellings give the same page data, and decide takes them', () => {
+  const before = buildData(project);
+  for (const file of ['tools/access-map/runtime.json', 'tools/access-map/vocabulary.json']) edit(file, text => text.replaceAll('"clerk"', '"Clerk"'));
+  expect(buildData(project)).toEqual(before);
+  expect(map('decide', '.', 'export-orders', 'Clerk', '--verdict', 'accepted', '--reason', 'Clerks export through a manager').status).toBe(0);
+  expect(JSON.parse(log()).capability).toEqual(['export-orders', 'clerk']);
+});

@@ -143,6 +143,20 @@ export const loadRuntime = (path: string, stack: string): { runtime: Runtime; no
   return { runtime: data as unknown as Runtime, note: null };
 };
 
+/** A role id as the ontology spells it: lower case, `-` for `_` (`api_key` → `api-key`). */
+export const roleId = (id: string): string => id.toLowerCase().replaceAll('_', '-');
+
+const whoIds = (who: Who | null): Who | null => (who?.roles ? { ...who, roles: who.roles.map(roleId) } : who);
+
+/** Every role id the runtime names, spelt by roleId. */
+export const runtimeIds = (runtime: Runtime): Runtime => ({
+  ...runtime,
+  roles: runtime.roles.map(r => ({ ...r, id: roleId(r.id), includes: r.includes.map(i => ({ ...i, role: roleId(i.role) })) })),
+  grants: Object.fromEntries(Object.entries(runtime.grants).map(([permission, g]) => [permission, g.map(x => ({ ...x, role: roleId(x.role) }))])),
+  scoped: runtime.scoped.map(s => ({ ...s, role: roleId(s.role) })),
+  endpoints: runtime.endpoints.map(e => ({ ...e, verdict: whoIds(e.verdict), fallback: whoIds(e.fallback) })),
+});
+
 export const runtimeKey = (e: { method: string; path: string; handler: string }): string => `${e.method} ${e.path} ${e.handler}`;
 
 /** Runtime endpoints by method, path and handler. */
